@@ -17,6 +17,7 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <iterator>
 
 #include <boost/bind.hpp>
 #include <boost/lexical_cast.hpp>
@@ -700,7 +701,7 @@ fabs_appif::read_conf(string conf)
                         range.second = range.first;
                     }
 
-                    rule->m_port.push_back(range);
+                    rule->m_port->push_back(range);
                 }
             }
 
@@ -1041,8 +1042,8 @@ fabs_appif::appif_consumer::send_tcp_data(ptr_info p_info, fabs_id_dir id_dir)
                     p_info->m_ifrule = ifrule;
 
                     if (m_appif.m_is_lru) {
-                        it_tcp->second->ifrule.erase(it2);
-                        it_tcp->second->ifrule.push_front(ifrule);
+                        it_tcp->second->ifrule_no_regex.erase(it2);
+                        it_tcp->second->ifrule_no_regex.push_front(ifrule);
                     }
 
                     goto brk;
@@ -1265,13 +1266,13 @@ fabs_appif::stream_info::stream_info(const fabs_id &id) :
 }
 
 bool
-fabs_appif::is_in_port(std::list<std::pair<uint16_t, uint16_t> > &range,
+fabs_appif::is_in_port(boost::shared_ptr<std::list<std::pair<uint16_t, uint16_t> > > range,
                        uint16_t port1, uint16_t port2)
 {
-    if (range.empty())
+    if (range->empty())
         return true;
 
-    for (auto it = range.begin(); it != range.end(); ++it) {
+    for (auto it = range->begin(); it != range->end(); ++it) {
         if ((it->first <= ntohs(port1) && ntohs(port1) <= it->second) ||
             (it->first <= ntohs(port2) && ntohs(port2) <= it->second)) {
             return true;
@@ -1289,6 +1290,8 @@ fabs_appif::appif_consumer::in_datagram(const fabs_id_dir &id_dir,
     uint8_t    idx = bytes.get_head()[0];
     ptr_ifrule ifrule;
     match_dir  match = MATCH_NONE;
+
+    //    id_dir.m_id.print_id();
 
     for (auto it_udp = m_ifrule_udp.begin(); it_udp != m_ifrule_udp.end();
          ++it_udp) {
@@ -1342,14 +1345,15 @@ fabs_appif::appif_consumer::in_datagram(const fabs_id_dir &id_dir,
         // check list of no regex
         for (auto it2 = it_udp->second->ifrule_no_regex.begin();
              it2 != it_udp->second->ifrule_no_regex.end(); ++it2) {
+
             if (m_appif.is_in_port((*it2)->m_port, id_dir.get_port_src(),
                                    id_dir.get_port_dst())) {
                 // found in list
                 ifrule = *it2;
 
                 if (m_appif.m_is_lru) {
-                    it_udp->second->ifrule.erase(it2);
-                    it_udp->second->ifrule.push_front(ifrule);
+                    it_udp->second->ifrule_no_regex.push_front(*it2);
+                    it_udp->second->ifrule_no_regex.erase(it2);
                 }
 
                 goto brk;

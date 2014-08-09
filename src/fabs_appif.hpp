@@ -70,10 +70,11 @@ private:
         ptr_path    m_ux;
         bool        m_is_body;
         int         m_nice;
-        std::list<std::pair<uint16_t, uint16_t> > m_port;
+        boost::shared_ptr<std::list<std::pair<uint16_t, uint16_t> > > m_port;
 
         ifrule() : m_proto(IF_OTHER), m_format(IF_BINARY), m_is_body(true),
-                   m_nice(100) { }
+                   m_nice(100),
+                   m_port(new std::list<std::pair<uint16_t, uint16_t> >) { }
     };
 
     struct uxpeer {
@@ -207,7 +208,7 @@ private:
                      fabs_appif_header *header, char *body, int bodylen);
     void ux_listen();
     void ux_listen_ifrule(ptr_ifrule ifrule);
-    bool is_in_port(std::list<std::pair<uint16_t, uint16_t> > &range,
+    bool is_in_port(boost::shared_ptr<std::list<std::pair<uint16_t, uint16_t> > > range,
                     uint16_t port1, uint16_t port2);
 
     friend void ux_accept(int fd, short events, void *arg);
