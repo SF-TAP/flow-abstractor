@@ -293,6 +293,9 @@ read_loopback7(int fd, fabs_appif *appif)
                 return false;
             }
 
+            header->l3_proto = l3_proto;
+            header->l4_proto = l4_proto;
+
             try {
                 header->l4_port1 = boost::lexical_cast<int>(h["port1"]);
                 header->l4_port2 = boost::lexical_cast<int>(h["port2"]);
@@ -300,7 +303,7 @@ read_loopback7(int fd, fabs_appif *appif)
 
                 auto it_len = h.find("len");
                 if (it_len != h.end()) {
-                    header->len = boost::lexical_cast<int>(it->second);
+                    header->len = boost::lexical_cast<int>(it_len->second);
                 }
             } catch (boost::bad_lexical_cast e) {
                 cerr << "CAUTION! LOOPBACK 7 RECEIVED INVALID HEADER!: header = "
