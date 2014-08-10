@@ -9,9 +9,6 @@ Required:
 * [Boost C++ Library](http://www.boost.org/ "Boost")
 * [libpcap](http://www.tcpdump.org/ "tcpdump/libpcap")
 * [OpenSSL libcrypto](http://www.openssl.org/ "OpenSSL")
-
-Optional for Divert Socket:
-
 * [libevent 2.0 or later](http://libevent.org/ "libevent")
 
 ### How to Compile

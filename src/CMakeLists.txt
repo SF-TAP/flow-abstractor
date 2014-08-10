@@ -1,5 +1,8 @@
 cmake_policy(SET CMP0022 OLD)
-cmake_policy(SET CMP0042 NEW)
+
+IF(POLICY CMP0042)
+  cmake_policy(SET CMP0042 NEW)
+ENDIF(POLICY CMP0042)
 
 IF(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
   set(CMAKE_CXX_FLAGS "-Wall -fPIC -std=c++11 -framework CoreFoundation")
