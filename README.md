@@ -58,4 +58,3 @@ Example:
 * deal with IP fragmentation
 * deal with fast TCP open
 * calculate checksum
-* add parser exemples
