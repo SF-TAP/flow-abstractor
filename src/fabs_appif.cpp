@@ -61,7 +61,7 @@ fabs_appif::run()
 
     m_thread_listen = ptr_thread(new boost::thread(boost::bind(&fabs_appif::ux_listen, this)));
 
-    m_num_consumer = boost::thread::hardware_concurrency();
+    m_num_consumer = 2 * boost::thread::hardware_concurrency();
 
     if (m_num_consumer <= 1) {
         m_num_consumer = 1;
