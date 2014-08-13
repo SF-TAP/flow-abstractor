@@ -9,6 +9,7 @@
 #include <arpa/inet.h>
 
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <sys/uio.h>
@@ -486,6 +487,7 @@ fabs_appif::ux_listen()
         exit(-1);
     }
 */
+    umask(0007);
 
     {
         boost::upgrade_lock<boost::shared_mutex> up_lock(m_rw_mutex);

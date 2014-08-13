@@ -23,9 +23,6 @@ public:
     virtual ~fabs_divert() {}
 
     void set_ev_base(event_base *ev_base) { m_ev_base = ev_base; }
-    void set_event_listener(ptr_fabs_event_listener listener) {
-        m_callback.set_event_listener(listener);
-    }
 
     void run(uint16_t ipv4_port, uint16_t ipv6_port);
 
