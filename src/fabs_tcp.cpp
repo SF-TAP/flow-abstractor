@@ -28,7 +28,8 @@ fabs_tcp::fabs_tcp(ptr_fabs_appif appif) :
     m_timeout(600),
     m_is_del(false),
     m_thread_run(boost::bind(&fabs_tcp::run, this)),
-    m_thread_gc(boost::bind(&fabs_tcp::garbage_collector, this))
+    m_thread_gc(boost::bind(&fabs_tcp::garbage_collector, this)),
+    m_thread_invoke(boost::bind(&fabs_tcp::invoke_event, this))
 {
 
 }
@@ -42,12 +43,30 @@ fabs_tcp::~fabs_tcp()
         m_condition.notify_one();
     }
     m_thread_run.join();
+    m_thread_invoke.join();
 
     {
         boost::mutex::scoped_lock lock(m_mutex_gc);
         m_condition_gc.notify_one();
     }
     m_thread_gc.join();
+}
+
+void
+fabs_tcp::invoke_event()
+{
+    for (;;) {
+        {
+            boost::mutex::scoped_lock lock(m_mutex);
+            if (m_events.size() > 0)
+                m_condition.notify_one();
+        }
+
+        boost::this_thread::sleep(boost::posix_time::milliseconds(200));
+
+        if (m_is_del)
+            return;
+    }
 }
 
 void
@@ -470,6 +489,7 @@ fabs_tcp::input_tcp(fabs_id &id, fabs_direction dir, char *buf, int len,
             m_events.insert(tcp_event);
         }
 
-        m_condition.notify_one();
+        if (m_events.size() > 1000)
+            m_condition.notify_one();
     }
 }
