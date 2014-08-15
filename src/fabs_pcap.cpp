@@ -61,7 +61,7 @@ fabs_pcap::callback(const struct pcap_pkthdr *h, const uint8_t *bytes)
 
     time_t t1 = time(NULL);
 
-    if (t1 - t0 > 60) {
+    if (t1 - t0 > 10) {
         pcap_stat stat;
         t0 = t1;
         pcap_stats(m_handle, &stat);

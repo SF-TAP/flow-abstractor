@@ -80,6 +80,7 @@ private:
     bool recv_fin(const fabs_id &id, fabs_direction dir);
     void rm_flow(const fabs_id &id, fabs_direction dir);
     int  num_packets(const fabs_id &id, fabs_direction dir);
+    void invoke_event();
 
     boost::mutex     m_mutex;
     boost::mutex     m_mutex_gc;
@@ -89,6 +90,7 @@ private:
 
     boost::thread    m_thread_run;
     boost::thread    m_thread_gc;
+    boost::thread    m_thread_invoke;
 };
 
 #endif // FABS_TCP_HPP
