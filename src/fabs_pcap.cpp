@@ -1,5 +1,4 @@
 #include "fabs_pcap.hpp"
-#include "fabs_divert.hpp"
 
 #include <unistd.h>
 
@@ -8,6 +7,9 @@
 #include <netinet/ip6.h>
 
 #include <iostream>
+#include <string>
+
+#include <boost/bind.hpp>
 
 #ifndef ETHERTYPE_VLAN
 #define ETHERTYPE_VLAN 0x8100 /* IEEE 802.1Q VLAN tagging */
@@ -43,6 +45,60 @@ pcap_callback(uint8_t *user, const struct pcap_pkthdr *h, const uint8_t *bytes)
     pcap->callback(h, bytes);
 }
 
+fabs_pcap::fabs_pcap(std::string conf)
+    : m_handle(NULL),
+      m_is_break(false),
+      m_callback(conf),
+      m_thread_consume(boost::bind(&fabs_pcap::consume, this)),
+      m_thread_timer(boost::bind(&fabs_pcap::timer, this))
+{
+
+}
+
+void
+fabs_pcap::timer()
+{
+    for (;;) {
+        {
+            boost::mutex::scoped_lock lock(m_mutex);
+            m_condition.notify_one();
+        }
+
+        boost::this_thread::sleep(boost::posix_time::milliseconds(100));
+    }
+}
+
+void
+fabs_pcap::consume()
+{
+    int count = 0;
+
+    for (;;) {
+        fabs_bytes buf;
+        int size;
+
+        {
+            boost::mutex::scoped_lock lock(m_mutex);
+            while (m_queue.size() == 0) {
+                m_condition.wait(lock);
+            }
+
+            size = m_queue.size();
+            buf = m_queue.front();
+            m_queue.pop_front();
+        }
+
+        bool is_fire;
+
+        if (count > 1000 || size == 0)
+            is_fire = true;
+        else
+            is_fire = false;
+
+        m_callback(buf, is_fire);
+    }
+}
+
 void
 fabs_pcap::callback(const struct pcap_pkthdr *h, const uint8_t *bytes)
 {
@@ -50,6 +106,7 @@ fabs_pcap::callback(const struct pcap_pkthdr *h, const uint8_t *bytes)
     const uint8_t *ip_hdr = get_ip_hdr(bytes, h->caplen, proto);
     uint32_t len = h->caplen - (ip_hdr - bytes);
     uint32_t plen;
+    static int count = 0;
 
     if (m_is_break) {
         pcap_breakloop(m_handle);
@@ -86,7 +143,19 @@ fabs_pcap::callback(const struct pcap_pkthdr *h, const uint8_t *bytes)
         if (plen > len)
             return;
 
-        m_callback((char*)ip_hdr, plen, proto);
+        fabs_bytes buf;
+        buf.set_buf((char*)ip_hdr, plen);
+
+        {
+            boost::mutex::scoped_lock lock(m_mutex);
+            m_queue.push_back(buf);
+            count++;
+
+            if (count > 1000) {
+                m_condition.notify_one();
+                count = 0;
+            }
+        }
 
         break;
     }
@@ -128,7 +197,19 @@ fabs_pcap::callback(const struct pcap_pkthdr *h, const uint8_t *bytes)
         if (plen > len)
             return;
 
-        m_callback((char*)ip_hdr, plen, proto);
+        fabs_bytes buf;
+        buf.set_buf((char*)ip_hdr, plen);
+
+        {
+            boost::mutex::scoped_lock lock(m_mutex);
+            m_queue.push_back(buf);
+            count++;
+
+            if (count > 1000) {
+                m_condition.notify_one();
+                count = 0;
+            }
+        }
 
         break;
     }

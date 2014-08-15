@@ -18,10 +18,12 @@ using namespace boost;
 using namespace std;
 
 fabs_direction
-fabs_id::set_iph(char *iph, int protocol, char **l4hdr)
+fabs_id::set_iph(char *iph, char **l4hdr)
 {
+    char protocol = iph[0] & 0xf0;
+
     switch (protocol) {
-    case IPPROTO_IP:
+    case 0x40:
     {
         boost::shared_ptr<fabs_peer> addr1(new fabs_peer);
         boost::shared_ptr<fabs_peer> addr2(new fabs_peer);
@@ -69,7 +71,7 @@ fabs_id::set_iph(char *iph, int protocol, char **l4hdr)
         // not reach here
         break;
     }
-    case IPPROTO_IPV6:
+    case 0x60:
     {
         boost::shared_ptr<fabs_peer> addr1(new fabs_peer);
         boost::shared_ptr<fabs_peer> addr2(new fabs_peer);

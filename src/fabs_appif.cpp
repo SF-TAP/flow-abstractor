@@ -192,15 +192,14 @@ read_loopback3(int fd, fabs_appif *appif)
 {
     char    buf[8192];
     ssize_t len = read(fd, buf, sizeof(buf));
+    fabs_bytes bytes;
 
     if (len <= 0)
         return true;
 
-    if ((buf[0] & 0xf0) == 0x40) {
-        appif->m_callback(buf, len, IPPROTO_IP);
-    } else if ((buf[0] & 0xf0) == 0x60) {
-        appif->m_callback(buf, len, IPPROTO_IPV6);
-    }
+    bytes.set_buf(buf, len);
+
+    appif->m_callback(bytes, true);
 
     return false;
 }

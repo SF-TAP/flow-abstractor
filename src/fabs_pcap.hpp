@@ -2,17 +2,22 @@
 #define FABS_PCAP_HPP
 
 #include "fabs_callback.hpp"
+#include "fabs_bytes.hpp"
 
 #include <pcap/pcap.h>
 
 #include <stdint.h>
 
 #include <string>
+#include <list>
+
+#include <boost/thread.hpp>
+#include <boost/thread/condition.hpp>
 
 class fabs_pcap {
 public:
-    fabs_pcap(std::string conf) : m_handle(NULL), m_is_break(false),
-                                  m_callback(conf) { }
+    fabs_pcap(std::string conf);
+
     virtual ~fabs_pcap() {
         if (m_handle != NULL)
             pcap_close(m_handle);
@@ -21,6 +26,9 @@ public:
     void set_dev(std::string dev);
 
     void callback(const struct pcap_pkthdr *h, const uint8_t *bytes);
+    
+    void consume();
+    void timer();
 
     void run();
     void stop() { m_is_break = true; }
@@ -35,6 +43,12 @@ private:
                               uint8_t &proto);
 
     fabs_callback m_callback;
+
+    std::list<fabs_bytes> m_queue;
+    boost::mutex  m_mutex;
+    boost::condition m_condition;
+    boost::thread m_thread_consume;
+    boost::thread m_thread_timer;
 };
 
 extern boost::shared_ptr<fabs_pcap> pcap_inst;

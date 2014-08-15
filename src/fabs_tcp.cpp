@@ -29,7 +29,7 @@ fabs_tcp::fabs_tcp(ptr_fabs_appif appif) :
     m_is_del(false),
     m_thread_run(boost::bind(&fabs_tcp::run, this)),
     m_thread_gc(boost::bind(&fabs_tcp::garbage_collector, this)),
-    m_thread_invoke(boost::bind(&fabs_tcp::invoke_event, this))
+    m_thread_fire(boost::bind(&fabs_tcp::fire_event, this))
 {
 
 }
@@ -43,7 +43,6 @@ fabs_tcp::~fabs_tcp()
         m_condition.notify_one();
     }
     m_thread_run.join();
-    m_thread_invoke.join();
 
     {
         boost::mutex::scoped_lock lock(m_mutex_gc);
@@ -53,19 +52,18 @@ fabs_tcp::~fabs_tcp()
 }
 
 void
-fabs_tcp::invoke_event()
+fabs_tcp::fire_event()
 {
     for (;;) {
+        boost::this_thread::sleep(boost::posix_time::milliseconds(100));
+
         {
             boost::mutex::scoped_lock lock(m_mutex);
-            if (m_events.size() > 0)
+
+            if (m_events.size() > 0) {
                 m_condition.notify_one();
+            }
         }
-
-        boost::this_thread::sleep(boost::posix_time::milliseconds(200));
-
-        if (m_is_del)
-            return;
     }
 }
 
@@ -225,9 +223,10 @@ fabs_tcp::run()
                 m_appif->in_event(STREAM_SYN, tcp_event, bytes);
             } else if (packet.m_flags & TH_FIN) {
                 if (packet.m_data_len > 0) {
-                    packet.m_bytes.skip(packet.m_data_pos);
-                    m_appif->in_event(STREAM_DATA, tcp_event,
-                                      packet.m_bytes);
+                    if (packet.m_bytes.skip(packet.m_data_pos)) {
+                        m_appif->in_event(STREAM_DATA, tcp_event,
+                                          packet.m_bytes);
+                    }
                 }
 
                 fabs_bytes bytes;
@@ -271,8 +270,6 @@ fabs_tcp::run()
                 id_dir.m_dir = FROM_NONE;
                 m_appif->in_event(STREAM_DESTROYED, id_dir, bytes);
             } else {
-                packet.m_bytes.skip(packet.m_data_pos);
-
 #ifdef DEBUG
                 cout << "data in: addr1 = "
                      << addr1 << ":"
@@ -284,8 +281,10 @@ fabs_tcp::run()
                      << endl;
 #endif // DEBUG
 
-                m_appif->in_event(STREAM_DATA, tcp_event,
-                                  packet.m_bytes);
+                if (packet.m_bytes.skip(packet.m_data_pos)) {
+                    m_appif->in_event(STREAM_DATA, tcp_event,
+                                      packet.m_bytes);
+                }
             }
         }
     }
@@ -390,17 +389,15 @@ fabs_tcp::get_packet(const fabs_id &id, fabs_direction dir,
 }
 
 void
-fabs_tcp::input_tcp(fabs_id &id, fabs_direction dir, char *buf, int len,
-                    char *l4hdr)
+fabs_tcp::input_tcp(fabs_id &id, fabs_direction dir, fabs_bytes buf,
+                    bool is_fire)
 {
     map<fabs_id, ptr_fabs_tcp_flow>::iterator it_flow;
     ptr_fabs_tcp_flow p_tcp_flow;
     fabs_tcp_packet   packet;
-    tcphdr *tcph;
+    tcphdr *tcph = (tcphdr*)buf.get_head();
 
-    tcph = (tcphdr*)l4hdr;
 
-/*
 #ifdef DEBUG
     cout << "TCP flags: ";
     if (tcph->th_flags & TH_SYN)
@@ -413,7 +410,7 @@ fabs_tcp::input_tcp(fabs_id &id, fabs_direction dir, char *buf, int len,
         cout << "F";
     cout << endl;
 #endif
-*/
+
 
     // TODO: checksum
     {
@@ -431,11 +428,11 @@ fabs_tcp::input_tcp(fabs_id &id, fabs_direction dir, char *buf, int len,
         }
     }
 
-    packet.m_bytes.set_buf(buf, len);
+    packet.m_bytes    = buf;
     packet.m_seq      = ntohl(tcph->th_seq);
     packet.m_flags    = tcph->th_flags;
-    packet.m_data_pos = l4hdr - buf + tcph->th_off * 4;
-    packet.m_data_len = len - packet.m_data_pos;
+    packet.m_data_pos = tcph->th_off * 4;
+    packet.m_data_len = buf.get_len() - packet.m_data_pos;
     packet.m_nxt_seq  = packet.m_seq + packet.m_data_len;
     packet.m_read_pos = 0;
 
@@ -489,7 +486,7 @@ fabs_tcp::input_tcp(fabs_id &id, fabs_direction dir, char *buf, int len,
             m_events.insert(tcp_event);
         }
 
-        if (m_events.size() > 1000)
+        if (is_fire)
             m_condition.notify_one();
     }
 }

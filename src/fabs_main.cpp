@@ -22,20 +22,7 @@ bool is_stats = false;
 void
 print_usage(char *cmd)
 {
-#ifdef USE_DIVERT
-    cout << "if you want to use divert socket (FreeBSD/MacOS X only), use -d option\n\t"
-         << cmd << " -d -4 [divert port for IPv4]\n\n"
-         << "if you want to use pcap, use -p option\n\t"
-         << "-c option tells configuration file"
-         << "if -s option is specified, stats are printed out periodically"
-         << cmd << " -p -i [NIF] -s"
-         << endl;
-#else
-    cout << "-i option tells a network interface to capture\n\t"
-         << "-c option tells configuration file\n"
-         << "if -s option is specified, stats are printed out periodically"
-         << cmd << " -i [NIF]" << endl;
-#endif
+    cout << cmd << " -i [NIF] -c [CONFIG_FILE]\n" << endl;
 }
 
 int
@@ -45,29 +32,12 @@ main(int argc, char *argv[])
     string dev;
     string conf;
 
-#ifdef USE_DIVERT
-    int  dvt_port = 100;
-    bool is_pcap  = true;
-    const char *optstr = "d4:pi:hc:s";
-#else
     const char *optstr = "i:hc:s";
-#endif // USE_DIVERT
 
     signal( SIGPIPE , SIG_IGN ); 
 
     while ((opt = getopt(argc, argv, optstr)) != -1) {
         switch (opt) {
-#ifdef USE_DIVER
-        case 'd':
-            is_pcap = false;
-            break;
-        case '4':
-            dvt_port = atoi(optarg);
-            break;
-        case 'p':
-            is_pcap = true;
-            break;
-#endif // USE_DIVERT
         case 'i':
             dev = optarg;
             break;
@@ -84,15 +54,7 @@ main(int argc, char *argv[])
         }
     }
 
-#ifdef USE_DIVERT
-    if (is_pcap) {
-        run_pcap(dev, conf);
-    } else {
-        run_divert(dvt_port, conf);
-    }
-#else
     run_pcap(dev, conf);
-#endif // USE_DIVERT
 
     return 0;
 }
