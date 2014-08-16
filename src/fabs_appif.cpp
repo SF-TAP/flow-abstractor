@@ -199,7 +199,7 @@ read_loopback3(int fd, fabs_appif *appif)
 
     bytes.set_buf(buf, len);
 
-    appif->m_callback(bytes, true);
+    appif->m_callback(bytes);
 
     return false;
 }

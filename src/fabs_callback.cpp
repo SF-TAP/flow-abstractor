@@ -12,7 +12,7 @@ fabs_callback::fabs_callback(std::string conf) :
 }
 
 void
-fabs_callback::operator() (fabs_bytes buf, bool is_fire) {
+fabs_callback::operator() (fabs_bytes buf) {
     fabs_direction dir;
     fabs_id        id;
     char          *l4hdr;
@@ -24,7 +24,7 @@ fabs_callback::operator() (fabs_bytes buf, bool is_fire) {
 
     switch (id.get_l4_proto()) {
     case IPPROTO_TCP:
-        m_tcp.input_tcp(id, dir, buf, is_fire);
+        m_tcp.input_tcp(id, dir, buf);
         break;
     case IPPROTO_UDP:
         m_udp.input_udp(id, dir, buf);

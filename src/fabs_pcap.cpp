@@ -95,7 +95,7 @@ fabs_pcap::consume()
         else
             is_fire = false;
 
-        m_callback(buf, is_fire);
+        m_callback(buf);
     }
 }
 

@@ -62,9 +62,7 @@ public:
     fabs_tcp(ptr_fabs_appif appif);
     virtual ~fabs_tcp();
 
-    void input_tcp(fabs_id &id, fabs_direction dir, fabs_bytes buf,
-                   bool is_fire);
-    void run();
+    void input_tcp(fabs_id &id, fabs_direction dir, fabs_bytes buf);
     void garbage_collector();
     void set_timeout(time_t t) { m_timeout = t; }
 
@@ -80,15 +78,13 @@ private:
     bool recv_fin(const fabs_id &id, fabs_direction dir);
     void rm_flow(const fabs_id &id, fabs_direction dir);
     int  num_packets(const fabs_id &id, fabs_direction dir);
-    void fire_event();
+    void input_tcp_event(fabs_id_dir tcp_event);
 
     boost::mutex     m_mutex;
     boost::mutex     m_mutex_gc;
-    boost::condition m_condition;
     boost::condition m_condition_gc;
     bool             m_is_del;
 
-    boost::thread    m_thread_run;
     boost::thread    m_thread_gc;
     boost::thread    m_thread_fire;
 };

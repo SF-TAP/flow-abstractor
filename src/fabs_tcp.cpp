@@ -27,9 +27,7 @@ fabs_tcp::fabs_tcp(ptr_fabs_appif appif) :
     m_appif(appif),
     m_timeout(600),
     m_is_del(false),
-    m_thread_run(boost::bind(&fabs_tcp::run, this)),
-    m_thread_gc(boost::bind(&fabs_tcp::garbage_collector, this)),
-    m_thread_fire(boost::bind(&fabs_tcp::fire_event, this))
+    m_thread_gc(boost::bind(&fabs_tcp::garbage_collector, this))
 {
 
 }
@@ -39,32 +37,10 @@ fabs_tcp::~fabs_tcp()
     m_is_del = true;
 
     {
-        boost::mutex::scoped_lock lock(m_mutex);
-        m_condition.notify_one();
-    }
-    m_thread_run.join();
-
-    {
         boost::mutex::scoped_lock lock(m_mutex_gc);
         m_condition_gc.notify_one();
     }
     m_thread_gc.join();
-}
-
-void
-fabs_tcp::fire_event()
-{
-    for (;;) {
-        boost::this_thread::sleep(boost::posix_time::milliseconds(100));
-
-        {
-            boost::mutex::scoped_lock lock(m_mutex);
-
-            if (m_events.size() > 0) {
-                m_condition.notify_one();
-            }
-        }
-    }
 }
 
 void
@@ -137,154 +113,139 @@ fabs_tcp::garbage_collector()
 }
 
 void
-fabs_tcp::run()
+fabs_tcp::input_tcp_event(fabs_id_dir tcp_event)
 {
-    for (;;) {
-        fabs_id_dir tcp_event;
 #ifdef DEBUG
-        char addr1[32], addr2[32];
+    char addr1[32], addr2[32];
 #endif // DEBUG
-        
-        {
-            boost::mutex::scoped_lock lock(m_mutex);
-            while (m_events.size() == 0) {
-                m_condition.wait(lock);
 
-                if (m_is_del)
-                    return;
-            }
-
-            fabs_id_dir_cont::nth_index<1>::type &e1 = m_events.get<1>();
-
-            // consume event
-            tcp_event = e1.front();
-            e1.pop_front();
+    {
+        boost::mutex::scoped_lock lock(m_mutex);
 
 #ifdef DEBUG
-            inet_ntop(PF_INET, &tcp_event.m_id.m_addr1->l3_addr.b32,
-                      addr1, sizeof(addr1));
-            inet_ntop(PF_INET, &tcp_event.m_id.m_addr2->l3_addr.b32,
-                      addr2, sizeof(addr2));
+        inet_ntop(PF_INET, &tcp_event.m_id.m_addr1->l3_addr.b32,
+                  addr1, sizeof(addr1));
+        inet_ntop(PF_INET, &tcp_event.m_id.m_addr2->l3_addr.b32,
+                  addr2, sizeof(addr2));
 #endif // DEBUG
 
 
-            // garbage collection
-            std::map<fabs_id, ptr_fabs_tcp_flow>::iterator it_flow;
+        // garbage collection
+        std::map<fabs_id, ptr_fabs_tcp_flow>::iterator it_flow;
 
-            it_flow = m_flow.find(tcp_event.m_id);
+        it_flow = m_flow.find(tcp_event.m_id);
 
-            if (it_flow == m_flow.end()) {
-                continue;
-            }
-
-            fabs_bytes bytes;
-            bool       is_rm = false;
-
-            if (tcp_event.m_dir == FROM_ADDR1 &&
-                it_flow->second->m_flow1.m_is_rm) {
-                m_appif->in_event(STREAM_TIMEOUT, tcp_event, bytes);
-                is_rm = true;
-            }
-
-            if (tcp_event.m_dir == FROM_ADDR2 &&
-                it_flow->second->m_flow2.m_is_rm) {
-                m_appif->in_event(STREAM_TIMEOUT, tcp_event, bytes);
-                is_rm = true;
-            }
-
-            if (is_rm) {
-                lock.unlock();
-                rm_flow(tcp_event.m_id, tcp_event.m_dir);
-
-                fabs_id_dir id_dir = tcp_event;
-                id_dir.m_dir = FROM_NONE;
-                m_appif->in_event(STREAM_DESTROYED, id_dir, bytes);
-
-                continue;
-            }
+        if (it_flow == m_flow.end()) {
+            return;
         }
 
-        fabs_tcp_packet packet;
+        fabs_bytes bytes;
+        bool       is_rm = false;
 
-        while (get_packet(tcp_event.m_id, tcp_event.m_dir, packet)) {
-            if (packet.m_flags & TH_SYN) {
+        if (tcp_event.m_dir == FROM_ADDR1 &&
+            it_flow->second->m_flow1.m_is_rm) {
+            m_appif->in_event(STREAM_TIMEOUT, tcp_event, bytes);
+            is_rm = true;
+        }
+
+        if (tcp_event.m_dir == FROM_ADDR2 &&
+            it_flow->second->m_flow2.m_is_rm) {
+            m_appif->in_event(STREAM_TIMEOUT, tcp_event, bytes);
+            is_rm = true;
+        }
+
+        if (is_rm) {
+            lock.unlock();
+            rm_flow(tcp_event.m_id, tcp_event.m_dir);
+
+            fabs_id_dir id_dir = tcp_event;
+            id_dir.m_dir = FROM_NONE;
+            m_appif->in_event(STREAM_DESTROYED, id_dir, bytes);
+
+            return;
+        }
+    }
+
+    fabs_tcp_packet packet;
+
+    while (get_packet(tcp_event.m_id, tcp_event.m_dir, packet)) {
+        if (packet.m_flags & TH_SYN) {
 #ifdef DEBUG
-                cout << "connection opened: addr1 = "
-                     << addr1 << ":"
-                     << ntohs(tcp_event.m_id.m_addr1->l4_port)
-                     << ", addr2 = "
-                     << addr2 << ":"
-                     << ntohs(tcp_event.m_id.m_addr2->l4_port)
-                     << ", from = " << tcp_event.m_dir
-                     << endl;
+            cout << "connection opened: addr1 = "
+                 << addr1 << ":"
+                 << ntohs(tcp_event.m_id.m_addr1->l4_port)
+                 << ", addr2 = "
+                 << addr2 << ":"
+                 << ntohs(tcp_event.m_id.m_addr2->l4_port)
+                 << ", from = " << tcp_event.m_dir
+                 << endl;
 #endif // DEBUG
 
-                fabs_bytes bytes;
-                m_appif->in_event(STREAM_SYN, tcp_event, bytes);
-            } else if (packet.m_flags & TH_FIN) {
-                if (packet.m_data_len > 0) {
-                    if (packet.m_bytes.skip(packet.m_data_pos)) {
-                        m_appif->in_event(STREAM_DATA, tcp_event,
-                                          packet.m_bytes);
-                    }
-                }
-
-                fabs_bytes bytes;
-
-                m_appif->in_event(STREAM_FIN, tcp_event, bytes);
-
-#ifdef DEBUG
-                cout << "connection closed: addr1 = "
-                     << addr1 << ":"
-                     << ntohs(tcp_event.m_id.m_addr1->l4_port)
-                     << ", addr2 = "
-                     << addr2 << ":"
-                     << ntohs(tcp_event.m_id.m_addr2->l4_port)
-                     << ", from = " << tcp_event.m_dir
-                     << endl;
-#endif // DEBUG
-
-                if (recv_fin(tcp_event.m_id, tcp_event.m_dir)) {
-                    fabs_id_dir id_dir = tcp_event;
-                    id_dir.m_dir = FROM_NONE;
-                    m_appif->in_event(STREAM_DESTROYED, id_dir, bytes);
-                }
-            } else if (packet.m_flags & TH_RST) {
-#ifdef DEBUG
-                cout << "connection reset: addr1 = "
-                     << addr1 << ":"
-                     << ntohs(tcp_event.m_id.m_addr1->l4_port)
-                     << ", addr2 = "
-                     << addr2 << ":"
-                     << ntohs(tcp_event.m_id.m_addr2->l4_port)
-                     << endl;
-#endif // DEBUG
-
-                fabs_bytes bytes;
-
-                m_appif->in_event(STREAM_RST, tcp_event, bytes);
-
-                rm_flow(tcp_event.m_id, tcp_event.m_dir);
-
-                fabs_id_dir id_dir = tcp_event;
-                id_dir.m_dir = FROM_NONE;
-                m_appif->in_event(STREAM_DESTROYED, id_dir, bytes);
-            } else {
-#ifdef DEBUG
-                cout << "data in: addr1 = "
-                     << addr1 << ":"
-                     << ntohs(tcp_event.m_id.m_addr1->l4_port)
-                     << ", addr2 = "
-                     << addr2 << ":"
-                     << ntohs(tcp_event.m_id.m_addr2->l4_port)
-                     << ", from = " << tcp_event.m_dir
-                     << endl;
-#endif // DEBUG
-
+            fabs_bytes bytes;
+            m_appif->in_event(STREAM_SYN, tcp_event, bytes);
+        } else if (packet.m_flags & TH_FIN) {
+            if (packet.m_data_len > 0) {
                 if (packet.m_bytes.skip(packet.m_data_pos)) {
                     m_appif->in_event(STREAM_DATA, tcp_event,
                                       packet.m_bytes);
                 }
+            }
+
+            fabs_bytes bytes;
+
+            m_appif->in_event(STREAM_FIN, tcp_event, bytes);
+
+#ifdef DEBUG
+            cout << "connection closed: addr1 = "
+                 << addr1 << ":"
+                 << ntohs(tcp_event.m_id.m_addr1->l4_port)
+                 << ", addr2 = "
+                 << addr2 << ":"
+                 << ntohs(tcp_event.m_id.m_addr2->l4_port)
+                 << ", from = " << tcp_event.m_dir
+                 << endl;
+#endif // DEBUG
+
+            if (recv_fin(tcp_event.m_id, tcp_event.m_dir)) {
+                fabs_id_dir id_dir = tcp_event;
+                id_dir.m_dir = FROM_NONE;
+                m_appif->in_event(STREAM_DESTROYED, id_dir, bytes);
+            }
+        } else if (packet.m_flags & TH_RST) {
+#ifdef DEBUG
+            cout << "connection reset: addr1 = "
+                 << addr1 << ":"
+                 << ntohs(tcp_event.m_id.m_addr1->l4_port)
+                 << ", addr2 = "
+                 << addr2 << ":"
+                 << ntohs(tcp_event.m_id.m_addr2->l4_port)
+                 << endl;
+#endif // DEBUG
+
+            fabs_bytes bytes;
+
+            m_appif->in_event(STREAM_RST, tcp_event, bytes);
+
+            rm_flow(tcp_event.m_id, tcp_event.m_dir);
+
+            fabs_id_dir id_dir = tcp_event;
+            id_dir.m_dir = FROM_NONE;
+            m_appif->in_event(STREAM_DESTROYED, id_dir, bytes);
+        } else {
+#ifdef DEBUG
+            cout << "data in: addr1 = "
+                 << addr1 << ":"
+                 << ntohs(tcp_event.m_id.m_addr1->l4_port)
+                 << ", addr2 = "
+                 << addr2 << ":"
+                 << ntohs(tcp_event.m_id.m_addr2->l4_port)
+                 << ", from = " << tcp_event.m_dir
+                 << endl;
+#endif // DEBUG
+
+            if (packet.m_bytes.skip(packet.m_data_pos)) {
+                m_appif->in_event(STREAM_DATA, tcp_event,
+                                  packet.m_bytes);
             }
         }
     }
@@ -389,8 +350,7 @@ fabs_tcp::get_packet(const fabs_id &id, fabs_direction dir,
 }
 
 void
-fabs_tcp::input_tcp(fabs_id &id, fabs_direction dir, fabs_bytes buf,
-                    bool is_fire)
+fabs_tcp::input_tcp(fabs_id &id, fabs_direction dir, fabs_bytes buf)
 {
     map<fabs_id, ptr_fabs_tcp_flow>::iterator it_flow;
     ptr_fabs_tcp_flow p_tcp_flow;
@@ -426,18 +386,15 @@ fabs_tcp::input_tcp(fabs_id &id, fabs_direction dir, fabs_bytes buf,
         } else {
             p_tcp_flow = it_flow->second;
         }
-    }
 
-    packet.m_bytes    = buf;
-    packet.m_seq      = ntohl(tcph->th_seq);
-    packet.m_flags    = tcph->th_flags;
-    packet.m_data_pos = tcph->th_off * 4;
-    packet.m_data_len = buf.get_len() - packet.m_data_pos;
-    packet.m_nxt_seq  = packet.m_seq + packet.m_data_len;
-    packet.m_read_pos = 0;
+        packet.m_bytes    = buf;
+        packet.m_seq      = ntohl(tcph->th_seq);
+        packet.m_flags    = tcph->th_flags;
+        packet.m_data_pos = tcph->th_off * 4;
+        packet.m_data_len = buf.get_len() - packet.m_data_pos;
+        packet.m_nxt_seq  = packet.m_seq + packet.m_data_len;
+        packet.m_read_pos = 0;
 
-    {
-        boost::mutex::scoped_lock lock(m_mutex);
 
         fabs_tcp_uniflow *p_uniflow;
         
@@ -474,19 +431,13 @@ fabs_tcp::input_tcp(fabs_id &id, fabs_direction dir, fabs_bytes buf,
         }
 
         p_uniflow->m_time = time(NULL);
-
-
-        // produce event
-        fabs_id_dir tcp_event;
-
-        tcp_event.m_id  = id;
-        tcp_event.m_dir = dir;
-
-        if (m_events.find(tcp_event) == m_events.end()) {
-            m_events.insert(tcp_event);
-        }
-
-        if (is_fire)
-            m_condition.notify_one();
     }
+
+    // produce event
+    fabs_id_dir tcp_event;
+
+    tcp_event.m_id  = id;
+    tcp_event.m_dir = dir;
+
+    input_tcp_event(tcp_event);
 }

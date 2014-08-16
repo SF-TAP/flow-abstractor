@@ -9,7 +9,7 @@ public:
     fabs_callback(std::string conf);
     virtual ~fabs_callback() { }
 
-    void operator() (fabs_bytes buf, bool is_fire);
+    void operator() (fabs_bytes buf);
 
 private:
     ptr_fabs_appif m_appif;
