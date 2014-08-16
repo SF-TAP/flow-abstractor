@@ -8,7 +8,6 @@ Required:
 
 * [Boost C++ Library](http://www.boost.org/ "Boost")
 * [libpcap](http://www.tcpdump.org/ "tcpdump/libpcap")
-* [OpenSSL libcrypto](http://www.openssl.org/ "OpenSSL")
 * [libevent 2.0 or later](http://libevent.org/ "libevent")
 
 ### How to Compile
@@ -19,11 +18,6 @@ Required:
 If you want to compile as debug mode, set a option of CMAKE_BUILD_YPE=Debug when running cmake. Debug mode passes a option of -g and a definition of DEBUG=1 to the compiler.
 
     $ cmake -DCMAKE_BUILD_TYPE=Debug CMakeLists.txt
-    $ make
-
-If you want to enable divert socket for packet capture, set a option of USE_DIVERT=1.
-
-    $ cmake -DUSE_DIVERT=1 -DCMAKE_BUILD_TYPE=Release CMakeLists.txt
     $ make
 
 If you want to build static library, set a option of COMPILE_STATIC_LIB=1.

@@ -2,8 +2,6 @@
 
 #include <ctype.h>
 
-#include <openssl/evp.h>
-
 #include <boost/iostreams/filtering_stream.hpp>
 #include <boost/iostreams/filter/gzip.hpp>
 #include <boost/iostreams/filter/zlib.hpp>
@@ -136,34 +134,6 @@ void
 to_lower_str(string &str)
 {
     transform(str.begin(), str.end(), str.begin(), lower_case);
-}
-
-void
-get_digest(fabs_bytes &md_value, const char *alg, const char *buf,
-           unsigned int len)
-{
-    EVP_MD_CTX    mdctx;
-    EVP_MD const *md;
-    unsigned int  md_len;
-
-    md_value.alloc(EVP_MAX_MD_SIZE);
-
-    OpenSSL_add_all_digests();
-
-    md = EVP_get_digestbyname(alg);
-
-    if (!md)
-        return;
-
-    EVP_MD_CTX_init(&mdctx);
-    EVP_DigestInit_ex(&mdctx, md, NULL);
-    EVP_DigestUpdate(&mdctx, buf, len);
-    EVP_DigestFinal_ex(&mdctx, (unsigned char*)md_value.m_ptr.get(), &md_len);
-    EVP_MD_CTX_cleanup(&mdctx);
-
-    md_value.m_len = md_len;
-
-    return;
 }
 
 string
