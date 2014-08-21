@@ -71,10 +71,7 @@ fabs_pcap::timer()
 void
 fabs_pcap::consume()
 {
-    int count = 0;
-
     for (;;) {
-        fabs_bytes buf;
         int size;
 
         {
@@ -84,18 +81,18 @@ fabs_pcap::consume()
             }
 
             size = m_queue.size();
-            buf = m_queue.front();
-            m_queue.pop_front();
         }
 
-        bool is_fire;
+        auto it = m_queue.begin();
+        for (int i = 0; i < size; i++) {
+            m_callback(*it);
+            ++it;
+        }
 
-        if (count > 1000 || size == 0)
-            is_fire = true;
-        else
-            is_fire = false;
-
-        m_callback(buf);
+        {
+            boost::mutex::scoped_lock lock(m_mutex);
+            m_queue.erase(m_queue.begin(), it);
+        }
     }
 }
 

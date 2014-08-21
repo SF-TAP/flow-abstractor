@@ -7,6 +7,7 @@
 
 #include <sys/time.h>
 
+#include <list>
 #include <map>
 #include <set>
 #include <string>
@@ -156,7 +157,7 @@ public:
         boost::mutex     m_mutex;
         boost::condition m_condition;
         boost::thread    m_thread;
-        std::deque<appif_event> m_ev_queue;
+        std::list<appif_event> m_ev_queue;
         std::map<fabs_id, ptr_info> m_info;
         std::map<int, ptr_ifrule_storage2> m_ifrule_tcp;
         std::map<int, ptr_ifrule_storage2> m_ifrule_udp;

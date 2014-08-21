@@ -1412,7 +1412,8 @@ void
 fabs_appif::appif_consumer::consume()
 {
     for (;;) {
-        appif_event ev;
+        int size;
+
         {
             // consume event
             boost::mutex::scoped_lock lock(m_mutex);
@@ -1420,14 +1421,22 @@ fabs_appif::appif_consumer::consume()
                 m_condition.wait(lock);
             }
 
-            ev = m_ev_queue.front();
-            m_ev_queue.pop_front();
+            size = m_ev_queue.size();
         }
 
-        if (ev.id_dir.m_id.get_l4_proto() == IPPROTO_TCP) {
-            in_stream_event(ev.st_event, ev.id_dir, ev.bytes);
-        } else if (ev.id_dir.m_id.get_l4_proto() == IPPROTO_UDP) {
-            in_datagram(ev.id_dir, ev.bytes);
+        auto it = m_ev_queue.begin();
+        for (int i = 0; i < size; i++) {
+            if (it->id_dir.m_id.get_l4_proto() == IPPROTO_TCP) {
+                in_stream_event(it->st_event, it->id_dir, it->bytes);
+            } else if (it->id_dir.m_id.get_l4_proto() == IPPROTO_UDP) {
+                in_datagram(it->id_dir, it->bytes);
+            }
+            ++it;
+        }
+
+        {
+            boost::mutex::scoped_lock lock(m_mutex);
+            m_ev_queue.erase(m_ev_queue.begin(), it);
         }
     }
 }
