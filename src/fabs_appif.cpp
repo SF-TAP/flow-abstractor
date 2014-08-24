@@ -1413,6 +1413,7 @@ fabs_appif::appif_consumer::consume()
 {
     for (;;) {
         int size;
+        vector<appif_event> events;
 
         {
             // consume event
@@ -1424,6 +1425,8 @@ fabs_appif::appif_consumer::consume()
             size = m_ev_queue.size();
         }
 
+        events.resize(size);
+
         auto it = m_ev_queue.begin();
         for (int i = 0; i < size; i++) {
             if (it->id_dir.m_id.get_l4_proto() == IPPROTO_TCP) {
@@ -1431,6 +1434,7 @@ fabs_appif::appif_consumer::consume()
             } else if (it->id_dir.m_id.get_l4_proto() == IPPROTO_UDP) {
                 in_datagram(it->id_dir, it->bytes);
             }
+            events[i] = *it;;
             ++it;
         }
 

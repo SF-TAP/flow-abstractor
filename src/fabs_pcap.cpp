@@ -73,19 +73,23 @@ fabs_pcap::consume()
 {
     for (;;) {
         int size;
+        vector<fabs_bytes> bytes;
 
         {
             boost::mutex::scoped_lock lock(m_mutex);
-            while (m_queue.size() == 0) {
+            while (m_queue.empty()) {
                 m_condition.wait(lock);
             }
 
             size = m_queue.size();
         }
 
+        bytes.resize(size);
+
         auto it = m_queue.begin();
         for (int i = 0; i < size; i++) {
             m_callback(*it);
+            bytes[i] = *it;
             ++it;
         }
 
