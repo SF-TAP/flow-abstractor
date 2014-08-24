@@ -25,14 +25,14 @@ list(REMOVE_ITEM CPPSources ${CPPMain})
 find_package(Boost COMPONENTS thread system regex iostreams filesystem REQUIRED)
 
 add_library(fabs SHARED ${CPPSources})
-add_executable(stap_fabs ${CPPMain})
+add_executable(sf-tap_fabs ${CPPMain})
 
 set(LIBS event event_pthreads ${Boost_THREAD_LIBRARY} ${Boost_SYSTEM_LIBRARY} ${Boost_REGEX_LIBRARY} ${Boost_IOSTREAMS_LIBRARY} ${Boost_FILESYSTEM_LIBRARY} pcap pthread)
 
-target_link_libraries(stap_fabs ${LIBS} fabs)
+target_link_libraries(sf-tap_fabs ${LIBS} fabs)
 target_link_libraries(fabs ${LIBS})
 
-INSTALL(TARGETS fabs stap_fabs RUNTIME DESTINATION bin
+INSTALL(TARGETS fabs sf-tap_fabs RUNTIME DESTINATION bin
                                LIBRARY DESTINATION lib
                                ARCHIVE DESTINATION lib)
 

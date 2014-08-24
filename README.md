@@ -1,6 +1,6 @@
-# STAP Flow Absractor
+# SF-TAP Flow Absractor
 
-STAP flow abstractor is an abstraction layer for L7 flows.
+SF-TAP flow abstractor is an abstraction layer for L7 flows.
 
 ### Dependencies
 
@@ -29,20 +29,20 @@ You can use a verbose mode when compiling.
 
     $ make VERBOSE=1
 
-### How to run STAP flow abstractor
+### How to run SF-TAP flow abstractor
 
 You can specify a network interface by -i option, and a config file by -c option.
 
 Example:
 
-    $ ./src/stap_fabs -i eth0 -c ./examples/fabs.conf
+    $ ./src/sf-tap_fabs -i eth0 -c ./examples/fabs.conf
 
 If you want to use divert socket (FreeBSD/MacOS X only) instead of pcap, use -d option.
 You can specify a port number of divert socket by -4 option.
 
 Example:
 
-    $ ./src/stap_fabs -d -4 100 -c ./examples/fabs.conf
+    $ ./src/sf-tap_fabs -d -4 100 -c ./examples/fabs.conf
 
 ### To Do:
 * protect from SYN flooding
