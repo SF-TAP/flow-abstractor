@@ -73,7 +73,7 @@ private:
         int         m_nice;
         boost::shared_ptr<std::list<std::pair<uint16_t, uint16_t> > > m_port;
 
-        ifrule() : m_proto(IF_OTHER), m_format(IF_BINARY), m_is_body(true),
+        ifrule() : m_proto(IF_OTHER), m_format(IF_TEXT), m_is_body(true),
                    m_nice(100),
                    m_port(new std::list<std::pair<uint16_t, uint16_t> >) { }
     };

@@ -36,7 +36,7 @@ bool read_loopback3(int fd, fabs_appif *appif);
 fabs_appif::fabs_appif(fabs_callback &callback, fabs_tcp &tcp) :
     m_fd7(-1),
     m_fd3(-1),
-    m_lb7_format(IF_BINARY),
+    m_lb7_format(IF_TEXT),
     m_num_consumer(0),
     m_callback(callback),
     m_tcp(tcp),
@@ -250,10 +250,15 @@ read_loopback7(int fd, fabs_appif *appif)
                 s += c;
             }
 
+            cout << s << endl;
+
             stringstream ss1(s);
             while (ss1) {
                 string elm;
                 std::getline(ss1, elm, ',');
+
+                if (elm.empty())
+                    continue;
 
                 stringstream ss2(elm);
                 string key, val;
@@ -261,14 +266,18 @@ read_loopback7(int fd, fabs_appif *appif)
                 std::getline(ss2, val);
 
                 h[key] = val;
+                cout << key << ": " << val << endl;
             }
 
             uint8_t l3_proto, l4_proto;
+            int af;
 
             if (h["l3"] == "ipv4") {
                 l3_proto = IPPROTO_IP;
+                af = AF_INET;
             } else if (h["l3"] == "ipv6") {
                 l3_proto = IPPROTO_IPV6;
+                af = AF_INET6;
             } else {
                 return false;
             }
@@ -281,14 +290,15 @@ read_loopback7(int fd, fabs_appif *appif)
                 return false;
             }
 
-            if (inet_pton(l3_proto, h["ip1"].c_str(), &header->l3_addr1) <= 0) {
-                cerr << "CAUTION! LOOPBACK 7 RECEIVED INVALID HEADER!: header = "
+            if (inet_pton(af, h["ip1"].c_str(), &header->l3_addr1) <= 0) {
+                cout << h["ip1"] << endl;
+                cerr << "CAUTION! LOOPBACK 7 RECEIVED INVALID HEADER! (inet_pton ip1): header = "
                      << s << endl;
                 return false;
             }
 
-            if (inet_pton(l3_proto, h["ip2"].c_str(), &header->l3_addr2) <= 0) {
-                cerr << "CAUTION! LOOPBACK 7 RECEIVED INVALID HEADER!: header = "
+            if (inet_pton(af, h["ip2"].c_str(), &header->l3_addr2) <= 0) {
+                cerr << "CAUTION! LOOPBACK 7 RECEIVED INVALID HEADER! (inet_pton ip2): header = "
                      << s << endl;
                 return false;
             }
@@ -306,7 +316,7 @@ read_loopback7(int fd, fabs_appif *appif)
                     header->len = boost::lexical_cast<int>(it_len->second);
                 }
             } catch (boost::bad_lexical_cast e) {
-                cerr << "CAUTION! LOOPBACK 7 RECEIVED INVALID HEADER!: header = "
+                cerr << "CAUTION! LOOPBACK 7 RECEIVED INVALID HEADER! (lexical_cast): header = "
                      << s << endl;
                 return false;
             }
@@ -348,7 +358,7 @@ read_loopback7(int fd, fabs_appif *appif)
 
 
         if (header->event == STREAM_DATA) {
-            it->second->is_header = true;
+            it->second->is_header = false;
             return false;
         } else if (header->event == STREAM_CREATED) {
             fabs_bytes bytes;
@@ -371,7 +381,8 @@ read_loopback7(int fd, fabs_appif *appif)
         } else {
             cerr << "CAUTION! LOOPBACK 7 RECEIVED INVALID EVENT!: event = "
                  << header->event << endl;
-            return false;
+            // must close fd
+            return true;
         }
     } else {
         fabs_bytes bytes;
@@ -386,11 +397,14 @@ read_loopback7(int fd, fabs_appif *appif)
         } else if (len != header->len) {
             cerr << "CAUTION! LOOPBACK 7 RECEIVED INVALID BODY LENGTH!: len = "
                  << header->len << endl;
-            return false;
+            // must close fd
+            return true;
         }
 
         // invoke DATA event
         appif->in_event(STREAM_DATA, it->second->id_dir, bytes);
+
+        it->second->is_header = true;
 
         return false;
     }
@@ -714,6 +728,7 @@ fabs_appif::read_conf(string conf)
                 m_ifrule3 = rule;
             } else if (rule->m_name == "loopback7") {
                 m_ifrule7 = rule;
+                m_lb7_format = rule->m_format;
             } else if (rule->m_name == "tcp_default") {
                 m_tcp_default = rule;
             } else if (rule->m_name == "udp_default") {
