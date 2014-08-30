@@ -131,7 +131,6 @@ ux_close(int fd, fabs_appif *appif)
         cout << "closed on " << it1->second->m_name
              << " (fd = " << fd << ")" << endl;
 
-
         appif->m_fd2uxpeer.erase(it1);
     }
 
@@ -159,29 +158,37 @@ void
 ux_read(int fd, short events, void *arg)
 {
     fabs_appif *appif = static_cast<fabs_appif*>(arg);
-    boost::upgrade_lock<boost::shared_mutex> up_lock(appif->m_rw_mutex);
+    fabs_appif::ptr_uxpeer peer;
 
     auto it1 = appif->m_fd2uxpeer.find(fd);
     if (it1 != appif->m_fd2uxpeer.end()) {
-        // read from loopback interface
-        if (it1->second->m_name == "loopback7") {
+        peer = it1->second;
+    }
+
+    if (peer) {
+        if (peer->m_name == "loopback7") {
             if (read_loopback7(fd, appif)) {
+                boost::upgrade_lock<boost::shared_mutex> up_lock(appif->m_rw_mutex);
                 boost::upgrade_to_unique_lock<boost::shared_mutex> wlock(up_lock);
                 ux_close(fd, appif);
+                return;
             }
-            return;
-        } else if (it1->second->m_name == "loopback3") {
+        } else if (peer->m_name == "loopback3") {
             if (read_loopback3(fd, appif)) {
+                boost::upgrade_lock<boost::shared_mutex> up_lock(appif->m_rw_mutex);
                 boost::upgrade_to_unique_lock<boost::shared_mutex> wlock(up_lock);
                 ux_close(fd, appif);
+                return;
             }
         } else {
             char buf[4096];
             int  recv_size = read(fd, buf, sizeof(buf) - 1);
 
             if (recv_size <= 0) {
+                boost::upgrade_lock<boost::shared_mutex> up_lock(appif->m_rw_mutex);
                 boost::upgrade_to_unique_lock<boost::shared_mutex> wlock(up_lock);
                 ux_close(fd, appif);
+                return;
             }
         }
     }
@@ -250,8 +257,6 @@ read_loopback7(int fd, fabs_appif *appif)
                 s += c;
             }
 
-            cout << s << endl;
-
             stringstream ss1(s);
             while (ss1) {
                 string elm;
@@ -266,7 +271,6 @@ read_loopback7(int fd, fabs_appif *appif)
                 std::getline(ss2, val);
 
                 h[key] = val;
-                cout << key << ": " << val << endl;
             }
 
             uint8_t l3_proto, l4_proto;
@@ -291,7 +295,6 @@ read_loopback7(int fd, fabs_appif *appif)
             }
 
             if (inet_pton(af, h["ip1"].c_str(), &header->l3_addr1) <= 0) {
-                cout << h["ip1"] << endl;
                 cerr << "CAUTION! LOOPBACK 7 RECEIVED INVALID HEADER! (inet_pton ip1): header = "
                      << s << endl;
                 return false;
@@ -322,6 +325,8 @@ read_loopback7(int fd, fabs_appif *appif)
             }
 
             header->hop++;
+            header->l4_port1 = ntohs(header->l4_port1);
+            header->l4_port2 = ntohs(header->l4_port2);
 
             if (h["event"] == "CREATED") {
                 header->event = STREAM_CREATED;
@@ -346,9 +351,9 @@ read_loopback7(int fd, fabs_appif *appif)
 
         id_dir.m_id.set_appif_header(*header);
 
-        if (header->from == 0) {
+        if (header->from == 1) {
             id_dir.m_dir = FROM_ADDR1;
-        } else if (header->from == 1) {
+        } else if (header->from == 2) {
             id_dir.m_dir = FROM_ADDR2;
         } else {
             id_dir.m_dir = FROM_NONE;
@@ -391,7 +396,11 @@ read_loopback7(int fd, fabs_appif *appif)
 
         ssize_t len = read(fd, bytes.get_head(), header->len);
 
-        if (len <= 0) {
+        if (len == 0) {
+            // must close fd
+            return true;
+        } if (len < 0) {
+            perror("error");
             // must close fd
             return true;
         } else if (len != header->len) {
@@ -1309,8 +1318,6 @@ fabs_appif::appif_consumer::in_datagram(const fabs_id_dir &id_dir,
     uint8_t    idx = bytes.get_head()[0];
     ptr_ifrule ifrule;
     match_dir  match = MATCH_NONE;
-
-    //    id_dir.m_id.print_id();
 
     for (auto it_udp = m_ifrule_udp.begin(); it_udp != m_ifrule_udp.end();
          ++it_udp) {

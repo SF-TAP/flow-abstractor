@@ -186,7 +186,6 @@ fabs_id::set_appif_header(fabs_appif_header &header)
     m_addr2 = addr2;
 }
 
-
 void
 fabs_id::print_id() const
 {
@@ -203,5 +202,7 @@ fabs_id::print_id() const
     cout << "addr1 = " << addr1 << ":" << ntohs(m_addr1->l4_port)
          << ", addr2 = " << addr2 << ":" << ntohs(m_addr2->l4_port)
          << ", l3_proto = " << (int)m_l3_proto
-         << ", l4_proto = " << (int)m_l4_proto << endl;
+         << ", l4_proto = " << (int)m_l4_proto
+         << ", hop = " << (int)m_hop
+         << endl;
 }
