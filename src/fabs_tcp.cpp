@@ -19,7 +19,7 @@
 
 using namespace std;
 
-#define TCP_GC_TIMER 120
+#define TCP_GC_TIMER 30
 
 // #define DEBUG
 

@@ -8,8 +8,6 @@
 
 #include <netinet/in.h>
 
-#include <openssl/x509.h>
-
 #include <iostream>
 #include <string>
 
