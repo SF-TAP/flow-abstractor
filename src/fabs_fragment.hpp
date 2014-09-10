@@ -1,6 +1,7 @@
 #ifndef FABS_FRAGMENT_HPP
 #define FABS_FRAGMENT_HPP
 
+#include "fabs_common.hpp"
 #include "fabs_id.hpp"
 #include "fabs_bytes.hpp"
 
@@ -27,6 +28,8 @@ private:
         boost::shared_ptr<std::map<int, fabs_bytes> > m_bytes;
         mutable bool    m_is_last;
         mutable time_t  m_time;
+        mutable int     m_size;
+        mutable int     m_hlen;
         time_t   m_init;
         uint32_t m_ip_src;
         uint32_t m_ip_dst;
@@ -80,6 +83,8 @@ private:
                 boost::multi_index::identity<fragments> >,
             boost::multi_index::sequenced<>
             > > frag_cont;
+
+    bool defragment(const fragments &frgms);
 
     frag_cont m_fragments;
 };

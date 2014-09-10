@@ -36,19 +36,26 @@ fabs_fragment::input_ip(fabs_bytes buf)
 
         auto it = m_fragments.find(frag);
         if (it == m_fragments.end()) {
-            int offset = ntohs(iph4->ip_off) & IP_OFFMASK;
-            int mflag  = ntohs(iph4->ip_off) & IP_MF;
-
-            if (! mflag)
-                it->m_is_last = true;
-
             auto it2 = it->m_bytes->find(offset);
             if (it2 == it->m_bytes->end()) {
                 (*it->m_bytes)[offset] = buf;
+
+                if (! mflag) {
+                    it->m_is_last = true;
+                    it->m_size = offset * 8 + ntohs(iph4->ip_len) - iph4->ip_hl * 4;
+                    if (it->m_size < 0) {
+                        // error
+                        m_fragments.erase(it);
+                    }
+                } else if (offset == 0) {
+                    it->m_hlen = iph4->ip_hl * 4;
+                }
             }
 
             if (it->m_is_last) {
-                // defragment
+                if (defragment(*it)) {
+                    m_fragments.erase(it);
+                }
             }
         } else {
             m_fragments.insert(fragments(iph4, buf));
@@ -58,4 +65,30 @@ fabs_fragment::input_ip(fabs_bytes buf)
     }
 
     return false;
+}
+
+bool
+fabs_fragment::defragment(const fragments &frgms)
+{
+    int next = 0;
+    fabs_bytes buf;
+
+    buf.alloc(frgms.m_size);
+
+    for (auto it = frgms.m_bytes->begin(); it != frgms.m_bytes->end(); ++it) {
+        int offset = it->first;
+        ip *iph4 = (ip*)it->second.get_head();
+
+        int pos = offset * 8;
+        if (next < pos) {
+            // couldn't defragment
+            return false;
+        } else if (next > pos) {
+            // error
+            m_fragments.erase(frgms);
+            return false;
+        }
+    }
+
+    return true;
 }

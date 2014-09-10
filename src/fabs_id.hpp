@@ -1,6 +1,7 @@
 #ifndef FABS_ID_HPP
 #define FABS_ID_HPP
 
+#include "fabs_common.hpp"
 #include "fabs_bytes.hpp"
 
 #include <arpa/inet.h>

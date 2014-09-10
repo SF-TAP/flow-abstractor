@@ -1,6 +1,7 @@
 #ifndef FABS_PCAP_HPP
 #define FABS_PCAP_HPP
 
+#include "fabs_common.hpp"
 #include "fabs_callback.hpp"
 #include "fabs_bytes.hpp"
 

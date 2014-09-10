@@ -1,9 +1,12 @@
 #ifndef FABS_COMMON_HPP
 #define FABS_COMMON_HPP
 
-#include <stdio.h>
+#ifdef USE_JEMALLOC
+    #include <stdlib.h>
+    #include <jemalloc/jemalloc.h>
+#endif
 
-#include "fabs_bytes.hpp"
+#include <stdio.h>
 
 #define PERROR() do {                                           \
     char s[256];                                                \

@@ -1,5 +1,7 @@
 cmake_policy(SET CMP0022 OLD)
 
+option(USE_JEMALLOC "Use jemalloc" 0)
+
 IF(POLICY CMP0042)
   cmake_policy(SET CMP0042 NEW)
 ENDIF(POLICY CMP0042)
@@ -22,12 +24,20 @@ FILE(GLOB CPPMain fabs_main.cpp)
 
 list(REMOVE_ITEM CPPSources ${CPPMain})
 
+
+
+
 find_package(Boost COMPONENTS thread system regex iostreams filesystem REQUIRED)
 
 add_library(fabs SHARED ${CPPSources})
 add_executable(sftap_fabs ${CPPMain})
 
 set(LIBS event event_pthreads ${Boost_THREAD_LIBRARY} ${Boost_SYSTEM_LIBRARY} ${Boost_REGEX_LIBRARY} ${Boost_IOSTREAMS_LIBRARY} ${Boost_FILESYSTEM_LIBRARY} pcap pthread)
+
+IF(USE_JEMALLOC)
+    add_definitions(-DUSE_JEMALLOC)
+    SET(LIBS ${LIBS} jemalloc)
+ENDIF(USE_JEMALLOC)
 
 target_link_libraries(sftap_fabs ${LIBS} fabs)
 target_link_libraries(fabs ${LIBS})
@@ -42,3 +52,4 @@ IF(COMPILE_STATIC_LIB)
 ENDIF(COMPILE_STATIC_LIB)
 
 INSTALL(FILES ${CPPHeaders} DESTINATION include/fabs)
+

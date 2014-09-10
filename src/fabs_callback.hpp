@@ -1,6 +1,7 @@
 #ifndef FABS_CALLBACK_HPP
 #define FABS_CALLBACK_HPP
 
+#include "fabs_common.hpp"
 #include "fabs_tcp.hpp"
 #include "fabs_udp.hpp"
 

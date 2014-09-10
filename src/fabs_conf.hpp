@@ -1,6 +1,8 @@
 #ifndef FABS_CONF_HPP
 #define FABS_CONF_HPP
 
+#include "fabs_common.hpp"
+
 #include <map>
 #include <string>
 

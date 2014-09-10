@@ -1,6 +1,7 @@
 #ifndef FABS_APPIF_HPP
 #define FABS_APPIF_HPP
 
+#include "fabs_common.hpp"
 #include "fabs_id.hpp"
 
 #include <event.h>

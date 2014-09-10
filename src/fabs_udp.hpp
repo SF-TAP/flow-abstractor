@@ -1,6 +1,7 @@
 #ifndef FABS_UDP_HPP
 #define FABS_UDP_HPP
 
+#include "fabs_common.hpp"
 #include "fabs_bytes.hpp"
 #include "fabs_id.hpp"
 #include "fabs_appif.hpp"
