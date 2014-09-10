@@ -55,6 +55,8 @@ fabs_tcp::garbage_collector()
             return;
         }
 
+        list<fabs_id_dir> garbages;
+
         {
             boost::mutex::scoped_lock lock(m_mutex);
 
@@ -75,7 +77,7 @@ fabs_tcp::garbage_collector()
                     id_dir.m_id  = it->first;
                     id_dir.m_dir = FROM_ADDR1;
 
-                    m_events.insert(id_dir);
+                    garbages.push_back(id_dir);
                 } else if (((! it->second->m_flow1.m_is_syn &&
                              it->second->m_flow2.m_is_syn) ||
                             (! it->second->m_flow1.m_is_fin &&
@@ -89,7 +91,7 @@ fabs_tcp::garbage_collector()
                     id_dir.m_id  = it->first;
                     id_dir.m_dir = FROM_ADDR2;
 
-                    m_events.insert(id_dir);
+                    garbages.push_back(id_dir);
                 }
 
 
@@ -105,9 +107,13 @@ fabs_tcp::garbage_collector()
                     id_dir.m_id  = it->first;
                     id_dir.m_dir = FROM_ADDR1;
 
-                    m_events.insert(id_dir);
+                    garbages.push_back(id_dir);
                 }
             }
+        }
+
+        for (auto it2 = garbages.begin(); it2 != garbages.end(); it2++) {
+            input_tcp_event(*it2);
         }
     }
 }

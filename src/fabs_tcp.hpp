@@ -69,7 +69,6 @@ public:
 
 private:
     std::map<fabs_id, ptr_fabs_tcp_flow> m_flow;
-    fabs_id_dir_cont                     m_events;
     ptr_fabs_appif                       m_appif;
 
     time_t m_timeout;
