@@ -49,6 +49,8 @@ public:
     void in_event(fabs_stream_event st_event,
                   const fabs_id_dir &id_dir, fabs_bytes bytes);
 
+    void print_info();
+
 private:
     typedef boost::shared_ptr<boost::regex> ptr_regex;
     typedef boost::shared_ptr<boost::filesystem::path> ptr_path;
@@ -167,6 +169,8 @@ public:
                              const fabs_id_dir &id_dir, fabs_bytes bytes);
         bool send_tcp_data(ptr_info p_info, fabs_id_dir id_dir);
         void in_datagram(const fabs_id_dir &id_dir, fabs_bytes bytes);
+
+        friend class fabs_appif;
     };
 private:
 

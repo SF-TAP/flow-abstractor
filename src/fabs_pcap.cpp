@@ -82,21 +82,23 @@ fabs_pcap::consume()
             }
 
             size = m_queue.size();
+
+            bytes.resize(size);
+
+            int i = 0;
+            for (auto it = m_queue.begin(); it != m_queue.end(); ++it) {
+                bytes[i] = *it;
+                i++;
+            }
+
+            m_queue.clear();
         }
 
-        bytes.resize(size);
-
-        auto it = m_queue.begin();
-        for (int i = 0; i < size; i++) {
+        for (auto it = bytes.begin(); it != bytes.end(); ++it) {
             m_callback(*it);
-            bytes[i] = *it;
-            ++it;
         }
 
-        {
-            boost::mutex::scoped_lock lock(m_mutex);
-            m_queue.erase(m_queue.begin(), it);
-        }
+        bytes.clear();
     }
 }
 

@@ -40,8 +40,8 @@ struct fabs_tcp_uniflow {
     bool     m_is_fin;
     bool     m_is_rm;
 
-    fabs_tcp_uniflow() : m_min_seq(0), m_is_gaveup(false), m_is_syn(false),
-                         m_is_fin(false), m_is_rm(false) { }
+    fabs_tcp_uniflow() : m_time(0), m_min_seq(0), m_is_gaveup(false),
+                         m_is_syn(false), m_is_fin(false), m_is_rm(false) { }
 };
 
 struct fabs_tcp_flow {

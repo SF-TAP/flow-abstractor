@@ -94,7 +94,6 @@ fabs_tcp::garbage_collector()
                     garbages.push_back(id_dir);
                 }
 
-
                 // close long-lived but do-nothing connections
                 time_t now = time(NULL);
                 if (now - it->second->m_flow1.m_time > m_timeout &&
@@ -114,6 +113,10 @@ fabs_tcp::garbage_collector()
 
         for (auto it2 = garbages.begin(); it2 != garbages.end(); it2++) {
             input_tcp_event(*it2);
+        }
+
+        if (m_flow.size() == 0) {
+            m_appif->print_info();
         }
     }
 }
