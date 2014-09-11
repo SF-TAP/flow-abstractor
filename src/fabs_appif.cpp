@@ -803,21 +803,6 @@ fabs_appif::in_event(fabs_stream_event st_event,
 
     int id = hash2 % m_num_consumer;
 
-/*
-    boost::upgrade_lock<boost::shared_mutex> up_lock(m_rw_mutex);
-    boost::upgrade_to_unique_lock<boost::shared_mutex> wlock(up_lock);
-
-    if (st_event == STREAM_SYN) {
-        cout << "SYN: thread = " << id << ", ";
-        id_dir.m_id.print_id();
-    }
-
-    if (st_event == STREAM_DESTROYED) {
-        cout << "DESTROYED: thread = " << id << ", ";
-        id_dir.m_id.print_id();
-    }
-*/
-
     m_consumer[id]->produce(ev);
 }
 
@@ -830,16 +815,6 @@ fabs_appif::appif_consumer::in_stream_event(fabs_stream_event st_event,
     case STREAM_SYN:
     case STREAM_CREATED:
     {
-/*
-        {
-            boost::upgrade_lock<boost::shared_mutex> up_lock(m_appif.m_rw_mutex);
-            boost::upgrade_to_unique_lock<boost::shared_mutex> wlock(up_lock);
-
-            cout << "CONSUMER SYN: thread = " << m_id << ", ";
-            id_dir.m_id.print_id();
-        }
-*/
-
         auto it = m_info.find(id_dir.m_id);
 
         if (it == m_info.end()) {
@@ -897,28 +872,9 @@ fabs_appif::appif_consumer::in_stream_event(fabs_stream_event st_event,
     }
     case STREAM_DESTROYED:
     {
-/*
-        {
-            boost::upgrade_lock<boost::shared_mutex> up_lock(m_appif.m_rw_mutex);
-            boost::upgrade_to_unique_lock<boost::shared_mutex> wlock(up_lock);
-
-            cout << "CONSUMER DESTROYED 1: thread = " << m_id << ", ";
-            id_dir.m_id.print_id();
-        }
-*/
-
         auto it = m_info.find(id_dir.m_id);
 
         if (it == m_info.end()) {
-/*
-            {
-                boost::upgrade_lock<boost::shared_mutex> up_lock(m_appif.m_rw_mutex);
-                boost::upgrade_to_unique_lock<boost::shared_mutex> wlock(up_lock);
-
-                cout << "CONSUMER DESTROYED 2: thread = " << m_id << ", ";
-                id_dir.m_id.print_id();
-            }
-*/
             return;
         }
 
@@ -953,16 +909,6 @@ fabs_appif::appif_consumer::in_stream_event(fabs_stream_event st_event,
                 }
             }
         }
-
-/*
-        {
-            boost::upgrade_lock<boost::shared_mutex> up_lock(m_appif.m_rw_mutex);
-            boost::upgrade_to_unique_lock<boost::shared_mutex> wlock(up_lock);
-
-            cout << "CONSUMER DESTROYED 3: thread = " << m_id << ", ";
-            id_dir.m_id.print_id();
-        }
-*/
 
         m_info.erase(it);
 
@@ -1513,15 +1459,6 @@ fabs_appif::appif_consumer::consume()
         }
 
         for (auto it = events.begin(); it != events.end(); ++it) {
-/*
-            if (it->st_event == STREAM_DESTROYED) {
-                boost::upgrade_lock<boost::shared_mutex> up_lock(m_appif.m_rw_mutex);
-                boost::upgrade_to_unique_lock<boost::shared_mutex> wlock(up_lock);
-                cout << "consume0 CREATED: thread = " << m_id << ", ";
-                it->id_dir.m_id.print_id();
-            }
-*/
-
             if (it->id_dir.m_id.get_l4_proto() == IPPROTO_TCP) {
                 in_stream_event(it->st_event, it->id_dir, it->bytes);
             } else if (it->id_dir.m_id.get_l4_proto() == IPPROTO_UDP) {
