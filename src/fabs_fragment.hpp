@@ -4,6 +4,7 @@
 #include "fabs_common.hpp"
 #include "fabs_id.hpp"
 #include "fabs_bytes.hpp"
+#include "fabs_callback.hpp"
 
 #include <time.h>
 
@@ -11,6 +12,8 @@
 
 #include <map>
 
+#include <boost/thread.hpp>
+#include <boost/thread/condition.hpp>
 #include <boost/multi_index_container.hpp>
 #include <boost/multi_index/sequenced_index.hpp>
 #include <boost/multi_index/ordered_index.hpp>
@@ -18,10 +21,11 @@
 
 class fabs_fragment {
 public:
-    fabs_fragment();
+    fabs_fragment(fabs_callback &callback);
     virtual ~fabs_fragment();
 
     bool input_ip(fabs_bytes buf);
+    void gc_timer();
 
 private:
     struct fragments {
@@ -84,9 +88,18 @@ private:
             boost::multi_index::sequenced<>
             > > frag_cont;
 
-    bool defragment(const fragments &frgms);
+    bool defragment(const fragments &frgms, fabs_bytes &buf);
 
     frag_cont m_fragments;
+
+    boost::mutex     m_mutex;
+    boost::mutex     m_mutex_gc;
+    boost::condition m_condition_gc;
+    bool             m_is_del;
+
+    boost::thread    m_thread_gc;
+
+    fabs_callback   &m_callback;
 };
 
 #endif // FABS_FRAGMENT_HPP

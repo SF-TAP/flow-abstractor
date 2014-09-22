@@ -49,6 +49,7 @@ fabs_pcap::fabs_pcap(std::string conf)
     : m_handle(NULL),
       m_is_break(false),
       m_callback(conf),
+      m_fragment(m_callback),
       m_thread_consume(boost::bind(&fabs_pcap::consume, this)),
       m_thread_timer(boost::bind(&fabs_pcap::timer, this))
 {
@@ -62,6 +63,11 @@ fabs_pcap::timer()
         {
             boost::mutex::scoped_lock lock(m_mutex);
             m_condition.notify_one();
+        }
+
+        {
+            boost::mutex::scoped_lock lock(m_mutex_frag);
+            m_condition_frag.notify_one();
         }
 
         boost::this_thread::sleep(boost::posix_time::milliseconds(100));
@@ -103,6 +109,41 @@ fabs_pcap::consume()
 }
 
 void
+fabs_pcap::consume_fragment()
+{
+    for (;;) {
+        int size;
+        vector<fabs_bytes> bytes;
+
+        {
+            boost::mutex::scoped_lock lock(m_mutex_frag);
+            while (m_queue_frag.empty()) {
+                m_condition_frag.wait(lock);
+            }
+
+            size = m_queue_frag.size();
+
+            bytes.resize(size);
+
+            int i = 0;
+            for (auto it = m_queue_frag.begin(); it != m_queue_frag.end();
+                 ++it) {
+                bytes[i] = *it;
+                i++;
+            }
+
+            m_queue_frag.clear();
+        }
+
+        for (auto it = bytes.begin(); it != bytes.end(); ++it) {
+            m_fragment.input_ip(*it);
+        }
+
+        bytes.clear();
+    }
+}
+
+void
 fabs_pcap::callback(const struct pcap_pkthdr *h, const uint8_t *bytes)
 {
     uint8_t proto;
@@ -110,6 +151,7 @@ fabs_pcap::callback(const struct pcap_pkthdr *h, const uint8_t *bytes)
     uint32_t len = h->caplen - (ip_hdr - bytes);
     uint32_t plen;
     static int count = 0;
+    static int count_frag = 0;
 
     if (m_is_break) {
         pcap_breakloop(m_handle);
@@ -137,10 +179,6 @@ fabs_pcap::callback(const struct pcap_pkthdr *h, const uint8_t *bytes)
         ip       *iph = (ip*)ip_hdr;
         uint16_t  off = ntohs(iph->ip_off);
 
-        // not support IP fragment
-        if (off & IP_MF || (off & 0x1fff) > 0)
-            return;
-
         plen = ntohs(iph->ip_len);
 
         if (plen > len)
@@ -149,7 +187,16 @@ fabs_pcap::callback(const struct pcap_pkthdr *h, const uint8_t *bytes)
         fabs_bytes buf;
         buf.set_buf((char*)ip_hdr, plen);
 
-        {
+        if (off & IP_MF || (off & 0x1fff) > 0) {
+            boost::mutex::scoped_lock lock(m_mutex_frag);
+            m_queue_frag.push_back(buf);
+            count_frag++;
+
+            if (count_frag > 1000) {
+                m_condition_frag.notify_one();
+                count_frag = 0;
+            }
+        } else {
             boost::mutex::scoped_lock lock(m_mutex);
             m_queue.push_back(buf);
             count++;

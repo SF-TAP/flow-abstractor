@@ -12,10 +12,6 @@
 #include <list>
 #include <map>
 
-#include <boost/multi_index_container.hpp>
-#include <boost/multi_index/sequenced_index.hpp>
-#include <boost/multi_index/ordered_index.hpp>
-#include <boost/multi_index/identity.hpp>
 #include <boost/thread.hpp>
 #include <boost/thread/condition.hpp>
 
@@ -50,14 +46,6 @@ struct fabs_tcp_flow {
 
 typedef boost::shared_ptr<fabs_tcp_flow> ptr_fabs_tcp_flow;
 
-typedef boost::multi_index::multi_index_container<
-    fabs_id_dir,
-    boost::multi_index::indexed_by<
-        boost::multi_index::ordered_unique<boost::multi_index::identity<fabs_id_dir> >,
-        boost::multi_index::sequenced<>
-    >
-> fabs_id_dir_cont;
-
 class fabs_tcp {
 public:
     fabs_tcp(ptr_fabs_appif appif);
@@ -86,7 +74,6 @@ private:
     bool             m_is_del;
 
     boost::thread    m_thread_gc;
-    boost::thread    m_thread_fire;
 };
 
 #endif // FABS_TCP_HPP

@@ -3,6 +3,7 @@
 
 #include "fabs_common.hpp"
 #include "fabs_callback.hpp"
+#include "fabs_fragment.hpp"
 #include "fabs_bytes.hpp"
 
 #include <pcap/pcap.h>
@@ -29,6 +30,7 @@ public:
     void callback(const struct pcap_pkthdr *h, const uint8_t *bytes);
     
     void consume();
+    void consume_fragment();
     void timer();
 
     void run();
@@ -44,11 +46,16 @@ private:
                               uint8_t &proto);
 
     fabs_callback m_callback;
+    fabs_fragment m_fragment;
 
     std::list<fabs_bytes> m_queue;
+    std::list<fabs_bytes> m_queue_frag;
     boost::mutex  m_mutex;
+    boost::mutex  m_mutex_frag;
     boost::condition m_condition;
+    boost::condition m_condition_frag;
     boost::thread m_thread_consume;
+    boost::thread m_thread_consume_frag;
     boost::thread m_thread_timer;
 };
 

@@ -114,10 +114,6 @@ fabs_tcp::garbage_collector()
         for (auto it2 = garbages.begin(); it2 != garbages.end(); it2++) {
             input_tcp_event(*it2);
         }
-
-        if (m_flow.size() == 0) {
-            m_appif->print_info();
-        }
     }
 }
 
