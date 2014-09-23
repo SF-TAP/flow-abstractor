@@ -31,7 +31,7 @@ namespace fs = boost::filesystem;
 
 void ux_read(int fd, short events, void *arg);
 bool read_loopback7(int fd, fabs_appif *appif);
-bool read_loopback3(int fd, fabs_appif *appif);
+// bool read_loopback3(int fd, fabs_appif *appif);
 
 fabs_appif::fabs_appif(fabs_callback &callback, fabs_tcp &tcp) :
     m_fd7(-1),
@@ -174,6 +174,7 @@ ux_read(int fd, short events, void *arg)
                 ux_close(fd, appif);
                 return;
             }
+/*
         } else if (peer->m_name == "loopback3") {
             if (read_loopback3(fd, appif)) {
                 boost::upgrade_lock<boost::shared_mutex> up_lock(appif->m_rw_mutex);
@@ -181,6 +182,7 @@ ux_read(int fd, short events, void *arg)
                 ux_close(fd, appif);
                 return;
             }
+*/
         } else {
             char buf[4096];
             int  recv_size = read(fd, buf, sizeof(buf) - 1);
@@ -194,7 +196,7 @@ ux_read(int fd, short events, void *arg)
         }
     }
 }
-
+/*
 bool
 read_loopback3(int fd, fabs_appif *appif)
 {
@@ -211,6 +213,7 @@ read_loopback3(int fd, fabs_appif *appif)
 
     return false;
 }
+*/
 
 bool
 read_loopback7(int fd, fabs_appif *appif)
@@ -488,8 +491,9 @@ fabs_appif::ux_listen_ifrule(ptr_ifrule ifrule)
 
     if (ifrule->m_name == "loopback7") {
         m_fd7 = sock;
-    } else if (ifrule->m_name == "loopback3") {
+/*    } else if (ifrule->m_name == "loopback3") {
         m_fd3 = sock;
+*/
     }
 }
 
@@ -734,11 +738,13 @@ fabs_appif::read_conf(string conf)
             }
 
             // insert interface rule
-            if (rule->m_name == "loopback3") {
-                m_ifrule3 = rule;
-            } else if (rule->m_name == "loopback7") {
+            if (rule->m_name == "loopback7") {
                 m_ifrule7 = rule;
                 m_lb7_format = rule->m_format;
+/*
+            } else if (rule->m_name == "loopback3") {
+                m_ifrule3 = rule;
+*/
             } else if (rule->m_name == "tcp_default") {
                 m_tcp_default = rule;
             } else if (rule->m_name == "udp_default") {

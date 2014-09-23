@@ -221,7 +221,7 @@ private:
     friend void ux_read(int fd, short events, void *arg);
     friend void ux_close(int fd, fabs_appif *appif);
     friend bool read_loopback7(int fd, fabs_appif *appif);
-    friend bool read_loopback3(int fd, fabs_appif *appif);
+//    friend bool read_loopback3(int fd, fabs_appif *appif);
 };
 
 typedef boost::shared_ptr<fabs_appif> ptr_fabs_appif;
