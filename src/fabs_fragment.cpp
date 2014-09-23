@@ -112,12 +112,8 @@ fabs_fragment::input_ip(fabs_bytes buf)
     if (ntohs(iph4->ip_len) > buf.get_len())
         return false;
 
-    cout << "fragmented!" << endl;
-
     int offset = ntohs(iph4->ip_off) & IP_OFFMASK;
     int mflag  = ntohs(iph4->ip_off) & IP_MF;
-
-    cout << "offset = " << offset << endl;
 
     if (mflag || offset) {
         fragments frag;
@@ -154,8 +150,6 @@ fabs_fragment::input_ip(fabs_bytes buf)
                     m_fragments.erase(it);
                     lock.unlock();
 
-                    cout << "fragment callback!" << endl;
-
                     m_pcap.produce(buf);
                 }
             }
@@ -189,18 +183,12 @@ fabs_fragment::defragment(const fragments &frg, fabs_bytes &buf)
         int len    = ntohs(iph4->ip_len) - iph4->ip_hl * 4;
         int pos    = offset * 8;
 
-        cout << "next = " << next << ", pos = " << pos
-             << ", len = " << len << ", hlen = " << hlen
-             << ", m_size = " << frg.m_size << endl;
-
         if (next < pos) {
             // couldn't defragment
-            cout << "couldn' defragment!" << endl;
             return false;
         } else if (next > pos ||
                    len + pos > frg.m_size) {
             // error
-            cout << "fragmentaion error!" << endl;
             m_fragments.erase(frg);
             return false;
         }
@@ -215,8 +203,6 @@ fabs_fragment::defragment(const fragments &frg, fabs_bytes &buf)
 
     iph->ip_id  = 0;
     iph->ip_off = 0;
-
-    cout << "defragmented!!" << endl;
 
     return true;
 }

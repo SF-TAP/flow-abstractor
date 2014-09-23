@@ -21,7 +21,7 @@ using namespace std;
 
 #define TCP_GC_TIMER 30
 
-#define DEBUG
+// #define DEBUG
 
 fabs_tcp::fabs_tcp(ptr_fabs_appif appif) :
     m_appif(appif),
