@@ -33,7 +33,6 @@ private:
         mutable bool    m_is_last;
         mutable time_t  m_time;
         mutable int     m_size;
-        mutable int     m_hlen;
         time_t   m_init;
         uint32_t m_ip_src;
         uint32_t m_ip_dst;

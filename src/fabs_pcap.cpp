@@ -51,6 +51,7 @@ fabs_pcap::fabs_pcap(std::string conf)
       m_callback(conf),
       m_fragment(m_callback),
       m_thread_consume(boost::bind(&fabs_pcap::consume, this)),
+      m_thread_consume_frag(boost::bind(&fabs_pcap::consume_fragment, this)),
       m_thread_timer(boost::bind(&fabs_pcap::timer, this))
 {
 
@@ -192,7 +193,7 @@ fabs_pcap::callback(const struct pcap_pkthdr *h, const uint8_t *bytes)
             m_queue_frag.push_back(buf);
             count_frag++;
 
-            if (count_frag > 1000) {
+            if (count_frag > 100) {
                 m_condition_frag.notify_one();
                 count_frag = 0;
             }

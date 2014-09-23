@@ -4,6 +4,8 @@
 
 #define FRAGMENT_GC_TIMER 30
 
+using namespace std;
+
 fabs_fragment::fabs_fragment(fabs_callback &callback) :
     m_is_del(false),
     m_thread_gc(boost::bind(&fabs_fragment::gc_timer, this)),
@@ -90,9 +92,9 @@ fabs_fragment::input_ip(fabs_bytes buf)
                         // error
                         m_fragments.erase(it);
                     }
-                } else if (offset == 0) {
-                    it->m_hlen = iph4->ip_hl * 4;
                 }
+            } else {
+                // TODO: fragmentation packets are corrupted
             }
 
             if (it->m_is_last) {
@@ -117,12 +119,17 @@ bool
 fabs_fragment::defragment(const fragments &frg, fabs_bytes &buf)
 {
     int next = 0;
+    int hlen;
+    ip *iph;
 
-    assert(frg.m_bytes->size() == 0);
+    assert(frg.m_bytes->size() != 0);
 
-    buf.alloc(frg.m_size);
+    iph = (ip*)frg.m_bytes->begin()->second.get_head();
+    hlen = iph->ip_hl * 4;
 
-    memcpy(buf.get_head(), frg.m_bytes->begin()->second.get_head(), frg.m_hlen);
+    buf.alloc(frg.m_size + hlen);
+
+    memcpy(buf.get_head(), frg.m_bytes->begin()->second.get_head(), hlen);
 
     for (auto it = frg.m_bytes->begin(); it != frg.m_bytes->end(); ++it) {
         int offset = it->first;
@@ -131,22 +138,22 @@ fabs_fragment::defragment(const fragments &frg, fabs_bytes &buf)
         int pos    = offset * 8;
 
         if (next < pos) {
-            // couldn't defragment
+            // couldn't defragment yet
             return false;
         } else if (next > pos ||
-                   len + pos + frg.m_hlen > frg.m_size) {
+                   len + pos > frg.m_size) {
             // error
             m_fragments.erase(frg);
             return false;
         }
 
-        memcpy(buf.get_head() + pos + frg.m_hlen,
+        memcpy(buf.get_head() + pos + hlen,
                it->second.get_head() + iph4->ip_hl * 4, len);
 
         next += len;
     }
 
-    ip *iph = (ip*)buf.get_head();
+    iph = (ip*)buf.get_head();
 
     iph->ip_id  = 0;
     iph->ip_off = 0;

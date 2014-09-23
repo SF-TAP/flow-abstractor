@@ -4,6 +4,8 @@
 
 #include <netinet/in.h>
 
+using namespace std;
+
 fabs_callback::fabs_callback(std::string conf) :
     m_appif(new fabs_appif(*this, m_tcp)), m_tcp(m_appif), m_udp(m_appif)
 {

@@ -83,7 +83,6 @@ fabs_tcp::garbage_collector()
                             (! it->second->m_flow1.m_is_fin &&
                             it->second->m_flow2.m_is_fin)) &&
                            time(NULL) - it->second->m_flow2.m_time > TCP_GC_TIMER) {
-
                     it->second->m_flow2.m_is_rm = true;
 
                     fabs_id_dir id_dir;
@@ -98,6 +97,20 @@ fabs_tcp::garbage_collector()
                 time_t now = time(NULL);
                 if (now - it->second->m_flow1.m_time > m_timeout &&
                     now - it->second->m_flow2.m_time > m_timeout) {
+
+                    it->second->m_flow1.m_is_rm = true;
+
+                    fabs_id_dir id_dir;
+
+                    id_dir.m_id  = it->first;
+                    id_dir.m_dir = FROM_ADDR1;
+
+                    garbages.push_back(id_dir);
+                }
+
+                // close compromised connections
+                if (it->second->m_flow1.m_packets.size() > 4096 ||
+                    it->second->m_flow2.m_packets.size() > 4096) {
 
                     it->second->m_flow1.m_is_rm = true;
 
@@ -147,14 +160,10 @@ fabs_tcp::input_tcp_event(fabs_id_dir tcp_event)
         fabs_bytes bytes;
         bool       is_rm = false;
 
-        if (tcp_event.m_dir == FROM_ADDR1 &&
-            it_flow->second->m_flow1.m_is_rm) {
-            m_appif->in_event(STREAM_TIMEOUT, tcp_event, bytes);
-            is_rm = true;
-        }
-
-        if (tcp_event.m_dir == FROM_ADDR2 &&
-            it_flow->second->m_flow2.m_is_rm) {
+        if ((tcp_event.m_dir == FROM_ADDR1 &&
+             it_flow->second->m_flow1.m_is_rm) ||
+            (tcp_event.m_dir == FROM_ADDR2 &&
+             it_flow->second->m_flow2.m_is_rm)) {
             m_appif->in_event(STREAM_TIMEOUT, tcp_event, bytes);
             is_rm = true;
         }
