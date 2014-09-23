@@ -21,7 +21,7 @@ using namespace std;
 
 #define TCP_GC_TIMER 30
 
-// #define DEBUG
+#define DEBUG
 
 fabs_tcp::fabs_tcp(ptr_fabs_appif appif) :
     m_appif(appif),
@@ -83,6 +83,7 @@ fabs_tcp::garbage_collector()
                             (! it->second->m_flow1.m_is_fin &&
                             it->second->m_flow2.m_is_fin)) &&
                            time(NULL) - it->second->m_flow2.m_time > TCP_GC_TIMER) {
+
                     it->second->m_flow2.m_is_rm = true;
 
                     fabs_id_dir id_dir;

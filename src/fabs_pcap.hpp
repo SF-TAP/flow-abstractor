@@ -3,8 +3,8 @@
 
 #include "fabs_common.hpp"
 #include "fabs_callback.hpp"
-#include "fabs_fragment.hpp"
 #include "fabs_bytes.hpp"
+#include "fabs_fragment.hpp"
 
 #include <pcap/pcap.h>
 
@@ -15,6 +15,8 @@
 
 #include <boost/thread.hpp>
 #include <boost/thread/condition.hpp>
+
+class fabs_fragment;
 
 class fabs_pcap {
 public:
@@ -35,6 +37,8 @@ public:
 
     void run();
     void stop() { m_is_break = true; }
+
+    void produce(fabs_bytes &buf);
 
 private:
     std::string m_dev;

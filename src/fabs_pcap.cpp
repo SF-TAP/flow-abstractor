@@ -49,12 +49,27 @@ fabs_pcap::fabs_pcap(std::string conf)
     : m_handle(NULL),
       m_is_break(false),
       m_callback(conf),
-      m_fragment(m_callback),
+      m_fragment(*this),
       m_thread_consume(boost::bind(&fabs_pcap::consume, this)),
       m_thread_consume_frag(boost::bind(&fabs_pcap::consume_fragment, this)),
       m_thread_timer(boost::bind(&fabs_pcap::timer, this))
 {
 
+}
+
+void
+fabs_pcap::produce(fabs_bytes &buf)
+{
+    static int count = 0;
+
+    boost::mutex::scoped_lock lock(m_mutex);
+    m_queue.push_back(buf);
+    count++;
+
+    if (count > 1000) {
+        m_condition.notify_one();
+        count = 0;
+    }
 }
 
 void
@@ -193,7 +208,7 @@ fabs_pcap::callback(const struct pcap_pkthdr *h, const uint8_t *bytes)
             m_queue_frag.push_back(buf);
             count_frag++;
 
-            if (count_frag > 100) {
+            if (count_frag > 1000) {
                 m_condition_frag.notify_one();
                 count_frag = 0;
             }

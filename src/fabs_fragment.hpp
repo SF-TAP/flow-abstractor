@@ -4,7 +4,6 @@
 #include "fabs_common.hpp"
 #include "fabs_id.hpp"
 #include "fabs_bytes.hpp"
-#include "fabs_callback.hpp"
 
 #include <time.h>
 
@@ -19,9 +18,11 @@
 #include <boost/multi_index/ordered_index.hpp>
 #include <boost/multi_index/member.hpp>
 
+class fabs_pcap;
+
 class fabs_fragment {
 public:
-    fabs_fragment(fabs_callback &callback);
+    fabs_fragment(fabs_pcap &fpcap);
     virtual ~fabs_fragment();
 
     bool input_ip(fabs_bytes buf);
@@ -38,45 +39,11 @@ private:
         uint32_t m_ip_dst;
         uint16_t m_id;
 
-        fragments () { }
+        fragments ();
+        fragments(const ip *iph4, fabs_bytes bytes);
 
-        fragments(const ip *iph4, fabs_bytes bytes)
-            : m_bytes(new std::map<int, fabs_bytes>),
-              m_is_last(false)
-        {
-            m_time = m_init = time(NULL);
-
-            int offset = ntohs(iph4->ip_off) & IP_OFFMASK;
-            int mflag  = ntohs(iph4->ip_off) & IP_MF;
-
-            (*m_bytes)[offset] = bytes;
-
-            if (! mflag) {
-                m_is_last = true;
-            }
-
-            m_ip_src = ntohl(iph4->ip_src.s_addr);
-            m_ip_dst = ntohl(iph4->ip_dst.s_addr);
-            m_id     = ntohs(iph4->ip_id);
-        }
-
-        bool operator< (const fragments &rhs) const {
-            if (m_ip_src == rhs.m_ip_src) {
-                if (m_ip_dst == rhs.m_ip_dst) {
-                    return m_id < rhs.m_id;
-                } else {
-                    return m_ip_dst < rhs.m_ip_dst;
-                }
-            } else {
-                return m_ip_src < rhs.m_ip_src;
-            }
-        }
-
-        bool operator== (const fragments &rhs) const {
-            return (m_ip_src == rhs.m_ip_src &&
-                    m_ip_dst == rhs.m_ip_dst &&
-                    m_id == rhs.m_id);
-        }
+        bool operator< (const fragments &rhs) const;
+        bool operator== (const fragments &rhs) const;
     };
 
     typedef boost::multi_index::multi_index_container<
@@ -98,7 +65,7 @@ private:
 
     boost::thread    m_thread_gc;
 
-    fabs_callback   &m_callback;
+    fabs_pcap       &m_pcap;
 };
 
 #endif // FABS_FRAGMENT_HPP
