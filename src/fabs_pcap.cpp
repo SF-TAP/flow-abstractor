@@ -166,7 +166,6 @@ fabs_pcap::callback(const struct pcap_pkthdr *h, const uint8_t *bytes)
     const uint8_t *ip_hdr = get_ip_hdr(bytes, h->caplen, proto);
     uint32_t len = h->caplen - (ip_hdr - bytes);
     uint32_t plen;
-    static int count = 0;
     static int count_frag = 0;
 
     if (m_is_break) {
@@ -213,14 +212,7 @@ fabs_pcap::callback(const struct pcap_pkthdr *h, const uint8_t *bytes)
                 count_frag = 0;
             }
         } else {
-            boost::mutex::scoped_lock lock(m_mutex);
-            m_queue.push_back(buf);
-            count++;
-
-            if (count > 1000) {
-                m_condition.notify_one();
-                count = 0;
-            }
+            produce(buf);
         }
 
         break;
@@ -266,16 +258,7 @@ fabs_pcap::callback(const struct pcap_pkthdr *h, const uint8_t *bytes)
         fabs_bytes buf;
         buf.set_buf((char*)ip_hdr, plen);
 
-        {
-            boost::mutex::scoped_lock lock(m_mutex);
-            m_queue.push_back(buf);
-            count++;
-
-            if (count > 1000) {
-                m_condition.notify_one();
-                count = 0;
-            }
-        }
+        produce(buf);
 
         break;
     }
