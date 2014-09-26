@@ -297,8 +297,6 @@ fabs_pcap::run()
 
     cout << "start capturing " << m_dev << endl;
 
-    //m_handle = pcap_open_live(m_dev.c_str(), 65535, 1, 1000, errbuf);
-
     m_handle = pcap_create(m_dev.c_str(), errbuf);
 
     if (m_handle == NULL) {
@@ -309,9 +307,13 @@ fabs_pcap::run()
     pcap_set_snaplen(m_handle, 65535);
     pcap_set_promisc(m_handle, 1);
     pcap_set_buffer_size(m_handle, m_bufsize * 1000);
-    pcap_set_rfmon(m_handle, 1);
+    pcap_set_timeout(m_handle, 1000);
 
-    pcap_activate(m_handle);
+    if (pcap_activate(m_handle) != 0) {
+        pcap_perror(m_handle, "Activate");
+        return;
+    }
+
 
     m_dl_type = pcap_datalink(m_handle);
 
