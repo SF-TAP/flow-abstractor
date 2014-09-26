@@ -14,6 +14,8 @@
 
 #include <boost/lexical_cast.hpp>
 
+#include <iostream>
+
 using namespace boost;
 using namespace std;
 
