@@ -22,17 +22,18 @@ bool is_stats = false;
 void
 print_usage(char *cmd)
 {
-    cout << cmd << " -i [NIF] -c [CONFIG_FILE]\n" << endl;
+    cout << cmd << " -i [NIF] -c [CONFIG_FILE] -b [PCAP_BUFSIZE]\n" << endl;
 }
 
 int
 main(int argc, char *argv[])
 {
     int opt;
+    int bufsize = 10000;
     string dev;
     string conf;
 
-    const char *optstr = "i:hc:s";
+    const char *optstr = "i:hc:sb:";
 
     signal( SIGPIPE , SIG_IGN ); 
 
@@ -47,6 +48,9 @@ main(int argc, char *argv[])
         case 's':
             is_stats = true;
             break;
+        case 'b':
+            bufsize = atoi(optarg);
+            break;
         case 'h':
         default:
             print_usage(argv[0]);
@@ -54,7 +58,7 @@ main(int argc, char *argv[])
         }
     }
 
-    run_pcap(dev, conf);
+    run_pcap(dev, conf, bufsize);
 
     return 0;
 }

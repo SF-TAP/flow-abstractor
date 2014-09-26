@@ -28,6 +28,7 @@ public:
     }
 
     void set_dev(std::string dev);
+    void set_bufsize(int size);
 
     void callback(const struct pcap_pkthdr *h, const uint8_t *bytes);
     
@@ -45,6 +46,7 @@ private:
     pcap_t *m_handle;
     int     m_dl_type;
     bool    m_is_break;
+    int     m_bufsize;
 
     const uint8_t *get_ip_hdr(const uint8_t *bytes, uint32_t len,
                               uint8_t &proto);
@@ -68,6 +70,6 @@ extern bool pcap_is_running;
 
 void stop_pcap();
 
-void run_pcap(std::string dev, std::string conf);
+void run_pcap(std::string dev, std::string conf, int bufsize);
 
 #endif // FABS_PCAP_HPP

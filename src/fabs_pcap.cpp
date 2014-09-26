@@ -48,6 +48,7 @@ pcap_callback(uint8_t *user, const struct pcap_pkthdr *h, const uint8_t *bytes)
 fabs_pcap::fabs_pcap(std::string conf)
     : m_handle(NULL),
       m_is_break(false),
+      m_bufsize(10000),
       m_callback(conf),
       m_fragment(*this),
       m_thread_consume(boost::bind(&fabs_pcap::consume, this)),
@@ -274,6 +275,12 @@ fabs_pcap::set_dev(std::string dev)
 }
 
 void
+fabs_pcap::set_bufsize(int size)
+{
+    m_bufsize = size;
+}
+
+void
 fabs_pcap::run()
 {
     char errbuf[PCAP_ERRBUF_SIZE];
@@ -290,12 +297,21 @@ fabs_pcap::run()
 
     cout << "start capturing " << m_dev << endl;
 
-    m_handle = pcap_open_live(m_dev.c_str(), 65535, 1, 1000, errbuf);
+    //m_handle = pcap_open_live(m_dev.c_str(), 65535, 1, 1000, errbuf);
+
+    m_handle = pcap_create(m_dev.c_str(), errbuf);
 
     if (m_handle == NULL) {
         cerr << "Couldn't open device " << m_dev << ": " << errbuf << endl;
         return;
     }
+
+    pcap_set_snaplen(m_handle, 65535);
+    pcap_set_promisc(m_handle, 1);
+    pcap_set_buffer_size(m_handle, m_bufsize * 1000);
+    pcap_set_rfmon(m_handle, 1);
+
+    pcap_activate(m_handle);
 
     m_dl_type = pcap_datalink(m_handle);
 
@@ -370,7 +386,7 @@ fabs_pcap::get_ip_hdr(const uint8_t *bytes, uint32_t len, uint8_t &proto)
 }
 
 void
-run_pcap(std::string dev, std::string conf)
+run_pcap(std::string dev, std::string conf, int bufsize)
 {
     for (;;) {
         if (pcap_is_running) {
@@ -386,6 +402,7 @@ run_pcap(std::string dev, std::string conf)
     pcap_inst = boost::shared_ptr<fabs_pcap>(new fabs_pcap(conf));
 
     pcap_inst->set_dev(dev);
+    pcap_inst->set_bufsize(bufsize);
     pcap_inst->run();
 
     pcap_is_running = false;
