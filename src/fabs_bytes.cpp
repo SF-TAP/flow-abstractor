@@ -7,6 +7,7 @@
 #include <boost/iostreams/filter/zlib.hpp>
 
 #include <sstream>
+#include <iostream>
 
 using namespace std;
 namespace io = boost::iostreams; //<-- good practice
