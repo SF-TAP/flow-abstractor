@@ -1448,7 +1448,8 @@ fabs_appif::appif_consumer::consume()
             // consume event
             boost::mutex::scoped_lock lock(m_mutex);
             while (m_ev_queue.size() == 0) {
-                m_condition.wait(lock);
+                boost::system_time timeout = boost::get_system_time() + boost::posix_time::milliseconds(100);
+                m_condition.timed_wait(lock, timeout);
             }
 
             size = m_ev_queue.size();
@@ -1482,7 +1483,9 @@ fabs_appif::appif_consumer::produce(appif_event &ev)
     // produce event
     boost::mutex::scoped_lock lock(m_mutex);
     m_ev_queue.push_back(ev);
-    m_condition.notify_one();
+
+    if (m_ev_queue.size() > 1000)
+        m_condition.notify_one();
 }
 
 fabs_appif::appif_consumer::appif_consumer(int id, fabs_appif &appif) :

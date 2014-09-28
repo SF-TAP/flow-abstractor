@@ -37,13 +37,6 @@ Example:
 
     $ ./src/sf-tap_fabs -i eth0 -c ./examples/fabs.conf
 
-If you want to use divert socket (FreeBSD/MacOS X only) instead of pcap, use -d option.
-You can specify a port number of divert socket by -4 option.
-
-Example:
-
-    $ ./src/sf-tap_fabs -d -4 100 -c ./examples/fabs.conf
-
 ### To Do:
 * protect from SYN flooding
 * deal with fast TCP open
