@@ -11,6 +11,7 @@ public:
     virtual ~fabs_callback() { }
 
     void operator() (fabs_bytes buf);
+    void print_stat() { m_tcp.print_stat(); }
 
 private:
     ptr_fabs_appif m_appif;

@@ -102,9 +102,22 @@ fabs_pcap::timer()
             m_spinlock.unlock();
         }
 
-        {
-            boost::mutex::scoped_lock lock(m_mutex_frag);
-            m_condition_frag.notify_one();
+
+        time_t t1 = time(NULL);
+
+        if (t1 - t0 > 10) {
+            pcap_stat stat;
+            t0 = t1;
+            pcap_stats(m_handle, &stat);
+
+            cout << "received packets: " << stat.ps_recv
+                 << "\ndropped packets: " << stat.ps_drop
+                 << "\ndropped packets by IF: " << stat.ps_ifdrop
+                 << endl;
+
+            m_callback.print_stat();
+
+            cout << endl;
         }
 
         boost::this_thread::sleep(boost::posix_time::milliseconds(100));
@@ -157,7 +170,8 @@ fabs_pcap::consume_fragment()
         {
             boost::mutex::scoped_lock lock(m_mutex_frag);
             while (m_queue_frag.empty()) {
-                m_condition_frag.wait(lock);
+                boost::system_time timeout = boost::get_system_time() + boost::posix_time::milliseconds(100);
+                m_condition_frag.timed_wait(lock, timeout);
             }
 
             size = m_queue_frag.size();
@@ -198,19 +212,6 @@ fabs_pcap::callback(const struct pcap_pkthdr *h, const uint8_t *bytes)
 
     if (ip_hdr == NULL)
         return;
-
-    time_t t1 = time(NULL);
-
-    if (t1 - t0 > 10) {
-        pcap_stat stat;
-        t0 = t1;
-        pcap_stats(m_handle, &stat);
-
-        cout << "received: " << stat.ps_recv
-             << "\ndropped: " << stat.ps_drop
-             << "\ndropped by IF: " << stat.ps_ifdrop << "\n"
-             << endl;
-    }
 
     switch (proto) {
     case IPPROTO_IP:{

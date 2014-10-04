@@ -54,6 +54,7 @@ public:
     void input_tcp(fabs_id &id, fabs_direction dir, fabs_bytes buf);
     void garbage_collector();
     void set_timeout(time_t t) { m_timeout = t; }
+    void print_stat();
 
 private:
     std::map<fabs_id, ptr_fabs_tcp_flow> m_flow;
@@ -67,6 +68,8 @@ private:
     void rm_flow(const fabs_id &id, fabs_direction dir);
     int  num_packets(const fabs_id &id, fabs_direction dir);
     void input_tcp_event(fabs_id_dir tcp_event);
+
+    uint64_t         m_total_session;
 
     boost::mutex     m_mutex;
     boost::mutex     m_mutex_gc;

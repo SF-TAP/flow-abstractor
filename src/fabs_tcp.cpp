@@ -26,6 +26,7 @@ using namespace std;
 fabs_tcp::fabs_tcp(ptr_fabs_appif appif) :
     m_appif(appif),
     m_timeout(600),
+    m_total_session(0),
     m_is_del(false),
     m_thread_gc(boost::bind(&fabs_tcp::garbage_collector, this))
 {
@@ -41,6 +42,15 @@ fabs_tcp::~fabs_tcp()
         m_condition_gc.notify_one();
     }
     m_thread_gc.join();
+}
+
+void
+fabs_tcp::print_stat()
+{
+    boost::mutex::scoped_lock lock(m_mutex);
+
+    cout << "total TCP sessions: " << m_total_session
+         << "\nactive TCP sessions: " << m_flow.size() << endl;
 }
 
 void
@@ -396,6 +406,7 @@ fabs_tcp::input_tcp(fabs_id &id, fabs_direction dir, fabs_bytes buf)
         if ((tcph->th_flags & TH_SYN) && it_flow == m_flow.end()) {
             p_tcp_flow = ptr_fabs_tcp_flow(new fabs_tcp_flow);
             m_flow[id] = p_tcp_flow;
+            m_total_session++;
         } else if (it_flow == m_flow.end()) {
             return;
         } else {
