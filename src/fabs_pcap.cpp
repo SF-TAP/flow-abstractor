@@ -57,26 +57,32 @@ fabs_pcap::fabs_pcap(std::string conf)
       m_thread_consume_frag(boost::bind(&fabs_pcap::consume_fragment, this)),
       m_thread_timer(boost::bind(&fabs_pcap::timer, this))
 {
+    m_spinlock.lock();
+
     m_qitem.m_queue = boost::shared_array<fabs_bytes>(new fabs_bytes[QNUM]);
     m_qitem.m_num   = 0;
+
+    m_spinlock.unlock();
 }
 
-void
+inline void
 fabs_pcap::produce(fabs_bytes &buf)
 {
+    m_spinlock.lock();
+
     m_qitem.m_queue[m_qitem.m_num] = buf;
     m_qitem.m_num++;
 
     if (m_qitem.m_num == QNUM) {
-        {
-            boost::mutex::scoped_lock lock(m_mutex);
-            m_queue.push_back(m_qitem);
-            m_condition.notify_one();
-        }
+        boost::mutex::scoped_lock lock(m_mutex);
+        m_queue.push_back(m_qitem);
+        m_condition.notify_one();
 
         m_qitem.m_queue = boost::shared_array<fabs_bytes>(new fabs_bytes[QNUM]);
         m_qitem.m_num   = 0;
     }
+
+    m_spinlock.unlock();
 }
 
 void
@@ -84,13 +90,17 @@ fabs_pcap::timer()
 {
     for (;;) {
         {
+            m_spinlock.lock();
+
             boost::mutex::scoped_lock lock(m_mutex);
             m_queue.push_back(m_qitem);
             m_condition.notify_one();
-        }
 
-        m_qitem.m_queue = boost::shared_array<fabs_bytes>(new fabs_bytes[QNUM]);
-        m_qitem.m_num   = 0;
+            m_qitem.m_queue = boost::shared_array<fabs_bytes>(new fabs_bytes[QNUM]);
+            m_qitem.m_num   = 0;
+
+            m_spinlock.unlock();
+        }
 
         {
             boost::mutex::scoped_lock lock(m_mutex_frag);

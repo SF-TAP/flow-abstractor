@@ -16,8 +16,30 @@
 #include <boost/shared_array.hpp>
 #include <boost/thread.hpp>
 #include <boost/thread/condition.hpp>
+#include <boost/atomic.hpp>
 
 class fabs_fragment;
+
+class spinlock {
+private:
+    typedef enum {Locked, Unlocked} LockState;
+    boost::atomic<LockState> state_;
+
+public:
+    spinlock() : state_(Unlocked) {}
+
+    void lock()
+    {
+        while (state_.exchange(Locked, boost::memory_order_acquire) == Locked) {
+            /* busy-wait */
+        }
+    }
+
+    void unlock()
+    {
+        state_.store(Unlocked, boost::memory_order_release);
+    }
+};
 
 class fabs_pcap {
 public:
@@ -61,6 +83,7 @@ private:
     };
 
     qitem m_qitem;
+    qitem m_qitem2;
 
     std::list<qitem> m_queue;
     std::list<fabs_bytes> m_queue_frag;
@@ -71,6 +94,7 @@ private:
     boost::thread m_thread_consume;
     boost::thread m_thread_consume_frag;
     boost::thread m_thread_timer;
+    spinlock m_spinlock;
 };
 
 extern boost::shared_ptr<fabs_pcap> pcap_inst;
