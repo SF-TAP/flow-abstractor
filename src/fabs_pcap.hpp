@@ -13,6 +13,7 @@
 #include <string>
 #include <list>
 
+#include <boost/shared_array.hpp>
 #include <boost/thread.hpp>
 #include <boost/thread/condition.hpp>
 
@@ -54,7 +55,14 @@ private:
     fabs_callback m_callback;
     fabs_fragment m_fragment;
 
-    std::list<fabs_bytes> m_queue;
+    struct qitem {
+        boost::shared_array<fabs_bytes> m_queue;
+        int m_num;
+    };
+
+    qitem m_qitem;
+
+    std::list<qitem> m_queue;
     std::list<fabs_bytes> m_queue_frag;
     boost::mutex  m_mutex;
     boost::mutex  m_mutex_frag;

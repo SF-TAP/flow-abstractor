@@ -19,6 +19,8 @@
 #define ETHERTYPE_IPV6 0x86dd /* IPv6 */
 #endif
 
+#define QNUM 1000
+
 using namespace std;
 
 boost::shared_ptr<fabs_pcap> pcap_inst;
@@ -55,21 +57,25 @@ fabs_pcap::fabs_pcap(std::string conf)
       m_thread_consume_frag(boost::bind(&fabs_pcap::consume_fragment, this)),
       m_thread_timer(boost::bind(&fabs_pcap::timer, this))
 {
-
+    m_qitem.m_queue = boost::shared_array<fabs_bytes>(new fabs_bytes[QNUM]);
+    m_qitem.m_num   = 0;
 }
 
 void
 fabs_pcap::produce(fabs_bytes &buf)
 {
-    static int count = 0;
+    m_qitem.m_queue[m_qitem.m_num] = buf;
+    m_qitem.m_num++;
 
-    boost::mutex::scoped_lock lock(m_mutex);
-    m_queue.push_back(buf);
-    count++;
+    if (m_qitem.m_num == QNUM) {
+        {
+            boost::mutex::scoped_lock lock(m_mutex);
+            m_queue.push_back(m_qitem);
+            m_condition.notify_one();
+        }
 
-    if (count > 1000) {
-        m_condition.notify_one();
-        count = 0;
+        m_qitem.m_queue = boost::shared_array<fabs_bytes>(new fabs_bytes[QNUM]);
+        m_qitem.m_num   = 0;
     }
 }
 
@@ -79,8 +85,12 @@ fabs_pcap::timer()
     for (;;) {
         {
             boost::mutex::scoped_lock lock(m_mutex);
+            m_queue.push_back(m_qitem);
             m_condition.notify_one();
         }
+
+        m_qitem.m_queue = boost::shared_array<fabs_bytes>(new fabs_bytes[QNUM]);
+        m_qitem.m_num   = 0;
 
         {
             boost::mutex::scoped_lock lock(m_mutex_frag);
@@ -96,7 +106,7 @@ fabs_pcap::consume()
 {
     for (;;) {
         int size;
-        vector<fabs_bytes> bytes;
+        vector<qitem> items;
 
         {
             boost::mutex::scoped_lock lock(m_mutex);
@@ -106,22 +116,24 @@ fabs_pcap::consume()
 
             size = m_queue.size();
 
-            bytes.resize(size);
+            items.resize(size);
 
             int i = 0;
             for (auto it = m_queue.begin(); it != m_queue.end(); ++it) {
-                bytes[i] = *it;
+                items[i] = *it;
                 i++;
             }
 
             m_queue.clear();
         }
 
-        for (auto it = bytes.begin(); it != bytes.end(); ++it) {
-            m_callback(*it);
+        for (auto it = items.begin(); it != items.end(); ++it) {
+            for (int i = 0; i < it->m_num; i++) {
+                m_callback(it->m_queue[i]);
+            }
         }
 
-        bytes.clear();
+        items.clear();
     }
 }
 
@@ -310,7 +322,7 @@ fabs_pcap::run()
     pcap_set_timeout(m_handle, 1000);
 
     if (pcap_activate(m_handle) != 0) {
-        pcap_perror(m_handle, "Activate");
+        pcap_perror(m_handle, (char*)"Activate");
         return;
     }
 
