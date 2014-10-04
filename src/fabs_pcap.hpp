@@ -12,32 +12,32 @@
 
 #include <string>
 #include <list>
+#include <atomic>
 
 #include <boost/shared_array.hpp>
 #include <boost/thread.hpp>
 #include <boost/thread/condition.hpp>
-#include <boost/atomic.hpp>
 
 class fabs_fragment;
 
 class spinlock {
 private:
     typedef enum {Locked, Unlocked} LockState;
-    boost::atomic<LockState> state_;
+    std::atomic<LockState> state_;
 
 public:
     spinlock() : state_(Unlocked) {}
 
     void lock()
     {
-        while (state_.exchange(Locked, boost::memory_order_acquire) == Locked) {
+        while (state_.exchange(Locked, std::memory_order_acquire) == Locked) {
             /* busy-wait */
         }
     }
 
     void unlock()
     {
-        state_.store(Unlocked, boost::memory_order_release);
+        state_.store(Unlocked, std::memory_order_release);
     }
 };
 

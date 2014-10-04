@@ -15,14 +15,19 @@ Required:
     $ cmake -DCMAKE_BUILD_TYPE=Release CMakeLists.txt
     $ make
 
-If you want to compile as debug mode, set a option of CMAKE_BUILD_YPE=Debug when running cmake. Debug mode passes a option of -g and a definition of DEBUG=1 to the compiler.
+If you want to compile as debug mode, set an option of CMAKE_BUILD_YPE=Debug when running cmake. Debug mode passes an option of -g and a definition of DEBUG=1 to the compiler.
 
     $ cmake -DCMAKE_BUILD_TYPE=Debug CMakeLists.txt
     $ make
 
-If you want to build static library, set a option of COMPILE_STATIC_LIB=1.
+If you want to build static library, set an option of COMPILE_STATIC_LIB=1.
 
     $ cmake -DCOMPILE_STATIC_LIB=1 CMakeLists.txt
+    $ make
+
+If you want to use jemalloc, set an option of USE_JEMALLOC=1.
+
+    $ cmake -DUSE_JEMALLOC=1 CMakeLists.txt
     $ make
 
 You can use a verbose mode when compiling.
