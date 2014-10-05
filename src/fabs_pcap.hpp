@@ -72,8 +72,8 @@ private:
     bool    m_is_break;
     int     m_bufsize;
 
-    const uint8_t *get_ip_hdr(const uint8_t *bytes, uint32_t len,
-                              uint8_t &proto);
+    inline const uint8_t *get_ip_hdr(const uint8_t *bytes, uint32_t len,
+                                     uint8_t &proto);
 
     fabs_callback m_callback;
     fabs_fragment m_fragment;
