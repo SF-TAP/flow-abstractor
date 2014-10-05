@@ -63,6 +63,7 @@ public:
     void stop() { m_is_break = true; }
 
     void produce(fabs_bytes &buf);
+    inline void produce(const char *buf, int len);
 
 private:
     std::string m_dev;

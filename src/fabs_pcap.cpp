@@ -65,12 +65,32 @@ fabs_pcap::fabs_pcap(std::string conf)
     m_spinlock.unlock();
 }
 
-inline void
+void
 fabs_pcap::produce(fabs_bytes &buf)
 {
     m_spinlock.lock();
 
     m_qitem.m_queue[m_qitem.m_num] = buf;
+    m_qitem.m_num++;
+
+    if (m_qitem.m_num == QNUM) {
+        boost::mutex::scoped_lock lock(m_mutex);
+        m_queue.push_back(m_qitem);
+        m_condition.notify_one();
+
+        m_qitem.m_queue = boost::shared_array<fabs_bytes>(new fabs_bytes[QNUM]);
+        m_qitem.m_num   = 0;
+    }
+
+    m_spinlock.unlock();
+}
+
+inline void
+fabs_pcap::produce(const char *buf, int len)
+{
+    m_spinlock.lock();
+
+    m_qitem.m_queue[m_qitem.m_num].set_buf(buf, len);
     m_qitem.m_num++;
 
     if (m_qitem.m_num == QNUM) {
@@ -223,10 +243,10 @@ fabs_pcap::callback(const struct pcap_pkthdr *h, const uint8_t *bytes)
         if (plen > len)
             return;
 
-        fabs_bytes buf;
-        buf.set_buf((char*)ip_hdr, plen);
-
         if (off & IP_MF || (off & 0x1fff) > 0) {
+            fabs_bytes buf;
+            buf.set_buf((char*)ip_hdr, plen);
+
             boost::mutex::scoped_lock lock(m_mutex_frag);
             m_queue_frag.push_back(buf);
             count_frag++;
@@ -236,7 +256,7 @@ fabs_pcap::callback(const struct pcap_pkthdr *h, const uint8_t *bytes)
                 count_frag = 0;
             }
         } else {
-            produce(buf);
+            produce((char*)ip_hdr, plen);
         }
 
         break;
@@ -279,10 +299,7 @@ fabs_pcap::callback(const struct pcap_pkthdr *h, const uint8_t *bytes)
         if (plen > len)
             return;
 
-        fabs_bytes buf;
-        buf.set_buf((char*)ip_hdr, plen);
-
-        produce(buf);
+        produce((char*)ip_hdr, plen);
 
         break;
     }
