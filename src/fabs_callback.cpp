@@ -6,11 +6,9 @@
 
 using namespace std;
 
-fabs_callback::fabs_callback(std::string conf) :
-    m_appif(new fabs_appif(*this, m_tcp)), m_tcp(m_appif), m_udp(m_appif)
+fabs_callback::fabs_callback()
 {
-    m_appif->read_conf(conf);
-    m_appif->run();
+
 }
 
 void

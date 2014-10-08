@@ -40,7 +40,7 @@ class fabs_tcp;
 
 class fabs_appif {
 public:
-    fabs_appif(fabs_callback &callback, fabs_tcp &tcp);
+    fabs_appif();
     virtual ~fabs_appif();
 
     void read_conf(std::string conf);
@@ -50,6 +50,8 @@ public:
                   const fabs_id_dir &id_dir, fabs_bytes bytes);
 
     void print_info();
+
+    int  get_tcp_timeout() { return m_tcp_timeout; }
 
 private:
     typedef boost::shared_ptr<boost::regex> ptr_regex;
@@ -199,14 +201,13 @@ private:
 
     ptr_thread          m_thread_listen;
 
-    fabs_callback &m_callback;
-    fabs_tcp      &m_tcp;
-
     event_base *m_ev_base;
     ptr_path    m_home;
 
     bool        m_is_lru;
     bool        m_is_cache;
+
+    int         m_tcp_timeout;
 
     void makedir(boost::filesystem::path path);
     bool write_event(int fd, const fabs_id_dir &id_dir, ptr_ifrule ifrule,

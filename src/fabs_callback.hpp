@@ -7,11 +7,17 @@
 
 class fabs_callback {
 public:
-    fabs_callback(std::string conf);
+    fabs_callback();
     virtual ~fabs_callback() { }
 
     void operator() (fabs_bytes buf);
     void print_stat() { m_tcp.print_stat(); }
+
+    void set_appif(ptr_fabs_appif appif) {
+        m_appif = appif;
+        m_tcp.set_appif(appif);
+        m_udp.set_appif(appif);
+    }
 
 private:
     ptr_fabs_appif m_appif;

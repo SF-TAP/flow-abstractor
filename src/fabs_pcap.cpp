@@ -51,12 +51,16 @@ fabs_pcap::fabs_pcap(std::string conf)
     : m_handle(NULL),
       m_is_break(false),
       m_bufsize(10000),
-      m_callback(conf),
       m_fragment(*this),
+      m_appif(new fabs_appif),
       m_thread_consume(boost::bind(&fabs_pcap::consume, this)),
       m_thread_consume_frag(boost::bind(&fabs_pcap::consume_fragment, this)),
       m_thread_timer(boost::bind(&fabs_pcap::timer, this))
 {
+    m_appif->read_conf(conf);
+    m_callback.set_appif(m_appif);
+    m_appif->run();
+
     m_spinlock.lock();
 
     m_qitem.m_queue = boost::shared_array<fabs_bytes>(new fabs_bytes[QNUM]);
@@ -361,7 +365,7 @@ fabs_pcap::run()
 
     if (pcap_activate(m_handle) != 0) {
         pcap_perror(m_handle, (char*)"Activate");
-        return;
+        exit(-1);
     }
 
 

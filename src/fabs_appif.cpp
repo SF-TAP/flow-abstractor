@@ -33,13 +33,11 @@ void ux_read(int fd, short events, void *arg);
 bool read_loopback7(int fd, fabs_appif *appif);
 // bool read_loopback3(int fd, fabs_appif *appif);
 
-fabs_appif::fabs_appif(fabs_callback &callback, fabs_tcp &tcp) :
+fabs_appif::fabs_appif() :
     m_fd7(-1),
     m_fd3(-1),
     m_lb7_format(IF_TEXT),
     m_num_consumer(0),
-    m_callback(callback),
-    m_tcp(tcp),
     m_home(new fs::path(fs::current_path())),
     m_is_lru(true),
     m_is_cache(true)
@@ -196,24 +194,6 @@ ux_read(int fd, short events, void *arg)
         }
     }
 }
-/*
-bool
-read_loopback3(int fd, fabs_appif *appif)
-{
-    char    buf[8192];
-    ssize_t len = read(fd, buf, sizeof(buf));
-    fabs_bytes bytes;
-
-    if (len <= 0)
-        return true;
-
-    bytes.set_buf(buf, len);
-
-    appif->m_callback(bytes);
-
-    return false;
-}
-*/
 
 bool
 read_loopback7(int fd, fabs_appif *appif)
@@ -584,7 +564,7 @@ fabs_appif::read_conf(string conf)
             it2 = it1->second.find("timeout");
             if (it2 != it1->second.end()) {
                 try {
-                    m_tcp.set_timeout(boost::lexical_cast<time_t>(it2->second));
+                    m_tcp_timeout = boost::lexical_cast<time_t>(it2->second);
                 } catch (boost::bad_lexical_cast e) {
                     cerr << "cannot convert \"" << it2->second
                          << "\" to time_t" << endl;

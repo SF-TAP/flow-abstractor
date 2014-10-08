@@ -49,13 +49,14 @@ typedef boost::shared_ptr<fabs_tcp_flow> ptr_fabs_tcp_flow;
 
 class fabs_tcp {
 public:
-    fabs_tcp(ptr_fabs_appif appif);
+    fabs_tcp();
     virtual ~fabs_tcp();
 
     void input_tcp(fabs_id &id, fabs_direction dir, fabs_bytes buf);
     void garbage_collector();
     void set_timeout(time_t t) { m_timeout = t; }
     void print_stat();
+    void set_appif(ptr_fabs_appif appif) { m_appif = appif; }
 
 private:
     std::map<fabs_id, ptr_fabs_tcp_flow> m_flow[NUM_TCPTREE];

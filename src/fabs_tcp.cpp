@@ -24,8 +24,7 @@ using namespace std;
 
 // #define DEBUG
 
-fabs_tcp::fabs_tcp(ptr_fabs_appif appif) :
-    m_appif(appif),
+fabs_tcp::fabs_tcp() :
     m_timeout(600),
     m_total_session(0),
     m_is_del(false),

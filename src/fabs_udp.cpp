@@ -10,7 +10,7 @@
 
 using namespace std;
 
-fabs_udp::fabs_udp(ptr_fabs_appif appif) : m_appif(appif)
+fabs_udp::fabs_udp()
 {
 
 }

@@ -2,6 +2,7 @@
 #define FABS_PCAP_HPP
 
 #include "fabs_common.hpp"
+#include "fabs_appif.hpp"
 #include "fabs_callback.hpp"
 #include "fabs_bytes.hpp"
 #include "fabs_fragment.hpp"
@@ -85,6 +86,8 @@ private:
 
     qitem m_qitem;
     qitem m_qitem2;
+
+    ptr_fabs_appif m_appif;
 
     std::list<qitem> m_queue;
     std::list<fabs_bytes> m_queue_frag;

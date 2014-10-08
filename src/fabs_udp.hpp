@@ -14,10 +14,11 @@
 
 class fabs_udp {
 public:
-    fabs_udp(ptr_fabs_appif appif);
+    fabs_udp();
     virtual ~fabs_udp();
 
     void input_udp(fabs_id &id, fabs_direction dir, fabs_bytes buf);
+    void set_appif(ptr_fabs_appif appif) { m_appif = appif; }
 
 private:
     ptr_fabs_appif   m_appif;
