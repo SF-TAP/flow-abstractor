@@ -133,6 +133,8 @@ public:
     boost::shared_ptr<fabs_peer> m_addr1, m_addr2;
     uint8_t m_hop;
 
+    uint32_t get_hash() const;
+
 private:
     uint8_t m_l3_proto;
     uint8_t m_l4_proto;

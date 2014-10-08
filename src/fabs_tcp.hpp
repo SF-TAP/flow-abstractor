@@ -16,6 +16,7 @@
 #include <boost/thread/condition.hpp>
 
 #define MAX_PACKETS 32
+#define NUM_TCPTREE 128
 
 struct fabs_tcp_packet {
     fabs_bytes m_bytes;
@@ -57,7 +58,7 @@ public:
     void print_stat();
 
 private:
-    std::map<fabs_id, ptr_fabs_tcp_flow> m_flow;
+    std::map<fabs_id, ptr_fabs_tcp_flow> m_flow[NUM_TCPTREE];
     ptr_fabs_appif                       m_appif;
 
     time_t m_timeout;
@@ -66,15 +67,17 @@ private:
                     fabs_tcp_packet &packet);
     bool recv_fin(const fabs_id &id, fabs_direction dir);
     void rm_flow(const fabs_id &id, fabs_direction dir);
-    int  num_packets(const fabs_id &id, fabs_direction dir);
     void input_tcp_event(fabs_id_dir tcp_event);
+    void garbage_collector2(int idx);
 
     uint64_t         m_total_session;
 
+    boost::mutex     m_mutex_flow[NUM_TCPTREE];
     boost::mutex     m_mutex;
     boost::mutex     m_mutex_gc;
     boost::condition m_condition_gc;
     bool             m_is_del;
+    int              m_flow_idx;
 
     boost::thread    m_thread_gc;
 };

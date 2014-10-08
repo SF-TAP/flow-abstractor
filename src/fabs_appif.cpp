@@ -787,27 +787,7 @@ fabs_appif::in_event(fabs_stream_event st_event,
     ev.id_dir   = id_dir;
     ev.bytes    = bytes;
 
-    uint32_t hash;
-
-    hash = ntohs(id_dir.get_port_src()) ^ ntohs(id_dir.get_port_dst());
-
-    if (id_dir.m_id.get_l3_proto() == IPPROTO_IP) {
-        hash ^= ntohl(id_dir.m_id.m_addr1->l3_addr.b32);
-    } else if (id_dir.m_id.get_l3_proto() == IPPROTO_IPV6) {
-        uint32_t *p = (uint32_t*)id_dir.m_id.m_addr1->l3_addr.b128;
-
-        hash ^= ntohl(p[0]);
-        hash ^= ntohl(p[1]);
-        hash ^= ntohl(p[2]);
-        hash ^= ntohl(p[3]);
-        hash ^= ntohl(p[4]);
-    }
-
-    hash += id_dir.m_id.m_hop;
-
-    uint16_t hash2 = ((uint16_t*)&hash)[0] ^ ((uint16_t*)&hash)[1];
-
-    int id = hash2 % m_num_consumer;
+    int id = id_dir.m_id.get_hash() % m_num_consumer;
 
     m_consumer[id]->produce(ev);
 }
