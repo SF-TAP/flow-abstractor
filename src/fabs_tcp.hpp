@@ -14,6 +14,10 @@
 
 #include <boost/thread.hpp>
 #include <boost/thread/condition.hpp>
+#include <boost/multi_index_container.hpp>
+#include <boost/multi_index/random_access_index.hpp>
+#include <boost/multi_index/ordered_index.hpp>
+#include <boost/multi_index/member.hpp>
 
 #define MAX_PACKETS 32
 
@@ -57,7 +61,21 @@ public:
     void print_stat();
 
 private:
-    std::map<fabs_id, ptr_fabs_tcp_flow> m_flow;
+    struct flowtype {
+        fabs_id m_id;
+        ptr_fabs_tcp_flow m_flow;
+    };
+
+    typedef boost::multi_index::multi_index_container<
+        flowtype,
+        boost::multi_index::indexed_by<
+            boost::multi_index::ordered_unique<
+                boost::multi_index::member<flowtype, fabs_id, &flowtype::m_id> >,
+            boost::multi_index::random_access<>
+            > > flow_container;
+
+    flow_container m_flow;
+    //std::map<fabs_id, ptr_fabs_tcp_flow> m_flow;
     ptr_fabs_appif                       m_appif;
 
     time_t m_timeout;
