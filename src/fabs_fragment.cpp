@@ -150,7 +150,11 @@ fabs_fragment::input_ip(fabs_bytes buf)
                     m_fragments.erase(it);
                     lock.unlock();
 
-                    m_pcap.produce(buf);
+                    uint32_t idx = 0;
+
+                    idx = fabs_pcap::get_ip_hash((const ip*)buf.get_head());
+
+                    m_pcap.produce(idx, buf);
                 }
             }
         }

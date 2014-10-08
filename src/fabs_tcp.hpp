@@ -55,7 +55,8 @@ public:
     void input_tcp(fabs_id &id, fabs_direction dir, fabs_bytes buf);
     void garbage_collector();
     void set_timeout(time_t t) { m_timeout = t; }
-    void print_stat();
+    int  get_active_num() const;
+    uint64_t get_total() const { return m_total_session; }
     void set_appif(ptr_fabs_appif appif) { m_appif = appif; }
 
 private:
@@ -78,7 +79,6 @@ private:
     boost::mutex     m_mutex_gc;
     boost::condition m_condition_gc;
     bool             m_is_del;
-    int              m_flow_idx;
 
     boost::thread    m_thread_gc;
 };

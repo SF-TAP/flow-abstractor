@@ -9,6 +9,9 @@
 
 #include <pcap/pcap.h>
 
+#include <netinet/ip.h>
+#include <netinet/ip6.h>
+
 #include <stdint.h>
 
 #include <string>
@@ -46,25 +49,35 @@ class fabs_pcap {
 public:
     fabs_pcap(std::string conf);
 
-    virtual ~fabs_pcap() {
-        if (m_handle != NULL)
-            pcap_close(m_handle);
-    }
+    virtual ~fabs_pcap();
 
     void set_dev(std::string dev);
     void set_bufsize(int size);
 
     void callback(const struct pcap_pkthdr *h, const uint8_t *bytes);
     
-    void consume();
+    void consume(int idx);
     void consume_fragment();
     void timer();
 
     void run();
     void stop() { m_is_break = true; }
 
-    void produce(fabs_bytes &buf);
-    inline void produce(const char *buf, int len);
+    void produce(int idx, fabs_bytes &buf);
+    inline void produce(int idx, const char *buf, int len);
+
+    static uint32_t get_ip_hash(const ip *iph) {
+        return ntohl(iph->ip_src.s_addr) ^ ntohl(iph->ip_dst.s_addr);
+    }
+
+    static uint32_t get_ip6_hash(const ip6_hdr *iph) {
+        const uint32_t *p1, *p2;
+
+        p1 = (const uint32_t*)&iph->ip6_src;
+        p2 = (const uint32_t*)&iph->ip6_dst;
+
+        return p1[0] ^ p1[1] ^ p1[2] ^ p1[3] ^ p2[0] ^ p2[1] ^ p2[2] ^ p2[3];
+    }
 
 private:
     std::string m_dev;
@@ -84,21 +97,22 @@ private:
         int m_num;
     };
 
-    qitem m_qitem;
-    qitem m_qitem2;
+    qitem m_qitem[NUM_TCP];
 
     ptr_fabs_appif m_appif;
 
-    std::list<qitem> m_queue;
+    std::list<qitem> m_queue[NUM_TCP];
     std::list<fabs_bytes> m_queue_frag;
-    boost::mutex  m_mutex;
+    boost::mutex  m_mutex[NUM_TCP];
     boost::mutex  m_mutex_frag;
-    boost::condition m_condition;
+    boost::mutex  m_mutex_timer;
+    boost::condition m_condition[NUM_TCP];
     boost::condition m_condition_frag;
-    boost::thread m_thread_consume;
+    boost::condition m_condition_timer;
+    boost::thread* m_thread_consume[NUM_TCP];
     boost::thread m_thread_consume_frag;
     boost::thread m_thread_timer;
-    spinlock m_spinlock;
+    spinlock m_spinlock[NUM_TCP];
 };
 
 extern boost::shared_ptr<fabs_pcap> pcap_inst;

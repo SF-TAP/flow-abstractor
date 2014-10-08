@@ -53,7 +53,6 @@ fabs_pcap::fabs_pcap(std::string conf)
       m_bufsize(10000),
       m_fragment(*this),
       m_appif(new fabs_appif),
-      m_thread_consume(boost::bind(&fabs_pcap::consume, this)),
       m_thread_consume_frag(boost::bind(&fabs_pcap::consume_fragment, this)),
       m_thread_timer(boost::bind(&fabs_pcap::timer, this))
 {
@@ -61,70 +60,114 @@ fabs_pcap::fabs_pcap(std::string conf)
     m_callback.set_appif(m_appif);
     m_appif->run();
 
-    m_spinlock.lock();
+    for (int i = 0; i < NUM_TCP; i++) {
+        m_spinlock[i].lock();
 
-    m_qitem.m_queue = boost::shared_array<fabs_bytes>(new fabs_bytes[QNUM]);
-    m_qitem.m_num   = 0;
+        m_qitem[i].m_queue = boost::shared_array<fabs_bytes>(new fabs_bytes[QNUM]);
+        m_qitem[i].m_num   = 0;
 
-    m_spinlock.unlock();
+        m_spinlock[i].unlock();
+
+        m_thread_consume[i] = new boost::thread(boost::bind(&fabs_pcap::consume, this, i));
+    }
+}
+
+fabs_pcap::~fabs_pcap()
+{
+    m_is_break = true;
+
+    for (int i = 0; i < NUM_TCP; i++) {
+        boost::mutex::scoped_lock lock(m_mutex[i]);
+
+        m_condition[i].notify_one();
+        m_thread_consume[i]->join();
+
+        delete m_thread_consume[i];
+    }
+
+    {
+        boost::mutex::scoped_lock lock(m_mutex_frag);
+        m_condition_frag.notify_one();
+        m_thread_consume_frag.join();
+    }
+
+    {
+        boost::mutex::scoped_lock lock(m_mutex_timer);
+        m_condition_timer.notify_one();
+        m_thread_timer.join();
+    }
+
+    if (m_handle != NULL)
+        pcap_close(m_handle);
 }
 
 void
-fabs_pcap::produce(fabs_bytes &buf)
+fabs_pcap::produce(int idx, fabs_bytes &buf)
 {
-    m_spinlock.lock();
+    m_spinlock[idx].lock();
 
-    m_qitem.m_queue[m_qitem.m_num] = buf;
-    m_qitem.m_num++;
+    m_qitem[idx].m_queue[m_qitem[idx].m_num] = buf;
+    m_qitem[idx].m_num++;
 
-    if (m_qitem.m_num == QNUM) {
-        boost::mutex::scoped_lock lock(m_mutex);
-        m_queue.push_back(m_qitem);
-        m_condition.notify_one();
+    if (m_qitem[idx].m_num == QNUM) {
+        boost::mutex::scoped_lock lock(m_mutex[idx]);
+        m_queue[idx].push_back(m_qitem[idx]);
+        m_condition[idx].notify_one();
 
-        m_qitem.m_queue = boost::shared_array<fabs_bytes>(new fabs_bytes[QNUM]);
-        m_qitem.m_num   = 0;
+        m_qitem[idx].m_queue = boost::shared_array<fabs_bytes>(new fabs_bytes[QNUM]);
+        m_qitem[idx].m_num   = 0;
     }
 
-    m_spinlock.unlock();
+    m_spinlock[idx].unlock();
 }
 
 inline void
-fabs_pcap::produce(const char *buf, int len)
+fabs_pcap::produce(int idx, const char *buf, int len)
 {
-    m_spinlock.lock();
+    m_spinlock[idx].lock();
 
-    m_qitem.m_queue[m_qitem.m_num].set_buf(buf, len);
-    m_qitem.m_num++;
+    m_qitem[idx].m_queue[m_qitem[idx].m_num].set_buf(buf, len);
+    m_qitem[idx].m_num++;
 
-    if (m_qitem.m_num == QNUM) {
-        boost::mutex::scoped_lock lock(m_mutex);
-        m_queue.push_back(m_qitem);
-        m_condition.notify_one();
+    if (m_qitem[idx].m_num == QNUM) {
+        boost::mutex::scoped_lock lock(m_mutex[idx]);
+        m_queue[idx].push_back(m_qitem[idx]);
+        m_condition[idx].notify_one();
 
-        m_qitem.m_queue = boost::shared_array<fabs_bytes>(new fabs_bytes[QNUM]);
-        m_qitem.m_num   = 0;
+        m_qitem[idx].m_queue = boost::shared_array<fabs_bytes>(new fabs_bytes[QNUM]);
+        m_qitem[idx].m_num   = 0;
     }
 
-    m_spinlock.unlock();
+    m_spinlock[idx].unlock();
 }
 
 void
 fabs_pcap::timer()
 {
     for (;;) {
-        m_spinlock.lock();
-
-        if (m_qitem.m_num > 0) {
-            boost::mutex::scoped_lock lock(m_mutex);
-            m_queue.push_back(m_qitem);
-            m_condition.notify_one();
-
-            m_qitem.m_queue = boost::shared_array<fabs_bytes>(new fabs_bytes[QNUM]);
-            m_qitem.m_num   = 0;
+        {
+            boost::mutex::scoped_lock lock(m_mutex_timer);
+            boost::system_time timeout = boost::get_system_time() + boost::posix_time::milliseconds(100);
+            m_condition_timer.timed_wait(lock, timeout);
+            if (m_is_break) {
+                return;
+            }
         }
 
-        m_spinlock.unlock();
+        for (int i = 0; i < NUM_TCP; i++) {
+            m_spinlock[i].lock();
+
+            if (m_qitem[i].m_num > 0) {
+                boost::mutex::scoped_lock lock(m_mutex[i]);
+                m_queue[i].push_back(m_qitem[i]);
+                m_condition[i].notify_one();
+
+                m_qitem[i].m_queue = boost::shared_array<fabs_bytes>(new fabs_bytes[QNUM]);
+                m_qitem[i].m_num   = 0;
+            }
+
+            m_spinlock[i].unlock();
+        }
 
 
         time_t t1 = time(NULL);
@@ -143,35 +186,36 @@ fabs_pcap::timer()
 
             cout << endl;
         }
-
-        boost::this_thread::sleep(boost::posix_time::milliseconds(100));
     }
 }
 
 void
-fabs_pcap::consume()
+fabs_pcap::consume(int idx)
 {
     for (;;) {
         int size;
         vector<qitem> items;
 
         {
-            boost::mutex::scoped_lock lock(m_mutex);
-            while (m_queue.empty()) {
-                m_condition.wait(lock);
+            boost::mutex::scoped_lock lock(m_mutex[idx]);
+            while (m_queue[idx].empty()) {
+                m_condition[idx].wait(lock);
+                if (m_is_break) {
+                    return;
+                }
             }
 
-            size = m_queue.size();
+            size = m_queue[idx].size();
 
             items.resize(size);
 
             int i = 0;
-            for (auto it = m_queue.begin(); it != m_queue.end(); ++it) {
+            for (auto it = m_queue[idx].begin(); it != m_queue[idx].end(); ++it) {
                 items[i] = *it;
                 i++;
             }
 
-            m_queue.clear();
+            m_queue[idx].clear();
         }
 
         for (auto it = items.begin(); it != items.end(); ++it) {
@@ -214,7 +258,7 @@ fabs_pcap::consume()
                             count_frag = 0;
                         }
                     } else {
-                        m_callback(buf);
+                        m_callback(idx, buf);
                     }
 
                     break;
@@ -258,7 +302,7 @@ fabs_pcap::consume()
                         goto err;
                     }
 
-                    m_callback(buf);
+                    m_callback(idx, buf);
 
                     break;
                 }
@@ -287,6 +331,9 @@ fabs_pcap::consume_fragment()
             while (m_queue_frag.empty()) {
                 boost::system_time timeout = boost::get_system_time() + boost::posix_time::milliseconds(100);
                 m_condition_frag.timed_wait(lock, timeout);
+                if (m_is_break) {
+                    return;
+                }
             }
 
             size = m_queue_frag.size();
@@ -319,7 +366,23 @@ fabs_pcap::callback(const struct pcap_pkthdr *h, const uint8_t *bytes)
         return;
     }
 
-    produce((char*)bytes, h->caplen);
+    uint8_t proto;
+    const uint8_t *ip_hdr = get_ip_hdr(bytes, h->caplen, proto);
+
+    if (ip_hdr == NULL)
+        return;
+
+    uint32_t idx = 0;
+
+    if (proto == IPPROTO_IP) {
+        idx = get_ip_hash((const ip*)ip_hdr);
+    } else if (proto == IPPROTO_IPV6) {
+        idx = get_ip6_hash((const ip6_hdr*)ip_hdr);
+    } else {
+        return;
+    }
+
+    produce(idx % NUM_TCP, (char*)bytes, h->caplen);
 }
 
 void

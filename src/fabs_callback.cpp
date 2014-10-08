@@ -6,13 +6,13 @@
 
 using namespace std;
 
-fabs_callback::fabs_callback()
+fabs_callback::fabs_callback() : m_idx(0)
 {
 
 }
 
 void
-fabs_callback::operator() (fabs_bytes buf) {
+fabs_callback::operator() (int idx, fabs_bytes buf) {
     fabs_direction dir;
     fabs_id        id;
     char          *l4hdr;
@@ -24,7 +24,7 @@ fabs_callback::operator() (fabs_bytes buf) {
 
     switch (id.get_l4_proto()) {
     case IPPROTO_TCP:
-        m_tcp.input_tcp(id, dir, buf);
+        m_tcp[idx].input_tcp(id, dir, buf);
         break;
     case IPPROTO_UDP:
         m_udp.input_udp(id, dir, buf);
