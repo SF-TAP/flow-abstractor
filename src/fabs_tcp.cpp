@@ -129,7 +129,7 @@ fabs_tcp::garbage_collector2(int idx)
     }
 
     for (auto it2 = garbages.begin(); it2 != garbages.end(); it2++) {
-        input_tcp_event(*it2);
+        input_tcp_event(idx, *it2);
     }
 }
 
@@ -162,15 +162,13 @@ fabs_tcp::garbage_collector()
 }
 
 void
-fabs_tcp::input_tcp_event(fabs_id_dir tcp_event)
+fabs_tcp::input_tcp_event(int idx, fabs_id_dir tcp_event)
 {
 #ifdef DEBUG
     char addr1[32], addr2[32];
 #endif // DEBUG
 
     {
-        int idx = tcp_event.m_id.get_hash() % NUM_TCPTREE;
-
         boost::mutex::scoped_lock lock(m_mutex_flow[idx]);
 
 
@@ -204,7 +202,7 @@ fabs_tcp::input_tcp_event(fabs_id_dir tcp_event)
 
         if (is_rm) {
             lock.unlock();
-            rm_flow(tcp_event.m_id, tcp_event.m_dir);
+            rm_flow(idx, tcp_event.m_id, tcp_event.m_dir);
 
             fabs_id_dir id_dir = tcp_event;
             id_dir.m_dir = FROM_NONE;
@@ -216,7 +214,7 @@ fabs_tcp::input_tcp_event(fabs_id_dir tcp_event)
 
     fabs_tcp_packet packet;
 
-    while (get_packet(tcp_event.m_id, tcp_event.m_dir, packet)) {
+    while (get_packet(idx, tcp_event.m_id, tcp_event.m_dir, packet)) {
         if (packet.m_flags & TH_SYN) {
 #ifdef DEBUG
             cout << "connection opened: addr1 = "
@@ -254,7 +252,7 @@ fabs_tcp::input_tcp_event(fabs_id_dir tcp_event)
                  << endl;
 #endif // DEBUG
 
-            if (recv_fin(tcp_event.m_id, tcp_event.m_dir)) {
+            if (recv_fin(idx, tcp_event.m_id, tcp_event.m_dir)) {
                 fabs_id_dir id_dir = tcp_event;
                 id_dir.m_dir = FROM_NONE;
                 m_appif->in_event(STREAM_DESTROYED, id_dir, bytes);
@@ -274,7 +272,7 @@ fabs_tcp::input_tcp_event(fabs_id_dir tcp_event)
 
             m_appif->in_event(STREAM_RST, tcp_event, bytes);
 
-            rm_flow(tcp_event.m_id, tcp_event.m_dir);
+            rm_flow(idx, tcp_event.m_id, tcp_event.m_dir);
 
             fabs_id_dir id_dir = tcp_event;
             id_dir.m_dir = FROM_NONE;
@@ -300,10 +298,8 @@ fabs_tcp::input_tcp_event(fabs_id_dir tcp_event)
 }
 
 bool
-fabs_tcp::recv_fin(const fabs_id &id, fabs_direction dir)
+fabs_tcp::recv_fin(int idx, const fabs_id &id, fabs_direction dir)
 {
-    int idx = id.get_hash() % NUM_TCPTREE;
-
     boost::mutex::scoped_lock lock(m_mutex_flow[idx]);
 
     fabs_tcp_uniflow *peer;
@@ -326,10 +322,8 @@ fabs_tcp::recv_fin(const fabs_id &id, fabs_direction dir)
 }
 
 void
-fabs_tcp::rm_flow(const fabs_id &id, fabs_direction dir)
+fabs_tcp::rm_flow(int idx, const fabs_id &id, fabs_direction dir)
 {
-    int idx = id.get_hash() % NUM_TCPTREE;
-
     boost::mutex::scoped_lock lock(m_mutex_flow[idx]);
 
     auto it_flow = m_flow[idx].find(id);
@@ -340,11 +334,9 @@ fabs_tcp::rm_flow(const fabs_id &id, fabs_direction dir)
 }
 
 bool
-fabs_tcp::get_packet(const fabs_id &id, fabs_direction dir,
+fabs_tcp::get_packet(int idx, const fabs_id &id, fabs_direction dir,
                      fabs_tcp_packet &packet)
 {
-    int idx = id.get_hash() % NUM_TCPTREE;
-
     boost::mutex::scoped_lock lock(m_mutex_flow[idx]);
 
     fabs_tcp_uniflow *p_uniflow;
@@ -401,11 +393,10 @@ fabs_tcp::input_tcp(fabs_id &id, fabs_direction dir, fabs_bytes buf)
     cout << endl;
 #endif
 
+    int idx = id.get_hash() % NUM_TCPTREE;
 
     // TODO: checksum
     {
-        int idx = id.get_hash() % NUM_TCPTREE;
-
         boost::mutex::scoped_lock lock(m_mutex_flow[idx]);
 
         it_flow = m_flow[idx].find(id);
@@ -474,5 +465,5 @@ fabs_tcp::input_tcp(fabs_id &id, fabs_direction dir, fabs_bytes buf)
     tcp_event.m_id  = id;
     tcp_event.m_dir = dir;
 
-    input_tcp_event(tcp_event);
+    input_tcp_event(idx, tcp_event);
 }

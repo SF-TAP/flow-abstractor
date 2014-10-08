@@ -63,11 +63,11 @@ private:
 
     time_t m_timeout;
 
-    bool get_packet(const fabs_id &id, fabs_direction dir,
+    bool get_packet(int idx, const fabs_id &id, fabs_direction dir,
                     fabs_tcp_packet &packet);
-    bool recv_fin(const fabs_id &id, fabs_direction dir);
-    void rm_flow(const fabs_id &id, fabs_direction dir);
-    void input_tcp_event(fabs_id_dir tcp_event);
+    bool recv_fin(int idx, const fabs_id &id, fabs_direction dir);
+    void rm_flow(int idx, const fabs_id &id, fabs_direction dir);
+    void input_tcp_event(int idx, fabs_id_dir tcp_event);
     void garbage_collector2(int idx);
 
     uint64_t         m_total_session;
