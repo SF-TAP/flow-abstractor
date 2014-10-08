@@ -20,7 +20,6 @@
 using namespace std;
 
 #define TCP_GC_TIMER 30
-#define GC_MAX 100000
 
 // #define DEBUG
 
@@ -57,8 +56,6 @@ fabs_tcp::print_stat()
 void
 fabs_tcp::garbage_collector()
 {
-    int idx;
-
     for (;;) {
 
         boost::mutex::scoped_lock lock_gc(m_mutex_gc);
@@ -68,49 +65,40 @@ fabs_tcp::garbage_collector()
             return;
         }
 
-        list<fabs_id_dir>   garbages;
+        list<fabs_id_dir> garbages;
 
         {
             boost::mutex::scoped_lock lock(m_mutex);
 
-            if (m_flow.size() > GC_MAX) {
-                if (idx >= m_flow.size()) {
-                    idx = 0;
-                }
-            } else {
-                idx = 0;
-            }
+            std::map<fabs_id, ptr_fabs_tcp_flow>::iterator it;
 
-            auto &seq = m_flow.get<1>();
-
-            int i = 0;
-            for (auto it = seq.begin() + idx; it != seq.end(); ++it) {
+            for (it = m_flow.begin(); it != m_flow.end(); ++it) {
                 // close half opened connections
-                if (((it->m_flow->m_flow1.m_is_syn &&
-                      ! it->m_flow->m_flow2.m_is_syn) ||
-                     (it->m_flow->m_flow1.m_is_fin &&
-                       ! it->m_flow->m_flow2.m_is_fin)) &&
-                    time(NULL) - it->m_flow->m_flow1.m_time > TCP_GC_TIMER) {
+                if (((it->second->m_flow1.m_is_syn &&
+                      ! it->second->m_flow2.m_is_syn) ||
+                     (it->second->m_flow1.m_is_fin &&
+                       ! it->second->m_flow2.m_is_fin)) &&
+                    time(NULL) - it->second->m_flow1.m_time > TCP_GC_TIMER) {
 
-                    it->m_flow->m_flow1.m_is_rm = true;
+                    it->second->m_flow1.m_is_rm = true;
 
                     fabs_id_dir id_dir;
 
-                    id_dir.m_id  = it->m_id;
+                    id_dir.m_id  = it->first;
                     id_dir.m_dir = FROM_ADDR1;
 
                     garbages.push_back(id_dir);
-                } else if (((! it->m_flow->m_flow1.m_is_syn &&
-                             it->m_flow->m_flow2.m_is_syn) ||
-                            (! it->m_flow->m_flow1.m_is_fin &&
-                            it->m_flow->m_flow2.m_is_fin)) &&
-                           time(NULL) - it->m_flow->m_flow2.m_time > TCP_GC_TIMER) {
+                } else if (((! it->second->m_flow1.m_is_syn &&
+                             it->second->m_flow2.m_is_syn) ||
+                            (! it->second->m_flow1.m_is_fin &&
+                            it->second->m_flow2.m_is_fin)) &&
+                           time(NULL) - it->second->m_flow2.m_time > TCP_GC_TIMER) {
 
-                    it->m_flow->m_flow2.m_is_rm = true;
+                    it->second->m_flow2.m_is_rm = true;
 
                     fabs_id_dir id_dir;
 
-                    id_dir.m_id  = it->m_id;
+                    id_dir.m_id  = it->first;
                     id_dir.m_dir = FROM_ADDR2;
 
                     garbages.push_back(id_dir);
@@ -118,37 +106,32 @@ fabs_tcp::garbage_collector()
 
                 // close long-lived but do-nothing connections
                 time_t now = time(NULL);
-                if (now - it->m_flow->m_flow1.m_time > m_timeout &&
-                    now - it->m_flow->m_flow2.m_time > m_timeout) {
+                if (now - it->second->m_flow1.m_time > m_timeout &&
+                    now - it->second->m_flow2.m_time > m_timeout) {
 
-                    it->m_flow->m_flow1.m_is_rm = true;
+                    it->second->m_flow1.m_is_rm = true;
 
                     fabs_id_dir id_dir;
 
-                    id_dir.m_id  = it->m_id;
+                    id_dir.m_id  = it->first;
                     id_dir.m_dir = FROM_ADDR1;
 
                     garbages.push_back(id_dir);
                 }
 
                 // close compromised connections
-                if (it->m_flow->m_flow1.m_packets.size() > 4096 ||
-                    it->m_flow->m_flow2.m_packets.size() > 4096) {
+                if (it->second->m_flow1.m_packets.size() > 4096 ||
+                    it->second->m_flow2.m_packets.size() > 4096) {
 
-                    it->m_flow->m_flow1.m_is_rm = true;
+                    it->second->m_flow1.m_is_rm = true;
 
                     fabs_id_dir id_dir;
 
-                    id_dir.m_id  = it->m_id;
+                    id_dir.m_id  = it->first;
                     id_dir.m_dir = FROM_ADDR1;
 
                     garbages.push_back(id_dir);
                 }
-
-                idx++;
-                i++;
-                if (i > GC_MAX)
-                    break;
             }
         }
 
@@ -177,7 +160,9 @@ fabs_tcp::input_tcp_event(fabs_id_dir tcp_event)
 
 
         // garbage collection
-        auto it_flow = m_flow.find(tcp_event.m_id);
+        std::map<fabs_id, ptr_fabs_tcp_flow>::iterator it_flow;
+
+        it_flow = m_flow.find(tcp_event.m_id);
 
         if (it_flow == m_flow.end()) {
             return;
@@ -187,9 +172,9 @@ fabs_tcp::input_tcp_event(fabs_id_dir tcp_event)
         bool       is_rm = false;
 
         if ((tcp_event.m_dir == FROM_ADDR1 &&
-             it_flow->m_flow->m_flow1.m_is_rm) ||
+             it_flow->second->m_flow1.m_is_rm) ||
             (tcp_event.m_dir == FROM_ADDR2 &&
-             it_flow->m_flow->m_flow2.m_is_rm)) {
+             it_flow->second->m_flow2.m_is_rm)) {
             m_appif->in_event(STREAM_TIMEOUT, tcp_event, bytes);
             is_rm = true;
         }
@@ -296,16 +281,17 @@ fabs_tcp::num_packets(const fabs_id &id, fabs_direction dir)
 {
     boost::mutex::scoped_lock lock(m_mutex);
 
+    map<fabs_id, ptr_fabs_tcp_flow>::iterator it_flow;
     fabs_tcp_uniflow *p_uniflow;
 
-    auto it_flow = m_flow.find(id);
+    it_flow = m_flow.find(id);
     if (it_flow == m_flow.end())
         return 0;
 
     if (dir == FROM_ADDR1)
-        p_uniflow = &it_flow->m_flow->m_flow1;
+        p_uniflow = &it_flow->second->m_flow1;
     else
-        p_uniflow = &it_flow->m_flow->m_flow2;
+        p_uniflow = &it_flow->second->m_flow2;
 
     return p_uniflow->m_packets.size();
 }
@@ -315,16 +301,17 @@ fabs_tcp::recv_fin(const fabs_id &id, fabs_direction dir)
 {
     boost::mutex::scoped_lock lock(m_mutex);
 
+    map<fabs_id, ptr_fabs_tcp_flow>::iterator it_flow;
     fabs_tcp_uniflow *peer;
 
-    auto it_flow = m_flow.find(id);
+    it_flow = m_flow.find(id);
     if (it_flow == m_flow.end())
         return false;
 
     if (dir == FROM_ADDR1)
-        peer = &it_flow->m_flow->m_flow2;
+        peer = &it_flow->second->m_flow2;
     else
-        peer = &it_flow->m_flow->m_flow1;
+        peer = &it_flow->second->m_flow1;
 
     if (peer->m_is_fin) {
         m_flow.erase(it_flow);
@@ -339,7 +326,9 @@ fabs_tcp::rm_flow(const fabs_id &id, fabs_direction dir)
 {
     boost::mutex::scoped_lock lock(m_mutex);
 
-    auto it_flow = m_flow.find(id);
+    map<fabs_id, ptr_fabs_tcp_flow>::iterator it_flow;
+
+    it_flow = m_flow.find(id);
     if (it_flow == m_flow.end())
         return;
 
@@ -352,16 +341,17 @@ fabs_tcp::get_packet(const fabs_id &id, fabs_direction dir,
 {
     boost::mutex::scoped_lock lock(m_mutex);
 
+    map<fabs_id, ptr_fabs_tcp_flow>::iterator it_flow;
     fabs_tcp_uniflow *p_uniflow;
 
-    auto it_flow = m_flow.find(id);
+    it_flow = m_flow.find(id);
     if (it_flow == m_flow.end())
         return false;
 
     if (dir == FROM_ADDR1)
-        p_uniflow = &it_flow->m_flow->m_flow1;
+        p_uniflow = &it_flow->second->m_flow1;
     else
-        p_uniflow = &it_flow->m_flow->m_flow2;
+        p_uniflow = &it_flow->second->m_flow2;
 
     
     map<uint32_t, fabs_tcp_packet>::iterator it_pkt;
@@ -387,7 +377,7 @@ fabs_tcp::get_packet(const fabs_id &id, fabs_direction dir,
 void
 fabs_tcp::input_tcp(fabs_id &id, fabs_direction dir, fabs_bytes buf)
 {
-    flow_container::iterator it_flow;
+    map<fabs_id, ptr_fabs_tcp_flow>::iterator it_flow;
     ptr_fabs_tcp_flow p_tcp_flow;
     fabs_tcp_packet   packet;
     tcphdr *tcph = (tcphdr*)buf.get_head();
@@ -415,18 +405,12 @@ fabs_tcp::input_tcp(fabs_id &id, fabs_direction dir, fabs_bytes buf)
 
         if ((tcph->th_flags & TH_SYN) && it_flow == m_flow.end()) {
             p_tcp_flow = ptr_fabs_tcp_flow(new fabs_tcp_flow);
-            flowtype t;
-
-            t.m_id   = id;
-            t.m_flow = p_tcp_flow;
-
-            m_flow.insert(t);
-
+            m_flow[id] = p_tcp_flow;
             m_total_session++;
         } else if (it_flow == m_flow.end()) {
             return;
         } else {
-            p_tcp_flow = it_flow->m_flow;
+            p_tcp_flow = it_flow->second;
         }
 
         packet.m_bytes    = buf;
