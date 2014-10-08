@@ -65,7 +65,7 @@ fabs_pcap::fabs_pcap(std::string conf)
     m_spinlock.unlock();
 }
 
-inline void
+void
 fabs_pcap::produce(fabs_bytes &buf)
 {
     m_spinlock.lock();
@@ -85,22 +85,42 @@ fabs_pcap::produce(fabs_bytes &buf)
     m_spinlock.unlock();
 }
 
+inline void
+fabs_pcap::produce(const char *buf, int len)
+{
+    m_spinlock.lock();
+
+    m_qitem.m_queue[m_qitem.m_num].set_buf(buf, len);
+    m_qitem.m_num++;
+
+    if (m_qitem.m_num == QNUM) {
+        boost::mutex::scoped_lock lock(m_mutex);
+        m_queue.push_back(m_qitem);
+        m_condition.notify_one();
+
+        m_qitem.m_queue = boost::shared_array<fabs_bytes>(new fabs_bytes[QNUM]);
+        m_qitem.m_num   = 0;
+    }
+
+    m_spinlock.unlock();
+}
+
 void
 fabs_pcap::timer()
 {
     for (;;) {
-        {
-            m_spinlock.lock();
+        m_spinlock.lock();
 
+        if (m_qitem.m_num > 0) {
             boost::mutex::scoped_lock lock(m_mutex);
             m_queue.push_back(m_qitem);
             m_condition.notify_one();
 
             m_qitem.m_queue = boost::shared_array<fabs_bytes>(new fabs_bytes[QNUM]);
             m_qitem.m_num   = 0;
-
-            m_spinlock.unlock();
         }
+
+        m_spinlock.unlock();
 
 
         time_t t1 = time(NULL);
@@ -152,7 +172,98 @@ fabs_pcap::consume()
 
         for (auto it = items.begin(); it != items.end(); ++it) {
             for (int i = 0; i < it->m_num; i++) {
-                m_callback(it->m_queue[i]);
+                fabs_bytes &buf = it->m_queue[i];
+                uint8_t proto;
+                const uint8_t *ip_hdr = get_ip_hdr((uint8_t*)buf.get_head(),
+                                                   buf.get_len(), proto);
+
+                buf.skip((char*)ip_hdr - buf.get_head());
+
+                uint32_t len = buf.get_len();
+                uint32_t plen;
+                static int count_frag = 0;
+
+
+                if (ip_hdr == NULL) {
+                    continue;
+                }
+
+                switch (proto) {
+                case IPPROTO_IP:{
+                    ip       *iph = (ip*)ip_hdr;
+                    uint16_t  off = ntohs(iph->ip_off);
+
+                    plen = ntohs(iph->ip_len);
+
+                    if (plen > len) {
+                        goto err;
+                    }
+
+                    if (off & IP_MF || (off & 0x1fff) > 0) {
+                        // produce fragment packet
+                        boost::mutex::scoped_lock lock(m_mutex_frag);
+                        m_queue_frag.push_back(buf);
+                        count_frag++;
+
+                        if (count_frag > 1000) {
+                            m_condition_frag.notify_one();
+                            count_frag = 0;
+                        }
+                    } else {
+                        m_callback(buf);
+                    }
+
+                    break;
+                }
+                case IPPROTO_IPV6:
+                {
+                    ip6_hdr *ip6h = (ip6_hdr*)ip_hdr;
+                    uint8_t  nxt  = ip6h->ip6_nxt;
+                    char    *p    = (char*)ip6h + sizeof(ip6_hdr);
+        
+                    for (;;) {
+                        switch(nxt) {
+                        case IPPROTO_HOPOPTS:
+                        case IPPROTO_ROUTING:
+                        case IPPROTO_ESP:
+                        case IPPROTO_AH:
+                        case IPPROTO_DSTOPTS:
+                        {
+                            ip6_ext *ext = (ip6_ext*)p;
+
+                            nxt = ext->ip6e_nxt;
+
+                            if (ext->ip6e_len == 0)
+                                p += 8;
+                            else
+                                p += ext->ip6e_len * 8;
+
+                            break;
+                        }
+                        case IPPROTO_NONE:
+                        case IPPROTO_FRAGMENT:
+                        case IPPROTO_ICMPV6:
+                            goto err;
+                        default:
+                            goto end_loop;
+                        }
+                    }
+                end_loop:
+                    plen = ntohs(ip6h->ip6_plen) + sizeof(ip6_hdr);
+                    if (plen > len) {
+                        goto err;
+                    }
+
+                    m_callback(buf);
+
+                    break;
+                }
+                default:
+                    break;
+                }
+
+            err:
+                do {} while (false);
             }
         }
 
@@ -199,96 +310,12 @@ fabs_pcap::consume_fragment()
 void
 fabs_pcap::callback(const struct pcap_pkthdr *h, const uint8_t *bytes)
 {
-    uint8_t proto;
-    const uint8_t *ip_hdr = get_ip_hdr(bytes, h->caplen, proto);
-    uint32_t len = h->caplen - (ip_hdr - bytes);
-    uint32_t plen;
-    static int count_frag = 0;
-
     if (m_is_break) {
         pcap_breakloop(m_handle);
         return;
     }
 
-    if (ip_hdr == NULL)
-        return;
-
-    switch (proto) {
-    case IPPROTO_IP:{
-        ip       *iph = (ip*)ip_hdr;
-        uint16_t  off = ntohs(iph->ip_off);
-
-        plen = ntohs(iph->ip_len);
-
-        if (plen > len)
-            return;
-
-        fabs_bytes buf;
-        buf.set_buf((char*)ip_hdr, plen);
-
-        if (off & IP_MF || (off & 0x1fff) > 0) {
-            boost::mutex::scoped_lock lock(m_mutex_frag);
-            m_queue_frag.push_back(buf);
-            count_frag++;
-
-            if (count_frag > 1000) {
-                m_condition_frag.notify_one();
-                count_frag = 0;
-            }
-        } else {
-            produce(buf);
-        }
-
-        break;
-    }
-    case IPPROTO_IPV6:
-    {
-        ip6_hdr *ip6h = (ip6_hdr*)ip_hdr;
-        uint8_t  nxt  = ip6h->ip6_nxt;
-        char    *p    = (char*)ip6h + sizeof(ip6_hdr);
-        
-        for (;;) {
-            switch(nxt) {
-            case IPPROTO_HOPOPTS:
-            case IPPROTO_ROUTING:
-            case IPPROTO_ESP:
-            case IPPROTO_AH:
-            case IPPROTO_DSTOPTS:
-            {
-                ip6_ext *ext = (ip6_ext*)p;
-
-                nxt = ext->ip6e_nxt;
-
-                if (ext->ip6e_len == 0)
-                    p += 8;
-                else
-                    p += ext->ip6e_len * 8;
-
-                break;
-            }
-            case IPPROTO_NONE:
-            case IPPROTO_FRAGMENT:
-            case IPPROTO_ICMPV6:
-                return;
-            default:
-                goto end_loop;
-            }
-        }
-    end_loop:
-        plen = ntohs(ip6h->ip6_plen) + sizeof(ip6_hdr);
-        if (plen > len)
-            return;
-
-        fabs_bytes buf;
-        buf.set_buf((char*)ip_hdr, plen);
-
-        produce(buf);
-
-        break;
-    }
-    default:
-        break;
-    }
+    produce((char*)bytes, h->caplen);
 }
 
 void
@@ -359,7 +386,7 @@ fabs_pcap::run()
     }
 }
 
-const uint8_t *
+inline const uint8_t *
 fabs_pcap::get_ip_hdr(const uint8_t *bytes, uint32_t len, uint8_t &proto)
 {
     const uint8_t *ip_hdr = NULL;
