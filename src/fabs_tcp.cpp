@@ -16,6 +16,7 @@
 #include <arpa/inet.h>
 
 #include <boost/bind.hpp>
+#include <boost/random.hpp>
 
 using namespace std;
 
@@ -148,9 +149,15 @@ fabs_tcp::garbage_collector2(int idx)
 void
 fabs_tcp::garbage_collector()
 {
+    boost::minstd_rand    gen((size_t)this);
+    boost::uniform_real<> dst( 0, 1 );
+    boost::variate_generator<
+        boost::minstd_rand&, boost::uniform_real<>
+        > rand( gen, dst );
+
     for (;;) {
         boost::mutex::scoped_lock lock_gc(m_mutex_gc);
-        m_condition_gc.timed_wait(lock_gc, boost::posix_time::milliseconds(TCP_GC_TIMER * 1000));
+        m_condition_gc.timed_wait(lock_gc, boost::posix_time::milliseconds(TCP_GC_TIMER * 1000 + TCP_GC_TIMER * rand() * 1000));
 
         if (m_is_del) {
             return;
