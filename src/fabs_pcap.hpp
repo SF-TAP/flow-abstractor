@@ -67,7 +67,7 @@ public:
     inline void produce(int idx, const char *buf, int len);
 
     static uint32_t get_ip_hash(const ip *iph) {
-        return ntohl(iph->ip_src.s_addr) ^ ntohl(iph->ip_dst.s_addr);
+        return ntohl(iph->ip_src.s_addr ^ iph->ip_dst.s_addr);
     }
 
     static uint32_t get_ip6_hash(const ip6_hdr *iph) {
@@ -76,7 +76,7 @@ public:
         p1 = (const uint32_t*)&iph->ip6_src;
         p2 = (const uint32_t*)&iph->ip6_dst;
 
-        return p1[0] ^ p1[1] ^ p1[2] ^ p1[3] ^ p2[0] ^ p2[1] ^ p2[2] ^ p2[3];
+        return ntohl(p1[0] ^ p1[1] ^ p1[2] ^ p1[3] ^ p2[0] ^ p2[1] ^ p2[2] ^ p2[3]);
     }
 
 private:

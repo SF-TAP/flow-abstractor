@@ -7,7 +7,7 @@
 
 #include <iostream>
 
-#define NUM_TCP 8
+#define NUM_TCP 4
 
 
 class fabs_callback {
