@@ -16,6 +16,7 @@ public:
     void set_appif(ptr_fabs_appif appif) {
         m_appif = appif;
         m_tcp.set_appif(appif);
+        m_tcp.set_timeout(appif->get_tcp_timeout());
         m_udp.set_appif(appif);
     }
 

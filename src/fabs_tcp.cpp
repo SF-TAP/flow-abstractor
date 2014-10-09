@@ -62,68 +62,69 @@ void
 fabs_tcp::garbage_collector2(int idx)
 {
     list<fabs_id_dir> garbages;
+    {
+        boost::mutex::scoped_lock lock(m_mutex_flow[idx]);
 
-    boost::mutex::scoped_lock lock(m_mutex_flow[idx]);
+        for (auto it = m_flow[idx].begin(); it != m_flow[idx].end(); ++it) {
+            // close half opened connections
+            if (((it->second->m_flow1.m_is_syn &&
+                  ! it->second->m_flow2.m_is_syn) ||
+                 (it->second->m_flow1.m_is_fin &&
+                  ! it->second->m_flow2.m_is_fin)) &&
+                time(NULL) - it->second->m_flow1.m_time > TCP_GC_TIMER) {
 
-    for (auto it = m_flow[idx].begin(); it != m_flow[idx].end(); ++it) {
-        // close half opened connections
-        if (((it->second->m_flow1.m_is_syn &&
-              ! it->second->m_flow2.m_is_syn) ||
-             (it->second->m_flow1.m_is_fin &&
-              ! it->second->m_flow2.m_is_fin)) &&
-            time(NULL) - it->second->m_flow1.m_time > TCP_GC_TIMER) {
+                it->second->m_flow1.m_is_rm = true;
 
-            it->second->m_flow1.m_is_rm = true;
+                fabs_id_dir id_dir;
 
-            fabs_id_dir id_dir;
+                id_dir.m_id  = it->first;
+                id_dir.m_dir = FROM_ADDR1;
 
-            id_dir.m_id  = it->first;
-            id_dir.m_dir = FROM_ADDR1;
+                garbages.push_back(id_dir);
+            } else if (((! it->second->m_flow1.m_is_syn &&
+                         it->second->m_flow2.m_is_syn) ||
+                        (! it->second->m_flow1.m_is_fin &&
+                         it->second->m_flow2.m_is_fin)) &&
+                       time(NULL) - it->second->m_flow2.m_time > TCP_GC_TIMER) {
 
-            garbages.push_back(id_dir);
-        } else if (((! it->second->m_flow1.m_is_syn &&
-                     it->second->m_flow2.m_is_syn) ||
-                    (! it->second->m_flow1.m_is_fin &&
-                     it->second->m_flow2.m_is_fin)) &&
-                   time(NULL) - it->second->m_flow2.m_time > TCP_GC_TIMER) {
+                it->second->m_flow2.m_is_rm = true;
 
-            it->second->m_flow2.m_is_rm = true;
+                fabs_id_dir id_dir;
 
-            fabs_id_dir id_dir;
+                id_dir.m_id  = it->first;
+                id_dir.m_dir = FROM_ADDR2;
 
-            id_dir.m_id  = it->first;
-            id_dir.m_dir = FROM_ADDR2;
+                garbages.push_back(id_dir);
+            }
 
-            garbages.push_back(id_dir);
-        }
+            // close long-lived but do-nothing connections
+            time_t now = time(NULL);
+            if (now - it->second->m_flow1.m_time > m_timeout &&
+                now - it->second->m_flow2.m_time > m_timeout) {
 
-        // close long-lived but do-nothing connections
-        time_t now = time(NULL);
-        if (now - it->second->m_flow1.m_time > m_timeout &&
-            now - it->second->m_flow2.m_time > m_timeout) {
+                it->second->m_flow1.m_is_rm = true;
 
-            it->second->m_flow1.m_is_rm = true;
+                fabs_id_dir id_dir;
 
-            fabs_id_dir id_dir;
+                id_dir.m_id  = it->first;
+                id_dir.m_dir = FROM_ADDR1;
 
-            id_dir.m_id  = it->first;
-            id_dir.m_dir = FROM_ADDR1;
+                garbages.push_back(id_dir);
+            }
 
-            garbages.push_back(id_dir);
-        }
+            // close compromised connections
+            if (it->second->m_flow1.m_packets.size() > 4096 ||
+                it->second->m_flow2.m_packets.size() > 4096) {
 
-        // close compromised connections
-        if (it->second->m_flow1.m_packets.size() > 4096 ||
-            it->second->m_flow2.m_packets.size() > 4096) {
+                it->second->m_flow1.m_is_rm = true;
 
-            it->second->m_flow1.m_is_rm = true;
+                fabs_id_dir id_dir;
 
-            fabs_id_dir id_dir;
+                id_dir.m_id  = it->first;
+                id_dir.m_dir = FROM_ADDR1;
 
-            id_dir.m_id  = it->first;
-            id_dir.m_dir = FROM_ADDR1;
-
-            garbages.push_back(id_dir);
+                garbages.push_back(id_dir);
+            }
         }
     }
 
@@ -136,7 +137,6 @@ void
 fabs_tcp::garbage_collector()
 {
     for (;;) {
-
         boost::mutex::scoped_lock lock_gc(m_mutex_gc);
         m_condition_gc.timed_wait(lock_gc, boost::posix_time::milliseconds(TCP_GC_TIMER * 1000));
 
@@ -155,7 +155,9 @@ fabs_tcp::garbage_collector()
                 garbage_collector2(i);
             }
         } else {
-            garbage_collector2(m_flow_idx++);
+            m_flow_idx++;
+            m_flow_idx %= NUM_TCPTREE;
+            garbage_collector2(m_flow_idx);
         }
     }
 }
