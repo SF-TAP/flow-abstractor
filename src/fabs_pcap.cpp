@@ -73,24 +73,23 @@ fabs_pcap::fabs_pcap(std::string conf)
 }
 
 void
-fabs_pcap::produce(fabs_bytes &buf)
+fabs_pcap::produce(int idx, fabs_bytes &buf)
 {
-/*    m_spinlock.lock();
+    m_spinlock[idx].lock();
 
-    m_qitem.m_queue[m_qitem.m_num] = buf;
-    m_qitem.m_num++;
+    m_qitem[idx].m_queue[m_qitem[idx].m_num] = buf;
+    m_qitem[idx].m_num++;
 
-    if (m_qitem.m_num == QNUM) {
-        boost::mutex::scoped_lock lock(m_mutex);
-        m_queue.push_back(m_qitem);
-        m_condition.notify_one();
+    if (m_qitem[idx].m_num == QNUM) {
+        boost::mutex::scoped_lock lock(m_mutex[idx]);
+        m_queue[idx].push_back(m_qitem[idx]);
+        m_condition[idx].notify_one();
 
-        m_qitem.m_queue = boost::shared_array<fabs_bytes>(new fabs_bytes[QNUM]);
-        m_qitem.m_num   = 0;
+        m_qitem[idx].m_queue = boost::shared_array<fabs_bytes>(new fabs_bytes[QNUM]);
+        m_qitem[idx].m_num   = 0;
     }
 
-    m_spinlock.unlock();
-*/
+    m_spinlock[idx].unlock();
 }
 
 inline void

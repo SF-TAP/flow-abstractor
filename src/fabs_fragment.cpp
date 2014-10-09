@@ -150,7 +150,10 @@ fabs_fragment::input_ip(fabs_bytes buf)
                     m_fragments.erase(it);
                     lock.unlock();
 
-                    m_pcap.produce(buf);
+
+                    int hash = ntohl(iph4->ip_src.s_addr ^ iph4->ip_dst.s_addr);
+
+                    m_pcap.produce(hash % TCPNUM, buf);
                 }
             }
         }

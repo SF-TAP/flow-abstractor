@@ -45,6 +45,18 @@ fabs_tcp::~fabs_tcp()
     m_thread_gc.join();
 }
 
+int
+fabs_tcp::get_active_num()
+{
+    int n = 0;
+
+    for (int i = 0; i < NUM_TCPTREE; i++) {
+        n += m_flow[i].size();
+    }
+
+    return n;
+}
+
 void
 fabs_tcp::print_stat()
 {

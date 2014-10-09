@@ -63,7 +63,7 @@ public:
     void run();
     void stop() { m_is_break = true; }
 
-    void produce(fabs_bytes &buf);
+    void produce(int idx, fabs_bytes &buf);
     inline void produce(int idx, const char *buf, int len);
 
 private:
