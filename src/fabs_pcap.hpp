@@ -56,7 +56,7 @@ public:
 
     void callback(const struct pcap_pkthdr *h, const uint8_t *bytes);
     
-    void consume();
+    void consume(int idx);
     void consume_fragment();
     void timer();
 
@@ -64,7 +64,7 @@ public:
     void stop() { m_is_break = true; }
 
     void produce(fabs_bytes &buf);
-    inline void produce(const char *buf, int len);
+    inline void produce(int idx, const char *buf, int len);
 
 private:
     std::string m_dev;
@@ -84,21 +84,20 @@ private:
         int m_num;
     };
 
-    qitem m_qitem;
-    qitem m_qitem2;
+    qitem m_qitem[TCPNUM];
 
     ptr_fabs_appif m_appif;
 
-    std::list<qitem> m_queue;
+    std::list<qitem> m_queue[TCPNUM];
     std::list<fabs_bytes> m_queue_frag;
-    boost::mutex  m_mutex;
+    boost::mutex  m_mutex[TCPNUM];
     boost::mutex  m_mutex_frag;
-    boost::condition m_condition;
+    boost::condition m_condition[TCPNUM];
     boost::condition m_condition_frag;
-    boost::thread m_thread_consume;
+    boost::thread *m_thread_consume[TCPNUM];
     boost::thread m_thread_consume_frag;
     boost::thread m_thread_timer;
-    spinlock m_spinlock;
+    spinlock m_spinlock[TCPNUM];
 };
 
 extern boost::shared_ptr<fabs_pcap> pcap_inst;
