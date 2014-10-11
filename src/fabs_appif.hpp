@@ -194,7 +194,7 @@ private:
     std::map<int, ptr_uxpeer> m_fd2uxpeer; // accepted socket
     std::map<std::string, std::set<int> > m_name2uxpeer;
 
-    boost::shared_mutex m_rw_mutex;
+    boost::mutex m_rw_mutex;
 
     int m_num_consumer;
     boost::shared_array<ptr_consumer> m_consumer;
