@@ -214,11 +214,10 @@ fabs_id::get_hash() const
 {
     uint32_t hash;
 
-    hash = ntohs(m_addr1->l4_port) ^ ntohs(m_addr2->l4_port);
+    hash = ntohs(m_addr1->l4_port ^ m_addr2->l4_port);
 
     if (m_l3_proto == IPPROTO_IP) {
-        hash ^= ntohl(m_addr1->l3_addr.b32);
-        hash ^= ntohl(m_addr2->l3_addr.b32);
+        hash ^= ntohl(m_addr1->l3_addr.b32 ^ m_addr2->l3_addr.b32);
     } else if (get_l3_proto() == IPPROTO_IPV6) {
         uint32_t *p = (uint32_t*)m_addr1->l3_addr.b128;
 

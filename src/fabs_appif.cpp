@@ -61,7 +61,6 @@ fabs_appif::run()
     m_thread_listen = ptr_thread(new boost::thread(boost::bind(&fabs_appif::ux_listen, this)));
 
     m_num_consumer = boost::thread::hardware_concurrency();
-    m_num_consumer = 3;
 
     if (m_num_consumer <= 1) {
         m_num_consumer = 2;
@@ -916,10 +915,12 @@ fabs_appif::appif_consumer::send_tcp_data(ptr_info p_info, fabs_id_dir id_dir)
                 if (len1 > 0) {
                     idx = (uint8_t)buf1[0];
                     if (cache_up[idx] &&
-                        boost::regex_match(buf1, buf1 + len1,
-                                           *cache_up[idx]->m_up) &&
-                        boost::regex_match(buf2, buf2 + len2,
-                                           *cache_up[idx]->m_down)) {
+                        boost::regex_search(buf1, buf1 + len1,
+                                            *cache_up[idx]->m_up,
+                                            boost::regex_constants::match_continuous) &&
+                        boost::regex_search(buf2, buf2 + len2,
+                                            *cache_up[idx]->m_down,
+                                            boost::regex_constants::match_continuous)) {
                         ifrule = cache_up[idx];
                         is_classified = true;
                         p_info->m_match_dir[0] = MATCH_UP;
@@ -928,10 +929,12 @@ fabs_appif::appif_consumer::send_tcp_data(ptr_info p_info, fabs_id_dir id_dir)
 
                         break;
                     } else if (cache_down[idx] &&
-                               boost::regex_match(buf1, buf1 + len1,
-                                                  *cache_down[idx]->m_down) &&
-                               boost::regex_match(buf2, buf2 + len1,
-                                                  *cache_down[idx]->m_up)){
+                               boost::regex_search(buf1, buf1 + len1,
+                                                   *cache_down[idx]->m_down,
+                                                   boost::regex_constants::match_continuous) &&
+                               boost::regex_search(buf2, buf2 + len1,
+                                                   *cache_down[idx]->m_up,
+                                                   boost::regex_constants::match_continuous)){
                         ifrule = cache_down[idx];
                         is_classified = true;
                         p_info->m_match_dir[0] = MATCH_DOWN;
@@ -945,10 +948,12 @@ fabs_appif::appif_consumer::send_tcp_data(ptr_info p_info, fabs_id_dir id_dir)
                 if (len2 > 0) {
                     idx = (uint8_t)buf2[0];
                     if (cache_up[idx] &&
-                        boost::regex_match(buf1, buf1 + len1,
-                                           *cache_up[idx]->m_up) &&
-                        boost::regex_match(buf2, buf2 + len2,
-                                           *cache_up[idx]->m_down)) {
+                        boost::regex_search(buf1, buf1 + len1,
+                                            *cache_up[idx]->m_up,
+                                            boost::regex_constants::match_continuous) &&
+                        boost::regex_search(buf2, buf2 + len2,
+                                            *cache_up[idx]->m_down,
+                                            boost::regex_constants::match_continuous)) {
                         ifrule = cache_up[idx];
                         is_classified = true;
                         p_info->m_match_dir[0] = MATCH_DOWN;
@@ -957,10 +962,12 @@ fabs_appif::appif_consumer::send_tcp_data(ptr_info p_info, fabs_id_dir id_dir)
 
                         break;
                     } else if (cache_down[idx] &&
-                               boost::regex_match(buf1, buf1 + len1,
-                                                  *cache_down[idx]->m_down) &&
-                               boost::regex_match(buf2, buf2 + len2,
-                                                  *cache_down[idx]->m_up)){
+                               boost::regex_search(buf1, buf1 + len1,
+                                                   *cache_down[idx]->m_down,
+                                                   boost::regex_constants::match_continuous) &&
+                               boost::regex_search(buf2, buf2 + len2,
+                                                   *cache_down[idx]->m_up,
+                                                   boost::regex_constants::match_continuous)){
                         ifrule = cache_down[idx];
                         is_classified = true;
                         p_info->m_match_dir[0] = MATCH_UP;
@@ -977,8 +984,10 @@ fabs_appif::appif_consumer::send_tcp_data(ptr_info p_info, fabs_id_dir id_dir)
                  it1 != it_tcp->second->ifrule.end(); ++it1) {
                 if (m_appif.is_in_port((*it1)->m_port, id_dir.get_port_src(),
                                id_dir.get_port_dst())) {
-                    if (boost::regex_match(buf1, buf1 + len1, *(*it1)->m_up) &&
-                        boost::regex_match(buf2, buf2 + len2, *(*it1)->m_down)) {
+                    if (boost::regex_search(buf1, buf1 + len1, *(*it1)->m_up,
+                                            boost::regex_constants::match_continuous) &&
+                        boost::regex_search(buf2, buf2 + len2, *(*it1)->m_down,
+                                            boost::regex_constants::match_continuous)) {
                         ifrule = *it1;
                         is_classified = true;
                         p_info->m_match_dir[0] = MATCH_UP;
@@ -999,10 +1008,12 @@ fabs_appif::appif_consumer::send_tcp_data(ptr_info p_info, fabs_id_dir id_dir)
                         }
 
                         goto brk;
-                    } else if (boost::regex_match(buf1, buf1 + len1,
-                                                  *(*it1)->m_down) &&
-                               boost::regex_match(buf2, buf2 + len2,
-                                                  *(*it1)->m_up)) {
+                    } else if (boost::regex_search(buf1, buf1 + len1,
+                                                   *(*it1)->m_down,
+                                                   boost::regex_constants::match_continuous) &&
+                               boost::regex_search(buf2, buf2 + len2,
+                                                   *(*it1)->m_up,
+                                                   boost::regex_constants::match_continuous)) {
                         ifrule = *it1;
                         is_classified = true;
                         p_info->m_match_dir[0] = MATCH_DOWN;
@@ -1298,9 +1309,9 @@ fabs_appif::appif_consumer::in_datagram(const fabs_id_dir &id_dir,
 
             assert(ifrule && ifrule->m_up);
 
-            if (boost::regex_match(bytes.get_head(),
-                                   bytes.get_head() + bytes.get_len(),
-                                   *ifrule->m_up)) {
+            if (boost::regex_search(bytes.get_head(),
+                                    bytes.get_head() + bytes.get_len(),
+                                    *ifrule->m_up)) {
                 // hit cache
                 match = MATCH_UP;
 
@@ -1314,9 +1325,9 @@ fabs_appif::appif_consumer::in_datagram(const fabs_id_dir &id_dir,
                  it1 != it_udp->second->ifrule.end(); ++it1) {
                 if (m_appif.is_in_port((*it1)->m_port, id_dir.get_port_src(),
                                        id_dir.get_port_dst()) &&
-                    boost::regex_match(bytes.get_head(),
-                                       bytes.get_head() + bytes.get_len(),
-                                       *(*it1)->m_up)) {
+                    boost::regex_search(bytes.get_head(),
+                                        bytes.get_head() + bytes.get_len(),
+                                        *(*it1)->m_up)) {
                     // found in list
                     ifrule = *it1;
                     match  = MATCH_UP;
