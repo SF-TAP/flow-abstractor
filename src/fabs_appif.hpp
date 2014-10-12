@@ -76,10 +76,13 @@ private:
         ptr_path    m_ux;
         bool        m_is_body;
         int         m_nice;
+        int         m_balance;
+        std::vector<std::string>   m_balance_name;
+        std::map<int, std::string> m_fd2name; // listen socket to name
         boost::shared_ptr<std::list<std::pair<uint16_t, uint16_t> > > m_port;
 
         ifrule() : m_proto(IF_OTHER), m_format(IF_TEXT), m_is_body(true),
-                   m_nice(100),
+                   m_nice(100), m_balance(1),
                    m_port(new std::list<std::pair<uint16_t, uint16_t> >) { }
     };
 
@@ -115,6 +118,7 @@ private:
         bool       m_is_giveup;
         bool       m_is_buf1, m_is_buf2; // recv data?
         std::deque<fabs_bytes> m_buf1, m_buf2;
+        uint32_t   m_hash;
         match_dir  m_match_dir[2];
         fabs_appif_header m_header;
 

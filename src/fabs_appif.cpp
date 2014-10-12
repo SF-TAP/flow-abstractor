@@ -84,6 +84,13 @@ ux_accept(int fd, short events, void *arg)
 
     auto it = appif->m_fd2ifrule.find(fd);
     if (it == appif->m_fd2ifrule.end()) {
+        assert(false);
+        return;
+    }
+
+    auto it2 = it->second->m_fd2name.find(fd);
+    if (it2 == it->second->m_fd2name.end()) {
+        assert(false);
         return;
     }
 
@@ -94,10 +101,10 @@ ux_accept(int fd, short events, void *arg)
     auto peer = fabs_appif::ptr_uxpeer(new fabs_appif::uxpeer);
     peer->m_fd   = sock;
     peer->m_ev   = ev;
-    peer->m_name = it->second->m_name;
+    peer->m_name = it2->second;
 
     appif->m_fd2uxpeer[sock] = peer;
-    appif->m_name2uxpeer[it->second->m_name].insert(sock);
+    appif->m_name2uxpeer[it2->second].insert(sock);
 
     cout << "accepted on " << it->second->m_name
          << " (fd = " << sock << ")" << endl;
@@ -169,15 +176,6 @@ ux_read(int fd, short events, void *arg)
                 ux_close(fd, appif);
                 return;
             }
-/*
-        } else if (peer->m_name == "loopback3") {
-            if (read_loopback3(fd, appif)) {
-                boost::upgrade_lock<boost::shared_mutex> up_lock(appif->m_rw_mutex);
-                boost::upgrade_to_unique_lock<boost::shared_mutex> wlock(up_lock);
-                ux_close(fd, appif);
-                return;
-            }
-*/
         } else {
             char buf[4096];
             int  recv_size = read(fd, buf, sizeof(buf) - 1);
@@ -422,55 +420,61 @@ fabs_appif::makedir(fs::path path)
 void
 fabs_appif::ux_listen_ifrule(ptr_ifrule ifrule)
 {
-    int sock = socket(AF_UNIX, SOCK_STREAM, 0);
+    for (int i = 0; i < ifrule->m_balance; i++) {
+        int sock = socket(AF_UNIX, SOCK_STREAM, 0);
 
-    if (sock == -1) {
-        perror("socket");
-        exit(-1);
-    }
+        if (sock == -1) {
+            perror("socket");
+            exit(-1);
+        }
  
-    struct sockaddr_un sa = {0};
-    sa.sun_family = AF_UNIX;
+        struct sockaddr_un sa = {0};
+        sa.sun_family = AF_UNIX;
 
-    fs::path path;
+        fs::path path;
 
-    if (ifrule->m_proto == IF_UDP) {
-        path = *m_home / fs::path("udp") / *ifrule->m_ux;
-    } else if (ifrule->m_proto == IF_TCP) {
-        path = *m_home / fs::path("tcp") / *ifrule->m_ux;
-    } else {
-        path = *m_home / *ifrule->m_ux;
-    }
+        if (ifrule->m_proto == IF_UDP) {
+            path = *m_home / fs::path("udp") / *ifrule->m_ux;
+        } else if (ifrule->m_proto == IF_TCP) {
+            path = *m_home / fs::path("tcp") / *ifrule->m_ux;
+        } else {
+            path = *m_home / *ifrule->m_ux;
+        }
 
-    strncpy(sa.sun_path, path.string().c_str(), sizeof(sa.sun_path));
+        if (ifrule->m_balance > 1) {
+            path += fs::path(boost::lexical_cast<string>(i));
+        }
+
+        strncpy(sa.sun_path, path.string().c_str(), sizeof(sa.sun_path));
  
-    remove(sa.sun_path);
+        remove(sa.sun_path);
  
-    if (::bind(sock, (struct sockaddr*) &sa,
-               sizeof(struct sockaddr_un)) == -1) {
-        perror("bind");
-        exit(-1);
-    }
+        if (::bind(sock, (struct sockaddr*) &sa,
+                   sizeof(struct sockaddr_un)) == -1) {
+            perror("bind");
+            exit(-1);
+        }
 
-    if (listen(sock, 128) == -1) {
-        perror("listen");
-        exit(-1);
-    }
+        if (listen(sock, 128) == -1) {
+            perror("listen");
+            exit(-1);
+        }
 
-    cout << "listening on " << path << " (" << ifrule->m_name << ")" << endl;
+        event *ev = event_new(m_ev_base, sock, EV_READ | EV_PERSIST,
+                              ux_accept, this);
+        event_add(ev, NULL);
 
-    event *ev = event_new(m_ev_base, sock, EV_READ | EV_PERSIST,
-                          ux_accept, this);
-    event_add(ev, NULL);
+        ifrule->m_balance_name.push_back(path.string());
+        ifrule->m_fd2name[sock] = path.string();
+        m_fd2ifrule[sock] = ifrule;
 
-    m_fd2ifrule[sock] = ifrule;
+        cout << "listening on " << path.string()
+             << " (" << ifrule->m_balance_name[i] << ")" << endl;
 
-
-    if (ifrule->m_name == "loopback7") {
-        m_fd7 = sock;
-/*    } else if (ifrule->m_name == "loopback3") {
-        m_fd3 = sock;
-*/
+        if (ifrule->m_name == "loopback7") {
+            m_fd7 = sock;
+            break;
+        }
     }
 }
 
@@ -667,6 +671,20 @@ fabs_appif::read_conf(string conf)
                 }
             }
 
+            it3 = it1->second.find("balance");
+            if (it3 != it1->second.end()) {
+                try {
+                    rule->m_balance = boost::lexical_cast<int>(it3->second);
+                    if (rule->m_balance < 1) {
+                        rule->m_balance = 1;
+                    }
+                } catch (boost::bad_lexical_cast e) {
+                    cerr << "cannot convert \"" << it3->second
+                         << "\" to int" << endl;
+                    continue;
+                }
+            }
+
             it3 = it1->second.find("port");
             if (it3 != it1->second.end()) {
                 stringstream ss(it3->second);
@@ -717,10 +735,6 @@ fabs_appif::read_conf(string conf)
             if (rule->m_name == "loopback7") {
                 m_ifrule7 = rule;
                 m_lb7_format = rule->m_format;
-/*
-            } else if (rule->m_name == "loopback3") {
-                m_ifrule3 = rule;
-*/
             } else if (rule->m_name == "tcp_default") {
                 m_tcp_default = rule;
             } else if (rule->m_name == "udp_default") {
@@ -858,10 +872,12 @@ fabs_appif::appif_consumer::in_stream_event(fabs_stream_event st_event,
 
         if (it->second->m_ifrule) {
             // invoke DESTROYED event
+            int idx = it->second->m_hash % it->second->m_ifrule->m_balance;
+            string &name = it->second->m_ifrule->m_balance_name[idx];
+
             boost::mutex::scoped_lock lock(m_appif.m_rw_mutex);
 
-            auto it2 = m_appif.m_name2uxpeer.find(it->second->m_ifrule->m_name);
-
+            auto it2 = m_appif.m_name2uxpeer.find(name);
             if (it2 != m_appif.m_name2uxpeer.end()) {
                 for (auto it3 = it2->second.begin(); it3 != it2->second.end();
                      ++it3) {
@@ -1063,60 +1079,7 @@ fabs_appif::appif_consumer::send_tcp_data(ptr_info p_info, fabs_id_dir id_dir)
 
     brk:
 
-    boost::mutex::scoped_lock lock(m_appif.m_rw_mutex);
-
-    if (is_classified) {
-        // invoke CREATED event
-        auto it = m_appif.m_name2uxpeer.find(p_info->m_ifrule->m_name);
-
-        if (it != m_appif.m_name2uxpeer.end()) {
-            for (auto it2 = it->second.begin(); it2 != it->second.end();
-                 ++it2) {
-                m_appif.write_event(*it2, id_dir, p_info->m_ifrule,
-                                    STREAM_CREATED, MATCH_NONE,
-                                    &p_info->m_header, NULL, 0);
-            }
-        }
-    }
-
-    if (p_info->m_ifrule) {
-        // invoke DATA event and send data to I/F
-        deque<fabs_bytes> *bufs;
-
-        if (id_dir.m_dir == FROM_ADDR1) {
-            bufs = &p_info->m_buf1;
-        } else if (id_dir.m_dir == FROM_ADDR2) {
-            bufs = &p_info->m_buf2;
-        } else {
-            assert(false);
-        }
-
-        while (! bufs->empty()) {
-            auto front = bufs->front();
-            auto it2 = m_appif.m_name2uxpeer.find(p_info->m_ifrule->m_name);
-
-            if (it2 != m_appif.m_name2uxpeer.end()) {
-                for (auto it3 = it2->second.begin(); it3 != it2->second.end();
-                     ++it3) {
-                    match_dir mdir;
-
-                    assert(id_dir.m_dir != FROM_NONE);
-
-                    mdir = p_info->m_match_dir[id_dir.m_dir];
-
-                    if (! m_appif.write_event(*it3, id_dir, p_info->m_ifrule,
-                                              STREAM_DATA, mdir,
-                                              &p_info->m_header,
-                                              front.get_head(),
-                                              front.get_len())) {
-                        continue;
-                    }
-                }
-            }
-
-            bufs->pop_front();
-        }
-    } else {
+    if (! p_info->m_ifrule) {
         // give up?
         if (p_info->m_dsize1 > 65536 * 2 || p_info->m_dsize2 > 65536 * 2) {
             p_info->m_is_giveup = true;
@@ -1128,6 +1091,64 @@ fabs_appif::appif_consumer::send_tcp_data(ptr_info p_info, fabs_id_dir id_dir)
             p_info->m_is_buf1 = true;
             return is_classified;
         }
+
+        return false;
+    }
+
+    int idx = p_info->m_hash % p_info->m_ifrule->m_balance;
+    string &name = p_info->m_ifrule->m_balance_name[idx];
+
+    boost::mutex::scoped_lock lock(m_appif.m_rw_mutex);
+
+    if (is_classified) {
+        // invoke CREATED event
+        auto it = m_appif.m_name2uxpeer.find(name);
+
+        if (it != m_appif.m_name2uxpeer.end()) {
+            for (auto it2 = it->second.begin(); it2 != it->second.end();
+                 ++it2) {
+                m_appif.write_event(*it2, id_dir, p_info->m_ifrule,
+                                    STREAM_CREATED, MATCH_NONE,
+                                    &p_info->m_header, NULL, 0);
+            }
+        }
+    }
+
+    // invoke DATA event and send data to I/F
+    deque<fabs_bytes> *bufs;
+
+    if (id_dir.m_dir == FROM_ADDR1) {
+        bufs = &p_info->m_buf1;
+    } else if (id_dir.m_dir == FROM_ADDR2) {
+        bufs = &p_info->m_buf2;
+    } else {
+        assert(false);
+    }
+
+    while (! bufs->empty()) {
+        auto front = bufs->front();
+        auto it2 = m_appif.m_name2uxpeer.find(name);
+
+        if (it2 != m_appif.m_name2uxpeer.end()) {
+            for (auto it3 = it2->second.begin(); it3 != it2->second.end();
+                 ++it3) {
+                match_dir mdir;
+
+                assert(id_dir.m_dir != FROM_NONE);
+
+                mdir = p_info->m_match_dir[id_dir.m_dir];
+
+                if (! m_appif.write_event(*it3, id_dir, p_info->m_ifrule,
+                                          STREAM_DATA, mdir,
+                                          &p_info->m_header,
+                                          front.get_head(),
+                                          front.get_len())) {
+                    continue;
+                }
+            }
+        }
+
+        bufs->pop_front();
     }
 
     return is_classified;
@@ -1266,6 +1287,8 @@ fabs_appif::stream_info::stream_info(const fabs_id &id) :
 
     m_header.l4_port1 = id.m_addr1->l4_port;
     m_header.l4_port2 = id.m_addr2->l4_port;
+
+    m_hash = id.get_hash();
 }
 
 bool
@@ -1389,9 +1412,12 @@ brk:
     header.len      = bytes.get_len();
     header.match    = match;
 
+    int idx2 = ifrule->m_balance;
+    string &name = ifrule->m_balance_name[idx2];
+
     boost::mutex::scoped_lock lock(m_appif.m_rw_mutex);
 
-    auto it3 = m_appif.m_name2uxpeer.find(ifrule->m_name);
+    auto it3 = m_appif.m_name2uxpeer.find(name);
 
     if (it3 != m_appif.m_name2uxpeer.end()) {
         for (auto it4 = it3->second.begin();
