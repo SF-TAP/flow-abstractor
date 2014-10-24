@@ -155,6 +155,7 @@ public:
     class appif_consumer {
     public:
         appif_consumer(int id, fabs_appif &appif);
+        virtual ~appif_consumer();
 
         void produce(appif_event &ev);
         void consume();
@@ -162,6 +163,7 @@ public:
 
     private:
         int              m_id;
+        bool             m_is_break;
         fabs_appif      &m_appif;
         boost::mutex     m_mutex;
         boost::condition m_condition;

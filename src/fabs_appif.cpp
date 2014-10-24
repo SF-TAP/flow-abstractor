@@ -1444,6 +1444,9 @@ fabs_appif::appif_consumer::consume()
             while (m_ev_queue.size() == 0) {
                 boost::system_time timeout = boost::get_system_time() + boost::posix_time::milliseconds(100);
                 m_condition.timed_wait(lock, timeout);
+
+                if (m_is_break)
+                    return;
             }
 
             size = m_ev_queue.size();
@@ -1484,6 +1487,7 @@ fabs_appif::appif_consumer::produce(appif_event &ev)
 
 fabs_appif::appif_consumer::appif_consumer(int id, fabs_appif &appif) :
     m_id(id),
+    m_is_break(false),
     m_appif(appif),
     m_thread(boost::bind(&fabs_appif::appif_consumer::consume, this))
 {
@@ -1506,6 +1510,18 @@ fabs_appif::appif_consumer::appif_consumer(int id, fabs_appif &appif) :
 
         m_ifrule_udp[it_udp->first] = p;
     }
+}
+
+fabs_appif::appif_consumer::~appif_consumer()
+{
+    m_is_break = true;
+
+    {
+        boost::mutex::scoped_lock lock(m_mutex);
+        m_condition.notify_one();
+    }
+
+    m_thread.join();
 }
 
 void

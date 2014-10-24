@@ -72,6 +72,30 @@ fabs_pcap::fabs_pcap(std::string conf)
     }
 }
 
+fabs_pcap::~fabs_pcap() {
+    m_is_break = true;
+
+    if (m_handle != NULL)
+        pcap_close(m_handle);
+
+    {
+        boost::mutex::scoped_lock lock(m_mutex_frag);
+        m_condition_frag.notify_one();
+    }
+
+    m_thread_consume_frag.join();
+
+    for (int i = 0; i < TCPNUM; i++) {
+        {
+            boost::mutex::scoped_lock lock(m_mutex[i]);
+            m_condition[i].notify_one();
+        }
+
+        m_thread_consume[i]->join();
+        delete m_thread_consume[i];
+    }
+}
+
 void
 fabs_pcap::produce(int idx, fabs_bytes &buf)
 {
@@ -164,6 +188,8 @@ fabs_pcap::consume(int idx)
             boost::mutex::scoped_lock lock(m_mutex[idx]);
             while (m_queue[idx].empty()) {
                 m_condition[idx].wait(lock);
+                if (m_is_break)
+                    return;
             }
 
             size = m_queue[idx].size();
@@ -292,6 +318,10 @@ fabs_pcap::consume_fragment()
             while (m_queue_frag.empty()) {
                 boost::system_time timeout = boost::get_system_time() + boost::posix_time::milliseconds(100);
                 m_condition_frag.timed_wait(lock, timeout);
+
+                if (m_is_break) {
+                    return;
+                }
             }
 
             size = m_queue_frag.size();

@@ -45,11 +45,7 @@ public:
 class fabs_pcap {
 public:
     fabs_pcap(std::string conf);
-
-    virtual ~fabs_pcap() {
-        if (m_handle != NULL)
-            pcap_close(m_handle);
-    }
+    virtual ~fabs_pcap();
 
     void set_dev(std::string dev);
     void set_bufsize(int size);
@@ -94,10 +90,10 @@ private:
     boost::mutex  m_mutex_frag;
     boost::condition m_condition[TCPNUM];
     boost::condition m_condition_frag;
+    spinlock m_spinlock[TCPNUM];
     boost::thread *m_thread_consume[TCPNUM];
     boost::thread m_thread_consume_frag;
     boost::thread m_thread_timer;
-    spinlock m_spinlock[TCPNUM];
 };
 
 extern boost::shared_ptr<fabs_pcap> pcap_inst;
