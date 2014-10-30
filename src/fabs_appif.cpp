@@ -1389,7 +1389,6 @@ fabs_appif::appif_consumer::in_datagram(const fabs_id_dir &id_dir,
         ifrule = m_appif.m_udp_default;
 
 brk:
-
     if (! ifrule)
         return;
 
@@ -1412,7 +1411,7 @@ brk:
     header.len      = bytes.get_len();
     header.match    = match;
 
-    int idx2 = ifrule->m_balance;
+    int idx2 = id_dir.m_id.get_hash() % ifrule->m_balance;
     string &name = ifrule->m_balance_name[idx2];
 
     boost::mutex::scoped_lock lock(m_appif.m_rw_mutex);
