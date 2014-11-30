@@ -80,7 +80,7 @@ public:
     fabs_id() : m_hop(0) { }
     virtual ~fabs_id(){ };
 
-    fabs_direction set_iph(char *iph, char **l4hdr);
+    fabs_direction set_iph(char *iph, char **l4hdr, int *len);
     void set_appif_header(fabs_appif_header &header);
     void print_id() const;
 

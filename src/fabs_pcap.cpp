@@ -197,7 +197,8 @@ fabs_pcap::consume(int idx)
             items.resize(size);
 
             int i = 0;
-            for (auto it = m_queue[idx].begin(); it != m_queue[idx].end(); ++it) {
+            for (auto it = m_queue[idx].begin(); it != m_queue[idx].end();
+                 ++it) {
                 items[i] = *it;
                 i++;
             }

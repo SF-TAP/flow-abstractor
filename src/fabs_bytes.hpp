@@ -119,6 +119,15 @@ public:
         return m_len;
     }
 
+    bool skip_tail(int len) {
+        m_len -= len;
+
+        if (m_len < 0)
+            return false;
+
+        return true;
+    }
+
     bool skip(int len) {
         m_pos += len;
         m_len -= len;

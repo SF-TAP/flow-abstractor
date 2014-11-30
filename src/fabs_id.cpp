@@ -20,7 +20,7 @@ using namespace boost;
 using namespace std;
 
 fabs_direction
-fabs_id::set_iph(char *iph, char **l4hdr)
+fabs_id::set_iph(char *iph, char **l4hdr, int *len)
 {
     char protocol = iph[0] & 0xf0;
 
@@ -57,6 +57,8 @@ fabs_id::set_iph(char *iph, char **l4hdr)
 
         m_l3_proto = IPPROTO_IP;
         m_l4_proto = iph4->ip_p;
+
+        *len = ntohs(iph4->ip_len);
 
         if (*addr1 < *addr2) {
             m_addr1 = addr1;
@@ -145,6 +147,8 @@ fabs_id::set_iph(char *iph, char **l4hdr)
             }
         }
     end_loop:
+        *len = ntohs(iph6->ip6_plen);
+
         if (*addr1 < *addr2) {
             m_addr1 = addr1;
             m_addr2 = addr2;

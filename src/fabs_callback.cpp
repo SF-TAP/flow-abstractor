@@ -16,8 +16,15 @@ fabs_callback::operator() (int idx, fabs_bytes buf) {
     fabs_direction dir;
     fabs_id        id;
     char          *l4hdr;
+    int            len;
 
-    dir = id.set_iph(buf.get_head(), &l4hdr);
+    dir = id.set_iph(buf.get_head(), &l4hdr, &len);
+
+    if (len < buf.get_len()) {
+        if (! buf.skip_tail(buf.get_len() - len)) {
+            return;
+        }
+    }
 
     if (! buf.skip(l4hdr - buf.get_head()))
         return;
