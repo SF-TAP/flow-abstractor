@@ -40,7 +40,7 @@ You can specify a network interface by -i option, and a config file by -c option
 
 Example:
 
-    $ ./src/sf-tap_fabs -i eth0 -c ./examples/fabs.conf
+    $ ./src/sftap_fabs -i eth0 -c ./examples/fabs.conf
 
 ### To Do:
 * protect from SYN flooding
