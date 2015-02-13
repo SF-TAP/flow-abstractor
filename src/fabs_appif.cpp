@@ -304,8 +304,8 @@ read_loopback7(int fd, fabs_appif *appif)
             }
 
             header->hop++;
-            header->l4_port1 = ntohs(header->l4_port1);
-            header->l4_port2 = ntohs(header->l4_port2);
+            header->l4_port1 = htons(header->l4_port1);
+            header->l4_port2 = htons(header->l4_port2);
 
             if (h["event"] == "CREATED") {
                 header->event = STREAM_CREATED;
@@ -323,6 +323,30 @@ read_loopback7(int fd, fabs_appif *appif)
                 header->from = FROM_ADDR2;
             } else {
                 header->from = FROM_NONE;
+            }
+
+            fabs_peer peer1, peer2;
+
+            peer1.padding = 0;
+            peer2.padding = 0;
+
+            memcpy(&peer1.l3_addr, &header->l3_addr1, sizeof(peer1.l3_addr));
+            memcpy(&peer2.l3_addr, &header->l3_addr2, sizeof(peer2.l3_addr));
+
+            peer1.l4_port = header->l4_port1;
+            peer2.l4_port = header->l4_port2;
+
+            if (peer1 > peer2) {
+                // swap
+                memcpy(&header->l3_addr1, &peer2.l3_addr, sizeof(peer2.l3_addr));
+                memcpy(&header->l3_addr2, &peer1.l3_addr, sizeof(peer1.l3_addr));
+                header->l4_port1 = peer2.l4_port;
+                header->l4_port2 = peer1.l4_port;
+
+                if (header->from == FROM_ADDR1)
+                    header->from = FROM_ADDR2;
+                else if (header->from == FROM_ADDR2)
+                    header->from = FROM_ADDR1;
             }
         }
 
@@ -427,7 +451,7 @@ fabs_appif::ux_listen_ifrule(ptr_ifrule ifrule)
             perror("socket");
             exit(-1);
         }
- 
+
         struct sockaddr_un sa = {0};
         sa.sun_family = AF_UNIX;
 
@@ -446,9 +470,9 @@ fabs_appif::ux_listen_ifrule(ptr_ifrule ifrule)
         }
 
         strncpy(sa.sun_path, path.string().c_str(), sizeof(sa.sun_path));
- 
+
         remove(sa.sun_path);
- 
+
         if (::bind(sock, (struct sockaddr*) &sa,
                    sizeof(struct sockaddr_un)) == -1) {
             perror("bind");
