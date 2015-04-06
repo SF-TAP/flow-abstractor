@@ -1,4 +1,4 @@
-# SF-TAP Flow Absractor
+# SF-TAP Flow Abstractor
 
 SF-TAP flow abstractor abstracts L7-flows for L7-level network traffic analysis.
 
