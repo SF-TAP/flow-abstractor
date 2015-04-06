@@ -14,7 +14,9 @@
 #include <string>
 #include <deque>
 
-#include <boost/regex.hpp>
+#include <re2/re2.h>
+
+//#include <boost/regex.hpp>
 #include <boost/thread.hpp>
 #include <boost/thread/condition.hpp>
 #include <boost/filesystem/path.hpp>
@@ -54,7 +56,7 @@ public:
     int  get_tcp_timeout() { return m_tcp_timeout; }
 
 private:
-    typedef boost::shared_ptr<boost::regex> ptr_regex;
+    typedef boost::shared_ptr<RE2> ptr_regex;
     typedef boost::shared_ptr<boost::filesystem::path> ptr_path;
 
     enum ifproto {
@@ -69,7 +71,7 @@ private:
     };
 
     struct ifrule {
-        ptr_regex   m_up, m_down;
+        ptr_regex     m_up, m_down;
         std::string m_name;
         ifproto     m_proto;
         ifformat    m_format;

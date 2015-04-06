@@ -7,7 +7,7 @@
 
 #include <iostream>
 
-#define TCPNUM 4
+#define TCPNUM 4 // the number of threads for TCP
 
 class fabs_callback {
 public:

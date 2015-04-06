@@ -22,7 +22,6 @@
 
 #include <boost/bind.hpp>
 #include <boost/lexical_cast.hpp>
-#include <boost/regex.hpp>
 
 // #include <event2/thread.h>
 
@@ -630,22 +629,12 @@ fabs_appif::read_conf(string conf)
 
             it3 = it1->second.find("up");
             if (it3 != it1->second.end()) {
-                try {
-                    rule->m_up = ptr_regex(new boost::regex(it3->second));
-                } catch (boost::bad_expression e) {
-                    cerr << it3->second << " is a bad regular expression"
-                         << endl;
-                }
+                rule->m_up = ptr_regex(new RE2(it3->second));
             }
 
             it3 = it1->second.find("down");
             if (it3 != it1->second.end()) {
-                try {
-                    rule->m_down = ptr_regex(new boost::regex(it3->second));
-                } catch (boost::bad_expression e) {
-                    cerr << it3->second << " is a bad regular expression"
-                         << endl;
-                }
+                rule->m_down = ptr_regex(new RE2(it3->second));
             }
 
             it3 = it1->second.find("nice");
@@ -952,12 +941,8 @@ fabs_appif::appif_consumer::send_tcp_data(ptr_info p_info, fabs_id_dir id_dir)
                 if (len1 > 0) {
                     idx = (uint8_t)buf1[0];
                     if (cache_up[idx] &&
-                        boost::regex_search(buf1, buf1 + len1,
-                                            *cache_up[idx]->m_up,
-                                            boost::regex_constants::match_continuous) &&
-                        boost::regex_search(buf2, buf2 + len2,
-                                            *cache_up[idx]->m_down,
-                                            boost::regex_constants::match_continuous)) {
+                        RE2::PartialMatch(string(buf1, len1), *cache_up[idx]->m_up) &&
+                        RE2::PartialMatch(string(buf2, len2), *cache_up[idx]->m_down)) {
                         ifrule = cache_up[idx];
                         is_classified = true;
                         p_info->m_match_dir[0] = MATCH_UP;
@@ -966,12 +951,8 @@ fabs_appif::appif_consumer::send_tcp_data(ptr_info p_info, fabs_id_dir id_dir)
 
                         break;
                     } else if (cache_down[idx] &&
-                               boost::regex_search(buf1, buf1 + len1,
-                                                   *cache_down[idx]->m_down,
-                                                   boost::regex_constants::match_continuous) &&
-                               boost::regex_search(buf2, buf2 + len1,
-                                                   *cache_down[idx]->m_up,
-                                                   boost::regex_constants::match_continuous)){
+                               RE2::PartialMatch(string(buf1, len1), *cache_down[idx]->m_down) &&
+                               RE2::PartialMatch(string(buf2, len2), *cache_down[idx]->m_up)) {
                         ifrule = cache_down[idx];
                         is_classified = true;
                         p_info->m_match_dir[0] = MATCH_DOWN;
@@ -985,12 +966,8 @@ fabs_appif::appif_consumer::send_tcp_data(ptr_info p_info, fabs_id_dir id_dir)
                 if (len2 > 0) {
                     idx = (uint8_t)buf2[0];
                     if (cache_up[idx] &&
-                        boost::regex_search(buf1, buf1 + len1,
-                                            *cache_up[idx]->m_up,
-                                            boost::regex_constants::match_continuous) &&
-                        boost::regex_search(buf2, buf2 + len2,
-                                            *cache_up[idx]->m_down,
-                                            boost::regex_constants::match_continuous)) {
+                        RE2::PartialMatch(string(buf1, len1), *cache_up[idx]->m_up) &&
+                        RE2::PartialMatch(string(buf2, len2), *cache_up[idx]->m_down)) {
                         ifrule = cache_up[idx];
                         is_classified = true;
                         p_info->m_match_dir[0] = MATCH_DOWN;
@@ -999,12 +976,8 @@ fabs_appif::appif_consumer::send_tcp_data(ptr_info p_info, fabs_id_dir id_dir)
 
                         break;
                     } else if (cache_down[idx] &&
-                               boost::regex_search(buf1, buf1 + len1,
-                                                   *cache_down[idx]->m_down,
-                                                   boost::regex_constants::match_continuous) &&
-                               boost::regex_search(buf2, buf2 + len2,
-                                                   *cache_down[idx]->m_up,
-                                                   boost::regex_constants::match_continuous)){
+                               RE2::PartialMatch(string(buf1, len1), *cache_down[idx]->m_down) &&
+                               RE2::PartialMatch(string(buf2, len2), *cache_down[idx]->m_up)) {
                         ifrule = cache_down[idx];
                         is_classified = true;
                         p_info->m_match_dir[0] = MATCH_UP;
@@ -1021,10 +994,8 @@ fabs_appif::appif_consumer::send_tcp_data(ptr_info p_info, fabs_id_dir id_dir)
                  it1 != it_tcp->second->ifrule.end(); ++it1) {
                 if (m_appif.is_in_port((*it1)->m_port, id_dir.get_port_src(),
                                id_dir.get_port_dst())) {
-                    if (boost::regex_search(buf1, buf1 + len1, *(*it1)->m_up,
-                                            boost::regex_constants::match_continuous) &&
-                        boost::regex_search(buf2, buf2 + len2, *(*it1)->m_down,
-                                            boost::regex_constants::match_continuous)) {
+                    if (RE2::PartialMatch(string(buf1, len1), *(*it1)->m_up) &&
+                        RE2::PartialMatch(string(buf2, len2), *(*it1)->m_down)) {
                         ifrule = *it1;
                         is_classified = true;
                         p_info->m_match_dir[0] = MATCH_UP;
@@ -1045,12 +1016,8 @@ fabs_appif::appif_consumer::send_tcp_data(ptr_info p_info, fabs_id_dir id_dir)
                         }
 
                         goto brk;
-                    } else if (boost::regex_search(buf1, buf1 + len1,
-                                                   *(*it1)->m_down,
-                                                   boost::regex_constants::match_continuous) &&
-                               boost::regex_search(buf2, buf2 + len2,
-                                                   *(*it1)->m_up,
-                                                   boost::regex_constants::match_continuous)) {
+                    } else if (RE2::PartialMatch(string(buf1, len1), *(*it1)->m_down) &&
+                               RE2::PartialMatch(string(buf2, len2), *(*it1)->m_up)) {
                         ifrule = *it1;
                         is_classified = true;
                         p_info->m_match_dir[0] = MATCH_DOWN;
@@ -1353,9 +1320,7 @@ fabs_appif::appif_consumer::in_datagram(const fabs_id_dir &id_dir,
 
             assert(ifrule && ifrule->m_up);
 
-            if (boost::regex_search(bytes.get_head(),
-                                    bytes.get_head() + bytes.get_len(),
-                                    *ifrule->m_up)) {
+            if (RE2::PartialMatch(string(bytes.get_head(), bytes.get_len()), *ifrule->m_up)) {
                 // hit cache
                 match = MATCH_UP;
 
@@ -1369,9 +1334,7 @@ fabs_appif::appif_consumer::in_datagram(const fabs_id_dir &id_dir,
                  it1 != it_udp->second->ifrule.end(); ++it1) {
                 if (m_appif.is_in_port((*it1)->m_port, id_dir.get_port_src(),
                                        id_dir.get_port_dst()) &&
-                    boost::regex_search(bytes.get_head(),
-                                        bytes.get_head() + bytes.get_len(),
-                                        *(*it1)->m_up)) {
+                    RE2::PartialMatch(string(bytes.get_head(), bytes.get_len()), *(*it1)->m_up)) {
                     // found in list
                     ifrule = *it1;
                     match  = MATCH_UP;

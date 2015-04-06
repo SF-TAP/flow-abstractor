@@ -1,6 +1,6 @@
 # SF-TAP Flow Absractor
 
-SF-TAP flow abstractor is an abstraction layer for L7 flows.
+SF-TAP flow abstractor abstracts L7-flows for L7-level network traffic analysis.
 
 ### Dependencies
 
@@ -9,6 +9,12 @@ Required:
 * [Boost C++ Library](http://www.boost.org/ "Boost")
 * [libpcap](http://www.tcpdump.org/ "tcpdump/libpcap")
 * [libevent 2.0 or later](http://libevent.org/ "libevent")
+* [RE2](https://github.com/google/re2 "RE2")
+
+Optional:
+
+* [jemalloc](http://www.canonware.com/jemalloc/ "jemalloc")
+
 
 ### How to Compile
 
