@@ -24,10 +24,7 @@ FILE(GLOB CPPMain fabs_main.cpp)
 
 list(REMOVE_ITEM CPPSources ${CPPMain})
 
-
-
-
-find_package(Boost COMPONENTS thread system regex iostreams filesystem REQUIRED)
+find_package(Boost COMPONENTS thread system iostreams filesystem REQUIRED)
 
 add_library(fabs SHARED ${CPPSources})
 add_executable(sftap_fabs ${CPPMain})

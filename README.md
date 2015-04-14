@@ -49,6 +49,9 @@ Example:
     $ ./src/sftap_fabs -i eth0 -c ./examples/fabs.conf
 
 ### To Do:
+
+* read pcap file
+* open multiple interfaces
 * protect from SYN flooding
 * deal with fast TCP open
 * calculate checksum
