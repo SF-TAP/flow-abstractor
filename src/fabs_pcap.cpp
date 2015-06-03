@@ -121,7 +121,13 @@ fabs_pcap::produce(int idx, const char *buf, int len)
 {
     m_spinlock[idx].lock();
 
-    m_qitem[idx].m_queue[m_qitem[idx].m_num].set_buf(buf, len);
+    fabs_bytes &bytes = m_qitem[idx].m_queue[m_qitem[idx].m_num];
+
+    bytes.set_buf(buf, len);
+    if (bytes.get_len() == 0) {
+        return;
+    }
+
     m_qitem[idx].m_num++;
 
     if (m_qitem[idx].m_num == QNUM) {

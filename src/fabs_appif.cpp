@@ -395,6 +395,8 @@ read_loopback7(int fd, fabs_appif *appif)
         fabs_bytes bytes;
 
         bytes.alloc(header->len);
+        if (bytes.get_len() == 0)
+            return false;
 
         ssize_t len = read(fd, bytes.get_head(), header->len);
 

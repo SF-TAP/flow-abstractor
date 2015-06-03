@@ -8,6 +8,7 @@
 #include <deque>
 #include <string>
 #include <vector>
+#include <iostream>
 
 #include <boost/shared_array.hpp>
 
@@ -22,7 +23,15 @@ public:
 
     fabs_bytes & operator = (const char *str) {
         int len = strlen(str);
-        m_ptr = boost::shared_array<char>(new char[len]);
+        try {
+            m_ptr = boost::shared_array<char>(new char[len]);
+        } catch (std::bad_alloc e) {
+            std::cerr << __func__ << e.what() << std::endl;
+            m_len = 0;
+            m_pos = 0;
+            return *this;
+        }
+
         memcpy(m_ptr.get(), str, len);
         m_len = len;
         m_pos = 0;
@@ -75,13 +84,24 @@ public:
     }
 
     bool is_zero() {
-        boost::shared_array<char> z(new char[m_len - m_pos]);
-        memset(z.get(), 0, m_len - m_pos);
-        return memcmp(z.get(), m_ptr.get(), m_len - m_pos) == 0 ? true : false;
+        try {
+            boost::shared_array<char> z(new char[m_len - m_pos]);
+
+            memset(z.get(), 0, m_len - m_pos);
+            return memcmp(z.get(), m_ptr.get(), m_len - m_pos) == 0 ? true : false;
+        } catch (std::bad_alloc e) {
+            std::cerr << __func__ << e.what() << std::endl;
+            return false;
+        }
     }
 
     void alloc(size_t len) {
-        m_ptr = boost::shared_array<char>(new char[len]);
+        try {
+            m_ptr = boost::shared_array<char>(new char[len]);
+        } catch (std::bad_alloc e) {
+            std::cerr << __func__ << e.what() << std::endl;
+            return;
+        }
 
         if (m_ptr.get() == NULL) {
             PERROR();
@@ -92,7 +112,13 @@ public:
     }
 
     void set_buf(const char *buf, int len) {
-        m_ptr = boost::shared_array<char>(new char[len]);
+        try {
+            m_ptr = boost::shared_array<char>(new char[len]);
+        } catch (std::bad_alloc e) {
+            std::cerr << __func__ << e.what() << std::endl;
+            return;
+        }
+
         memcpy(m_ptr.get(), buf, len);
 
         m_len = len;
