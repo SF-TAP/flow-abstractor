@@ -20,6 +20,9 @@ fabs_callback::operator() (int idx, fabs_bytes buf) {
 
     dir = id.set_iph(buf.get_head(), &l4hdr, &len);
 
+    if (l4hdr == NULL || dir == FROM_NONE)
+        return;
+
     if (len < buf.get_len()) {
         if (! buf.skip_tail(buf.get_len() - len)) {
             return;

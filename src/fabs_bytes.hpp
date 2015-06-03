@@ -100,6 +100,8 @@ public:
             m_ptr = boost::shared_array<char>(new char[len]);
         } catch (std::bad_alloc e) {
             std::cerr << __func__ << e.what() << std::endl;
+            m_len = 0;
+            m_pos = 0;
             return;
         }
 
@@ -116,6 +118,8 @@ public:
             m_ptr = boost::shared_array<char>(new char[len]);
         } catch (std::bad_alloc e) {
             std::cerr << __func__ << e.what() << std::endl;
+            m_len = 0;
+            m_pos = 0;
             return;
         }
 
