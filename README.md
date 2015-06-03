@@ -10,11 +10,11 @@ Required:
 * [libpcap](http://www.tcpdump.org/ "tcpdump/libpcap")
 * [libevent 2.0 or later](http://libevent.org/ "libevent")
 * [RE2](https://github.com/google/re2 "RE2")
+* [yaml-cpp](https://github.com/jbeder/yaml-cpp "yaml-cpp")
 
 Optional:
 
 * [jemalloc](http://www.canonware.com/jemalloc/ "jemalloc")
-
 
 ### How to Compile
 
@@ -49,6 +49,9 @@ Example:
     $ ./src/sftap_fabs -i eth0 -c ./examples/fabs.conf
 
 ### To Do:
+
+* read pcap file
+* open multiple interfaces
 * protect from SYN flooding
 * deal with fast TCP open
 * calculate checksum
