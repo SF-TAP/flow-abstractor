@@ -425,7 +425,6 @@ fabs_tcp::input_tcp(fabs_id &id, fabs_direction dir, fabs_bytes buf)
             p_tcp_flow = ptr_fabs_tcp_flow(new fabs_tcp_flow);
             m_flow[idx][id] = p_tcp_flow;
 
-            boost::mutex::scoped_lock lock(m_mutex);
             m_total_session++;
         } else if (it_flow == m_flow[idx].end()) {
             return;
