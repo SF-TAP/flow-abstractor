@@ -76,7 +76,6 @@ private:
     std::atomic<int> m_total_session;
 
     boost::mutex     m_mutex_flow[NUM_TCPTREE];
-    boost::mutex     m_mutex;
     boost::mutex     m_mutex_gc;
     boost::condition m_condition_gc;
     bool             m_is_del;
