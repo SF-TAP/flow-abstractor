@@ -125,6 +125,7 @@ fabs_pcap::produce(int idx, const char *buf, int len)
 
     bytes.set_buf(buf, len);
     if (bytes.get_len() == 0) {
+        m_spinlock[idx].unlock();
         return;
     }
 
