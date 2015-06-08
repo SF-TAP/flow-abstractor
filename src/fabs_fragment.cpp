@@ -25,6 +25,7 @@ fabs_fragment::fragments::fragments(const ip *iph4, fabs_bytes bytes)
 
     if (! mflag) {
         m_is_last = true;
+        m_size = offset * 8 + ntohs(iph4->ip_len) - iph4->ip_hl * 4;
     }
 
     m_ip_src = ntohl(iph4->ip_src.s_addr);
@@ -177,6 +178,9 @@ fabs_fragment::defragment(const fragments &frg, fabs_bytes &buf)
     hlen = iph->ip_hl * 4;
 
     buf.alloc(frg.m_size + hlen);
+
+    if (buf.get_len() == 0)
+        return false;
 
     memcpy(buf.get_head(), iph, hlen);
 

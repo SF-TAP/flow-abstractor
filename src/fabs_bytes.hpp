@@ -26,7 +26,8 @@ public:
         try {
             m_ptr = boost::shared_array<char>(new char[len]);
         } catch (std::bad_alloc e) {
-            std::cerr << __func__ << e.what() << std::endl;
+            std::cerr << __FILE__ << ":" << __LINE__ << ":" << ":"
+                      <<__func__ << ": " << e.what() << std::endl;
             m_len = 0;
             m_pos = 0;
             return *this;
@@ -90,7 +91,8 @@ public:
             memset(z.get(), 0, m_len - m_pos);
             return memcmp(z.get(), m_ptr.get(), m_len - m_pos) == 0 ? true : false;
         } catch (std::bad_alloc e) {
-            std::cerr << __func__ << e.what() << std::endl;
+            std::cerr << __FILE__ << ":" << __LINE__ << ":" << ":"
+                      <<__func__ << ": " << e.what() << std::endl;
             return false;
         }
     }
@@ -99,7 +101,9 @@ public:
         try {
             m_ptr = boost::shared_array<char>(new char[len]);
         } catch (std::bad_alloc e) {
-            std::cerr << __func__ << e.what() << std::endl;
+            std::cerr << __FILE__ << ":" << __LINE__ << ":" << ":"
+                      <<__func__ << ": " << e.what() << ", len = " << len
+                      << std::endl;
             m_len = 0;
             m_pos = 0;
             return;
