@@ -9,6 +9,7 @@
 #include <stdint.h>
 #include <time.h>
 
+#include <atomic>
 #include <list>
 #include <map>
 
