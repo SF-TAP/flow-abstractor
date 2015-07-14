@@ -24,14 +24,14 @@ fabs_id::set_iph(char *iph, char **l4hdr, int *len)
 {
     char protocol = iph[0] & 0xf0;
 
+    *l4hdr = NULL;
+
     switch (protocol) {
     case 0x40:
     {
         boost::shared_ptr<fabs_peer> addr1(new fabs_peer);
         boost::shared_ptr<fabs_peer> addr2(new fabs_peer);
         ip *iph4 = (ip*)iph;
-
-        *l4hdr = NULL;
 
         memset(addr1.get(), 0, sizeof(fabs_peer));
         memset(addr2.get(), 0, sizeof(fabs_peer));
@@ -82,8 +82,6 @@ fabs_id::set_iph(char *iph, char **l4hdr, int *len)
         ip6_hdr *iph6 = (ip6_hdr*)iph;
         uint8_t  nxt  = iph6->ip6_nxt;
         char    *p    = (char*)iph6 + sizeof(ip6_hdr);
-
-        *l4hdr = NULL;
 
         memset(addr1.get(), 0, sizeof(fabs_peer));
         memset(addr2.get(), 0, sizeof(fabs_peer));
