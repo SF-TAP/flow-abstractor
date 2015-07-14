@@ -38,11 +38,10 @@ find_package_handle_standard_args(EVENT DEFAULT_MSG
     EVENT_INCLUDE_DIR
 )
 
-include(CheckCSourceCompiles)
-set(CMAKE_REQUIRED_LIBRARIES ${EVENT_LIBRARY})
-set(CMAKE_REQUIRED_INCLUDES ${EVENT_INCLUDE_DIR})
-#check_c_source_compiles("#include <event.h> int main() { return 0; }" EVENT_LINKS_SOLO)
-set(CMAKE_REQUIRED_LIBRARIES)
+# include(CheckCSourceCompiles)
+# set(CMAKE_REQUIRED_LIBRARIES ${EVENT_LIBRARY})
+# check_c_source_compiles("#include <event.h> int main() { return 0; }" EVENT_LINKS_SOLO)
+# set(CMAKE_REQUIRED_LIBRARIES)
 
 mark_as_advanced(
     EVENT_ROOT
