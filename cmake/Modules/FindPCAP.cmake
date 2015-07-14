@@ -7,7 +7,7 @@
 # Variables used by this module, they can change the default behaviour and need
 # to be set before calling find_package:
 #
-#  PCAP_ROOT_DIR             Set this variable to the root installation of
+#  PCAP_ROOT                 Set this variable to the root installation of
 #                            libpcap if the module has problems finding the
 #                            proper installation path.
 #
@@ -19,18 +19,18 @@
 #                            library e.g. required by pf_ring's libpcap)
 #  HAVE_PF_RING              If a found version of libpcap supports PF_RING
 
-find_path(PCAP_ROOT_DIR
+find_path(PCAP_ROOT
     NAMES include/pcap.h
 )
 
 find_path(PCAP_INCLUDE_DIR
     NAMES pcap.h
-    HINTS ${PCAP_ROOT_DIR}/include
+    HINTS ${PCAP_ROOT}/include
 )
 
 find_library(PCAP_LIBRARY
     NAMES pcap
-    HINTS ${PCAP_ROOT_DIR}/lib
+    HINTS ${PCAP_ROOT}/lib
 )
 
 include(FindPackageHandleStandardArgs)
@@ -40,9 +40,9 @@ find_package_handle_standard_args(PCAP DEFAULT_MSG
 )
 
 include(CheckCSourceCompiles)
-set(CMAKE_REQUIRED_LIBRARIES ${PCAP_LIBRARY})
-check_c_source_compiles("int main() { return 0; }" PCAP_LINKS_SOLO)
-set(CMAKE_REQUIRED_LIBRARIES)
+# set(CMAKE_REQUIRED_LIBRARIES ${PCAP_LIBRARY})
+# check_c_source_compiles("int main() { return 0; }" PCAP_LINKS_SOLO)
+# set(CMAKE_REQUIRED_LIBRARIES)
 
 # check if linking against libpcap also needs to link against a thread library
 if (NOT PCAP_LINKS_SOLO)
@@ -62,13 +62,13 @@ if (NOT PCAP_LINKS_SOLO)
     endif ()
 endif ()
 
-include(CheckFunctionExists)
-set(CMAKE_REQUIRED_LIBRARIES ${PCAP_LIBRARY})
-check_function_exists(pcap_get_pfring_id HAVE_PF_RING)
-set(CMAKE_REQUIRED_LIBRARIES)
+# include(CheckFunctionExists)
+# set(CMAKE_REQUIRED_LIBRARIES ${PCAP_LIBRARY})
+# check_function_exists(pcap_get_pfring_id HAVE_PF_RING)
+# set(CMAKE_REQUIRED_LIBRARIES)
 
 mark_as_advanced(
-    PCAP_ROOT_DIR
+    PCAP_ROOT
     PCAP_INCLUDE_DIR
     PCAP_LIBRARY
 )
