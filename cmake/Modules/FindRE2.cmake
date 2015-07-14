@@ -19,7 +19,7 @@
 #                            library e.g. required by pf_ring's libre2)
 
 find_path(RE2_ROOT
-    NAMES include/re2.h
+    NAMES include/re2/re2.h
 )
 
 find_path(RE2_INCLUDE_DIR

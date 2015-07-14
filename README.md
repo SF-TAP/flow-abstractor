@@ -1,6 +1,6 @@
 # SF-TAP Flow Abstractor
 
-SF-TAP flow abstractor abstracts L7-flows for L7-level network traffic analysis.
+SF-TAP flow abstractor provides an abstraction mechanism for application level network traffic analysis.
 
 ### Dependencies
 
@@ -39,6 +39,12 @@ If you want to use jemalloc, set an option of USE_JEMALLOC=1.
 You can use a verbose mode when compiling.
 
     $ make VERBOSE=1
+
+#### Tell Root Directories for Libraries
+
+If you installed above libraries in unordinal places (not /usr or /usr/local), please tell paths to the directoris as follows.
+
+    $ cmake -DBOOST_ROOT=/homebrew -DEVENT_ROOT=/homebrew -DRE2_ROOT=/homebrew -DYAMLCPP_ROOT=/homebrew .
 
 ### How to run SF-TAP flow abstractor
 

@@ -28,11 +28,12 @@ find_package(Boost COMPONENTS thread system iostreams filesystem REQUIRED)
 find_package(PCAP REQUIRED)
 find_package(Event REQUIRED)
 find_package(RE2 REQUIRED)
+find_package(YAMLCPP REQUIRED)
 
 add_library(fabs SHARED ${CPPSources})
 add_executable(sftap_fabs ${CPPMain})
 
-set(LIBS yaml-cpp pthread ${Boost_THREAD_LIBRARY} ${Boost_SYSTEM_LIBRARY} ${Boost_IOSTREAMS_LIBRARY} ${Boost_FILESYSTEM_LIBRARY} ${PCAP_LIBRARY} ${EVENT_LIBRARY} ${RE2_LIBRARY})
+set(LIBS pthread ${Boost_THREAD_LIBRARY} ${Boost_SYSTEM_LIBRARY} ${Boost_IOSTREAMS_LIBRARY} ${Boost_FILESYSTEM_LIBRARY} ${PCAP_LIBRARY} ${EVENT_LIBRARY} ${RE2_LIBRARY} ${YAMLCPP_LIBRARY})
 
 IF(USE_JEMALLOC)
     add_definitions(-DUSE_JEMALLOC)
