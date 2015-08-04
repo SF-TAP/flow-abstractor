@@ -54,6 +54,15 @@ Example:
 
     $ ./src/sftap_fabs -i eth0 -c ./examples/fabs.conf
 
+If you encounter an error as follows,
+
+    terminate called after throwing an instance of 'std::runtime_error'
+    what():  locale::facet::_S_create_c_locale name not valid
+
+please install the suitable language package like as follows.
+
+    $ apt-get install language-pack-ja
+
 ### To Do:
 
 * read pcap file
@@ -61,3 +70,4 @@ Example:
 * protect from SYN flooding
 * deal with fast TCP open
 * calculate checksum
+* daemon mode
