@@ -16,6 +16,14 @@ Optional:
 
 * [jemalloc](http://www.canonware.com/jemalloc/ "jemalloc")
 
+### Operating Systems
+
+SF-TAP flow abstractor is available on the following OSes.
+
+* Linux
+* *BSD
+* MacOS X
+
 ### How to Compile
 
     $ cmake -DCMAKE_BUILD_TYPE=Release CMakeLists.txt
