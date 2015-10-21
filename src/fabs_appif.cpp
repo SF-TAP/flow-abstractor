@@ -52,7 +52,7 @@ fabs_appif::~fabs_appif()
 void
 fabs_appif::run()
 {
-    boost::mutex::scoped_lock lock(m_rw_mutex);
+    boost::mutex::scoped_lock lock(m_rw_mutex); // reader
 
     assert(! m_thread_listen);
 
@@ -79,7 +79,7 @@ ux_accept(int fd, short events, void *arg)
     int sock = accept(fd, NULL, NULL);
     fabs_appif *appif = static_cast<fabs_appif*>(arg);
 
-    boost::mutex::scoped_lock lock(appif->m_rw_mutex);
+    boost::mutex::scoped_lock lock(appif->m_rw_mutex); // writer
 
     auto it = appif->m_fd2ifrule.find(fd);
     if (it == appif->m_fd2ifrule.end()) {
@@ -170,7 +170,7 @@ ux_read(int fd, short events, void *arg)
     if (peer) {
         if (peer->m_name == "loopback7") {
             if (read_loopback7(fd, appif)) {
-                boost::mutex::scoped_lock lock(appif->m_rw_mutex);
+                boost::mutex::scoped_lock lock(appif->m_rw_mutex); // writer
 
                 ux_close(fd, appif);
                 return;
@@ -180,7 +180,7 @@ ux_read(int fd, short events, void *arg)
             int  recv_size = read(fd, buf, sizeof(buf) - 1);
 
             if (recv_size <= 0) {
-                boost::mutex::scoped_lock lock(appif->m_rw_mutex);
+                boost::mutex::scoped_lock lock(appif->m_rw_mutex); // writer
 
                 ux_close(fd, appif);
                 return;
@@ -523,7 +523,7 @@ fabs_appif::ux_listen()
     umask(0007);
 
     {
-        boost::mutex::scoped_lock lock(m_rw_mutex);
+        boost::mutex::scoped_lock lock(m_rw_mutex); // writer
 
         makedir(*m_home);
         makedir(*m_home / fs::path("tcp"));
@@ -890,7 +890,7 @@ fabs_appif::appif_consumer::in_stream_event(fabs_stream_event st_event,
             int idx = it->second->m_hash % it->second->m_ifrule->m_balance;
             string &name = it->second->m_ifrule->m_balance_name[idx];
 
-            boost::mutex::scoped_lock lock(m_appif.m_rw_mutex);
+            boost::mutex::scoped_lock lock(m_appif.m_rw_mutex); // reader
 
             auto it2 = m_appif.m_name2uxpeer.find(name);
             if (it2 != m_appif.m_name2uxpeer.end()) {
@@ -1091,19 +1091,24 @@ fabs_appif::appif_consumer::send_tcp_data(ptr_info p_info, fabs_id_dir id_dir)
     int idx = p_info->m_hash % p_info->m_ifrule->m_balance;
     string &name = p_info->m_ifrule->m_balance_name[idx];
 
-    boost::mutex::scoped_lock lock(m_appif.m_rw_mutex);
+    std::vector<int> fdvec;
+
+    boost::mutex::scoped_lock lock(m_appif.m_rw_mutex); // reader
+
+    auto it = m_appif.m_name2uxpeer.find(name);
+
+    if (it != m_appif.m_name2uxpeer.end()) {
+        for (auto fd: it->second) {
+            fdvec.push_back(fd);
+        }
+    }
 
     if (is_classified) {
         // invoke CREATED event
-        auto it = m_appif.m_name2uxpeer.find(name);
-
-        if (it != m_appif.m_name2uxpeer.end()) {
-            for (auto it2 = it->second.begin(); it2 != it->second.end();
-                 ++it2) {
-                m_appif.write_event(*it2, id_dir, p_info->m_ifrule,
-                                    STREAM_CREATED, MATCH_NONE,
-                                    &p_info->m_header, NULL, 0);
-            }
+        for (auto fd: fdvec) {
+            m_appif.write_event(fd, id_dir, p_info->m_ifrule,
+                                STREAM_CREATED, MATCH_NONE,
+                                &p_info->m_header, NULL, 0);
         }
     }
 
@@ -1118,27 +1123,18 @@ fabs_appif::appif_consumer::send_tcp_data(ptr_info p_info, fabs_id_dir id_dir)
         assert(false);
     }
 
+    match_dir mdir;
+    mdir = p_info->m_match_dir[id_dir.m_dir];
+
     while (! bufs->empty()) {
         auto front = bufs->front();
-        auto it2 = m_appif.m_name2uxpeer.find(name);
 
-        if (it2 != m_appif.m_name2uxpeer.end()) {
-            for (auto it3 = it2->second.begin(); it3 != it2->second.end();
-                 ++it3) {
-                match_dir mdir;
-
-                assert(id_dir.m_dir != FROM_NONE);
-
-                mdir = p_info->m_match_dir[id_dir.m_dir];
-
-                if (! m_appif.write_event(*it3, id_dir, p_info->m_ifrule,
-                                          STREAM_DATA, mdir,
-                                          &p_info->m_header,
-                                          front.get_head(),
-                                          front.get_len())) {
-                    continue;
-                }
-            }
+        for (auto fd: fdvec) {
+            m_appif.write_event(fd, id_dir, p_info->m_ifrule,
+                                STREAM_DATA, mdir,
+                                &p_info->m_header,
+                                front.get_head(),
+                                front.get_len());
         }
 
         bufs->pop_front();
@@ -1403,7 +1399,7 @@ brk:
     int idx2 = id_dir.m_id.get_hash() % ifrule->m_balance;
     string &name = ifrule->m_balance_name[idx2];
 
-    boost::mutex::scoped_lock lock(m_appif.m_rw_mutex);
+    boost::mutex::scoped_lock lock(m_appif.m_rw_mutex); // reader
 
     auto it3 = m_appif.m_name2uxpeer.find(name);
 
@@ -1515,7 +1511,7 @@ fabs_appif::appif_consumer::~appif_consumer()
 void
 fabs_appif::print_info()
 {
-    boost::mutex::scoped_lock lock(m_rw_mutex);
+    boost::mutex::scoped_lock lock(m_rw_mutex); // reader
 
     for (int i = 0; i < m_num_consumer; i++) {
         cout << "thread = " << m_consumer[i]->m_id << endl;
