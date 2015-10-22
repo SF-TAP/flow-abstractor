@@ -52,7 +52,7 @@ fabs_appif::~fabs_appif()
 void
 fabs_appif::run()
 {
-    boost::mutex::scoped_lock lock(m_rw_mutex); // reader
+    spin_lock_write lock(m_rw_mutex);
 
     assert(! m_thread_listen);
 
@@ -79,7 +79,7 @@ ux_accept(int fd, short events, void *arg)
     int sock = accept(fd, NULL, NULL);
     fabs_appif *appif = static_cast<fabs_appif*>(arg);
 
-    boost::mutex::scoped_lock lock(appif->m_rw_mutex); // writer
+    spin_lock_write lock(appif->m_rw_mutex);
 
     auto it = appif->m_fd2ifrule.find(fd);
     if (it == appif->m_fd2ifrule.end()) {
@@ -170,7 +170,7 @@ ux_read(int fd, short events, void *arg)
     if (peer) {
         if (peer->m_name == "loopback7") {
             if (read_loopback7(fd, appif)) {
-                boost::mutex::scoped_lock lock(appif->m_rw_mutex); // writer
+                spin_lock_write lock(appif->m_rw_mutex);
 
                 ux_close(fd, appif);
                 return;
@@ -180,7 +180,7 @@ ux_read(int fd, short events, void *arg)
             int  recv_size = read(fd, buf, sizeof(buf) - 1);
 
             if (recv_size <= 0) {
-                boost::mutex::scoped_lock lock(appif->m_rw_mutex); // writer
+                spin_lock_write lock(appif->m_rw_mutex);
 
                 ux_close(fd, appif);
                 return;
@@ -523,7 +523,7 @@ fabs_appif::ux_listen()
     umask(0007);
 
     {
-        boost::mutex::scoped_lock lock(m_rw_mutex); // writer
+        spin_lock_write lock(m_rw_mutex);
 
         makedir(*m_home);
         makedir(*m_home / fs::path("tcp"));
@@ -890,7 +890,7 @@ fabs_appif::appif_consumer::in_stream_event(fabs_stream_event st_event,
             int idx = it->second->m_hash % it->second->m_ifrule->m_balance;
             string &name = it->second->m_ifrule->m_balance_name[idx];
 
-            boost::mutex::scoped_lock lock(m_appif.m_rw_mutex); // reader
+            spin_lock_read lock(m_appif.m_rw_mutex);
 
             auto it2 = m_appif.m_name2uxpeer.find(name);
             if (it2 != m_appif.m_name2uxpeer.end()) {
@@ -1093,7 +1093,7 @@ fabs_appif::appif_consumer::send_tcp_data(ptr_info p_info, fabs_id_dir id_dir)
 
     std::vector<int> fdvec;
 
-    boost::mutex::scoped_lock lock(m_appif.m_rw_mutex); // reader
+    spin_lock_read(m_appif.m_rw_mutex);
 
     auto it = m_appif.m_name2uxpeer.find(name);
 
@@ -1399,7 +1399,7 @@ brk:
     int idx2 = id_dir.m_id.get_hash() % ifrule->m_balance;
     string &name = ifrule->m_balance_name[idx2];
 
-    boost::mutex::scoped_lock lock(m_appif.m_rw_mutex); // reader
+    spin_lock_read lock(m_appif.m_rw_mutex);
 
     auto it3 = m_appif.m_name2uxpeer.find(name);
 
@@ -1511,7 +1511,7 @@ fabs_appif::appif_consumer::~appif_consumer()
 void
 fabs_appif::print_info()
 {
-    boost::mutex::scoped_lock lock(m_rw_mutex); // reader
+    spin_lock_read lock(m_rw_mutex);
 
     for (int i = 0; i < m_num_consumer; i++) {
         cout << "thread = " << m_consumer[i]->m_id << endl;
