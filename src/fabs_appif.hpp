@@ -53,7 +53,8 @@ public:
 
     void print_info();
 
-    int  get_tcp_timeout() { return m_tcp_timeout; }
+    int  get_tcp_timeout() const { return m_tcp_timeout; }
+    int  get_num_tcp_threads() const { return m_num_tcp_threads; }
 
 private:
     typedef boost::shared_ptr<RE2> ptr_regex;
@@ -184,6 +185,9 @@ public:
     };
 private:
 
+    boost::mutex     m_mutex_init;
+    boost::condition m_condition_init;
+
     typedef boost::shared_ptr<appif_consumer> ptr_consumer;
 
     int m_fd7;
@@ -204,6 +208,7 @@ private:
 
     boost::mutex m_rw_mutex;
 
+    int m_num_tcp_threads;
     int m_num_consumer;
     boost::shared_array<ptr_consumer> m_consumer;
 

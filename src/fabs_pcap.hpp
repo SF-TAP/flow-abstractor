@@ -63,6 +63,9 @@ public:
     inline void produce(int idx, const char *buf, int len);
 
 private:
+    boost::mutex     m_mutex_init;
+    boost::condition m_condition_init;
+
     std::string m_dev;
     pcap_t *m_handle;
     int     m_dl_type;
@@ -72,6 +75,8 @@ private:
     inline const uint8_t *get_ip_hdr(const uint8_t *bytes, uint32_t len,
                                      uint8_t &proto);
 
+    ptr_fabs_appif m_appif;
+
     fabs_callback m_callback;
     fabs_fragment m_fragment;
 
@@ -80,18 +85,16 @@ private:
         int m_num;
     };
 
-    qitem m_qitem[TCPNUM];
+    qitem *m_qitem;
 
-    ptr_fabs_appif m_appif;
-
-    std::list<qitem> m_queue[TCPNUM];
+    std::list<qitem> *m_queue;
     std::list<fabs_bytes> m_queue_frag;
-    boost::mutex  m_mutex[TCPNUM];
+    boost::mutex  *m_mutex;
     boost::mutex  m_mutex_frag;
-    boost::condition m_condition[TCPNUM];
+    boost::condition *m_condition;
     boost::condition m_condition_frag;
-    spinlock m_spinlock[TCPNUM];
-    boost::thread *m_thread_consume[TCPNUM];
+    spinlock *m_spinlock;
+    boost::thread **m_thread_consume;
     boost::thread m_thread_consume_frag;
     boost::thread m_thread_timer;
 };

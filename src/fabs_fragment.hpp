@@ -3,6 +3,7 @@
 
 #include "fabs_common.hpp"
 #include "fabs_id.hpp"
+#include "fabs_appif.hpp"
 #include "fabs_bytes.hpp"
 
 #include <time.h>
@@ -22,7 +23,7 @@ class fabs_pcap;
 
 class fabs_fragment {
 public:
-    fabs_fragment(fabs_pcap &fpcap);
+    fabs_fragment(fabs_pcap &fpcap, ptr_fabs_appif appif);
     virtual ~fabs_fragment();
 
     bool input_ip(fabs_bytes buf);
@@ -66,6 +67,7 @@ private:
     boost::thread    m_thread_gc;
 
     fabs_pcap       &m_pcap;
+    ptr_fabs_appif   m_appif;
 };
 
 #endif // FABS_FRAGMENT_HPP

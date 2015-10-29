@@ -51,8 +51,8 @@ fabs_pcap::fabs_pcap(std::string conf)
     : m_handle(NULL),
       m_is_break(false),
       m_bufsize(10000),
-      m_fragment(*this),
       m_appif(new fabs_appif),
+      m_fragment(*this, m_appif),
       m_thread_consume_frag(boost::bind(&fabs_pcap::consume_fragment, this)),
       m_thread_timer(boost::bind(&fabs_pcap::timer, this))
 {
@@ -60,7 +60,15 @@ fabs_pcap::fabs_pcap(std::string conf)
     m_callback.set_appif(m_appif);
     m_appif->run();
 
-    for (int i = 0; i < TCPNUM; i++) {
+    int numtcp = m_appif->get_num_tcp_threads();
+    m_qitem = new qitem[numtcp];
+    m_queue = new std::list<qitem>[numtcp];
+    m_mutex = new boost::mutex[numtcp];
+    m_condition = new boost::condition[numtcp];
+    m_spinlock = new spinlock[numtcp];
+    m_thread_consume = new boost::thread*[numtcp];
+
+    for (int i = 0; i < numtcp; i++) {
         m_thread_consume[i] = new boost::thread(boost::bind(&fabs_pcap::consume, this, i));
 
         m_spinlock[i].lock();
@@ -70,6 +78,9 @@ fabs_pcap::fabs_pcap(std::string conf)
 
         m_spinlock[i].unlock();
     }
+
+    boost::mutex::scoped_lock lock(m_mutex_init);
+    m_condition_init.notify_all();
 }
 
 fabs_pcap::~fabs_pcap() {
@@ -85,7 +96,7 @@ fabs_pcap::~fabs_pcap() {
 
     m_thread_consume_frag.join();
 
-    for (int i = 0; i < TCPNUM; i++) {
+    for (int i = 0; i < m_appif->get_num_tcp_threads(); i++) {
         {
             boost::mutex::scoped_lock lock(m_mutex[i]);
             m_condition[i].notify_one();
@@ -94,6 +105,13 @@ fabs_pcap::~fabs_pcap() {
         m_thread_consume[i]->join();
         delete m_thread_consume[i];
     }
+
+    delete[] m_thread_consume;
+    delete[] m_spinlock;
+    delete[] m_condition;
+    delete[] m_mutex;
+    delete[] m_queue;
+    delete[] m_qitem;
 }
 
 void
@@ -146,8 +164,13 @@ fabs_pcap::produce(int idx, const char *buf, int len)
 void
 fabs_pcap::timer()
 {
+    {
+        boost::mutex::scoped_lock lock_init(m_mutex_init);
+        m_condition_init.wait(lock_init);
+    }
+
     for (;;) {
-        for (int i = 0; i < TCPNUM; i++) {
+        for (int i = 0; i < m_appif->get_num_tcp_threads(); i++) {
             m_spinlock[i].lock();
 
             if (m_qitem[i].m_num > 0) {
@@ -317,6 +340,11 @@ fabs_pcap::consume(int idx)
 void
 fabs_pcap::consume_fragment()
 {
+    {
+        boost::mutex::scoped_lock lock_init(m_mutex_init);
+        m_condition_init.wait(lock_init);
+    }
+
     for (;;) {
         int size;
         vector<fabs_bytes> bytes;
@@ -385,7 +413,7 @@ fabs_pcap::callback(const struct pcap_pkthdr *h, const uint8_t *bytes)
         return;
     }
 
-    produce(hash % TCPNUM, (char*)bytes, h->caplen);
+    produce(hash % m_appif->get_num_tcp_threads(), (char*)bytes, h->caplen);
 }
 
 void

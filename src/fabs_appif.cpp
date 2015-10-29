@@ -36,7 +36,8 @@ fabs_appif::fabs_appif() :
     m_fd7(-1),
     m_fd3(-1),
     m_lb7_format(IF_TEXT),
-    m_num_consumer(0),
+    m_num_tcp_threads(1),
+    m_num_consumer(1),
     m_home(new fs::path(fs::current_path())),
     m_is_lru(true),
     m_is_cache(true)
@@ -52,25 +53,23 @@ fabs_appif::~fabs_appif()
 void
 fabs_appif::run()
 {
-    boost::mutex::scoped_lock lock(m_rw_mutex);
+    boost::mutex::scoped_lock lock_init(m_mutex_init);
 
-    assert(! m_thread_listen);
+    {
+        boost::mutex::scoped_lock lock(m_rw_mutex);
 
-    m_thread_listen = ptr_thread(new boost::thread(boost::bind(&fabs_appif::ux_listen, this)));
+        assert(! m_thread_listen);
 
-    m_num_consumer = boost::thread::hardware_concurrency();
+        m_thread_listen = ptr_thread(new boost::thread(boost::bind(&fabs_appif::ux_listen, this)));
 
-    if (m_num_consumer <= 1) {
-        m_num_consumer = 2;
-    } else {
-        m_num_consumer--;
+        m_consumer = boost::shared_array<ptr_consumer>(new ptr_consumer[m_num_consumer]);
+
+        for (int i = 0; i < m_num_consumer; i++) {
+            m_consumer[i] = ptr_consumer(new appif_consumer(i, *this));
+        }
     }
 
-    m_consumer = boost::shared_array<ptr_consumer>(new ptr_consumer[m_num_consumer]);
-
-    for (int i = 0; i < m_num_consumer; i++) {
-        m_consumer[i] = ptr_consumer(new appif_consumer(i, *this));
-    }
+    m_condition_init.wait(lock_init);
 }
 
 void
@@ -568,6 +567,11 @@ fabs_appif::ux_listen()
             ux_listen_ifrule(m_udp_default);
     }
 
+    {
+        boost::mutex::scoped_lock lock(m_mutex_init);
+        m_condition_init.notify_all();
+    }
+
     event_base_dispatch(m_ev_base);
 }
 
@@ -617,6 +621,40 @@ fabs_appif::read_conf(string conf)
                 } else {
                     // error
                 }
+            }
+
+            it2 = it1->second.find("regex_threads");
+            if (it2 != it1->second.end()) {
+                try {
+                    m_num_consumer = boost::lexical_cast<int>(it2->second);
+                } catch (boost::bad_lexical_cast e) {
+                    cerr << "cannot convert \"" << it2->second
+                         << "\" to int" << endl;
+                    continue;
+                }
+            }
+
+            if (m_num_consumer < 1) {
+                m_num_consumer = 1;
+            } else if (m_num_consumer > 1024) {
+                m_num_consumer = 1024;
+            }
+
+            it2 = it1->second.find("tcp_threads");
+            if (it2 != it1->second.end()) {
+                try {
+                    m_num_tcp_threads = boost::lexical_cast<int>(it2->second);
+                } catch (boost::bad_lexical_cast e) {
+                    cerr << "cannot convert \"" << it2->second
+                         << "\" to int" << endl;
+                    continue;
+                }
+            }
+
+            if (m_num_tcp_threads < 1) {
+                m_num_tcp_threads = 1;
+            } else if (m_num_tcp_threads > 1024) {
+                m_num_tcp_threads = 1024;
             }
         } else {
             ptr_ifrule rule = ptr_ifrule(new ifrule);

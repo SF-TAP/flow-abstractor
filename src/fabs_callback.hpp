@@ -7,18 +7,16 @@
 
 #include <iostream>
 
-#define TCPNUM 4 // the number of threads for TCP
-
 class fabs_callback {
 public:
     fabs_callback();
-    virtual ~fabs_callback() { }
+    virtual ~fabs_callback() { delete[] m_tcp;  }
 
     void operator() (int idx, fabs_bytes buf);
     void print_stat() {
         int n = 0;
         int t = 0;
-        for (int i = 0; i < TCPNUM; i++) {
+        for (int i = 0; i < m_appif->get_num_tcp_threads(); i++) {
             n += m_tcp[i].get_active_num();
             t += m_tcp[i].get_total_num();
         }
@@ -31,7 +29,9 @@ public:
         m_appif = appif;
         m_udp.set_appif(appif);
 
-        for (int i = 0; i < TCPNUM; i++) {
+        m_tcp = new fabs_tcp[m_appif->get_num_tcp_threads()];
+
+        for (int i = 0; i < m_appif->get_num_tcp_threads(); i++) {
             m_tcp[i].set_appif(appif);
             m_tcp[i].set_timeout(appif->get_tcp_timeout());
         }
@@ -39,7 +39,7 @@ public:
 
 private:
     ptr_fabs_appif m_appif;
-    fabs_tcp m_tcp[TCPNUM];
+    fabs_tcp *m_tcp;
     fabs_udp m_udp;
 
 };
