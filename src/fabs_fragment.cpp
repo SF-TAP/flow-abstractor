@@ -1,5 +1,5 @@
 #include "fabs_fragment.hpp"
-#include "fabs_pcap.hpp"
+#include "fabs_ether.hpp"
 
 #include <boost/bind.hpp>
 
@@ -53,10 +53,10 @@ fabs_fragment::fragments::operator== (const fragments &rhs) const {
             m_id == rhs.m_id);
 }
 
-fabs_fragment::fabs_fragment(fabs_pcap &fpcap, ptr_fabs_appif appif) :
+fabs_fragment::fabs_fragment(fabs_ether &fether, ptr_fabs_appif appif) :
     m_is_del(false),
     m_thread_gc(boost::bind(&fabs_fragment::gc_timer, this)),
-    m_pcap(fpcap),
+    m_ether(fether),
     m_appif(appif)
 {
 
@@ -155,7 +155,7 @@ fabs_fragment::input_ip(fabs_bytes buf)
 
                     uint32_t hash = ntohl(iph4->ip_src.s_addr ^ iph4->ip_dst.s_addr);
 
-                    m_pcap.produce(hash % m_appif->get_num_tcp_threads(), buf);
+                    m_ether.produce(hash % m_appif->get_num_tcp_threads(), buf);
                 }
             }
         }

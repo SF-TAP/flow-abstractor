@@ -19,11 +19,11 @@
 #include <boost/multi_index/ordered_index.hpp>
 #include <boost/multi_index/member.hpp>
 
-class fabs_pcap;
+class fabs_ether;
 
 class fabs_fragment {
 public:
-    fabs_fragment(fabs_pcap &fpcap, ptr_fabs_appif appif);
+    fabs_fragment(fabs_ether &fether, ptr_fabs_appif appif);
     virtual ~fabs_fragment();
 
     bool input_ip(fabs_bytes buf);
@@ -66,7 +66,7 @@ private:
 
     boost::thread    m_thread_gc;
 
-    fabs_pcap       &m_pcap;
+    fabs_ether      &m_ether;
     ptr_fabs_appif   m_appif;
 };
 
