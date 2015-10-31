@@ -44,6 +44,11 @@ If you want to use jemalloc, set an option of USE_JEMALLOC=1.
     $ cmake -DUSE_JEMALLOC=1 CMakeLists.txt
     $ make
 
+If you want to use netmap, set an option of USE_NETMAP=1.
+
+    $ cmake -DUSE_NETMAP=1 CMakeLists.txt
+    $ make
+
 You can use a verbose mode when compiling.
 
     $ make VERBOSE=1

@@ -36,9 +36,15 @@ add_executable(sftap_fabs ${CPPMain})
 set(LIBS pthread ${Boost_THREAD_LIBRARY} ${Boost_SYSTEM_LIBRARY} ${Boost_IOSTREAMS_LIBRARY} ${Boost_FILESYSTEM_LIBRARY} ${PCAP_LIBRARY} ${EVENT_LIBRARY} ${RE2_LIBRARY} ${YAMLCPP_LIBRARY})
 
 IF(USE_JEMALLOC)
-    add_definitions(-DUSE_JEMALLOC)
-    SET(LIBS ${LIBS} jemalloc)
+  add_definitions(-DUSE_JEMALLOC)
+  SET(LIBS ${LIBS} jemalloc)
 ENDIF(USE_JEMALLOC)
+
+IF(USE_NETMAP)
+  add_definitions(-DUSE_NETMAP)
+  FILE(GLOB NETMAPHeaders netmap/*.hpp)
+  INSTALL(FILES ${NETMAPHeaders} DESTINATION include/fabs/netmap)
+ENDIF(USE_NETMAP)
 
 target_link_libraries(sftap_fabs ${LIBS} fabs)
 target_link_libraries(fabs ${LIBS})
