@@ -24,7 +24,7 @@ bool debug = true;
 
 
 #ifdef DEBUG
-#define PERROR(func) do {                    \
+#define PERROR_NETMAP(func) do {                    \
     if (debug) {                             \
     char s[BUFSIZ];                          \
     memset(s, 0, BUFSIZ);                    \
@@ -34,7 +34,7 @@ bool debug = true;
     }                                        \
 } while (false)
 #else
-#define PERROR(func) do {} while (false)
+#define PERROR_NETMAP(func) do {} while (false)
 #endif //DEBUG
 
 

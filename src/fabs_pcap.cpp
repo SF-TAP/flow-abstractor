@@ -80,7 +80,7 @@ fabs_pcap::run()
     if (m_dev == "") {
         char *dev = pcap_lookupdev(errbuf);
         if (dev == NULL) {
-            std::cerr << "Couldn't find default device: " << errbuf
+            std::cerr << "could not find default device: " << errbuf
                       << std::endl;
             return;
         }
@@ -93,7 +93,7 @@ fabs_pcap::run()
     m_handle = pcap_create(m_dev.c_str(), errbuf);
 
     if (m_handle == NULL) {
-        std::cerr << "Couldn't open device " << m_dev << ": " << errbuf
+        std::cerr << "could not open device " << m_dev << ": " << errbuf
                   << std::endl;
         return;
     }
@@ -120,7 +120,7 @@ fabs_pcap::run()
         case -1:
         {
             char *err = pcap_geterr(m_handle);
-            std::cerr << "An error was encouterd while pcap_dispatch(): "
+            std::cerr << "an error was encouterd while pcap_dispatch(): "
                       << err
                       << std::endl;
             break;

@@ -1,9 +1,8 @@
 #ifndef __netmap_hpp__
 #define __netmap_hpp__
 
-
-#include "netmap_common.hpp"
-#include "netmap_ether.hpp"
+#include "common.hpp"
+#include "ether.hpp"
 
 #include <iostream>
 #include <map>
@@ -180,7 +179,7 @@ netmap::open_vale(const char* ifname, int qnum)
     fd = open("/dev/netmap", O_RDWR);
 
     if (fd < 0) {
-        PERROR("open");
+        PERROR_NETMAP("open");
         MESG("Unable to open /dev/netmap");
         return false;
     }
@@ -192,7 +191,7 @@ netmap::open_vale(const char* ifname, int qnum)
     strncpy(nm_nmr.nr_name, ifname, strlen(ifname));
 
     if (ioctl(fd, NIOCGINFO, &nm_nmr) < 0) {
-        PERROR("ioctl");
+        PERROR_NETMAP("ioctl");
         MESG("unabe to get interface info for %s", ifname);
         memset(&nm_nmr, 0, sizeof(nm_nmr));
         close(fd);
@@ -259,7 +258,7 @@ netmap::open_if(const char* ifname)
     fd = open("/dev/netmap", O_RDWR);
 
     if (fd < 0) {
-        PERROR("open");
+        PERROR_NETMAP("open");
         MESG("Unable to open /dev/netmap");
         return false;
     }
@@ -271,7 +270,7 @@ netmap::open_if(const char* ifname)
     strncpy(nm_nmr.nr_name, ifname, strlen(ifname));
 
     if (ioctl(fd, NIOCGINFO, &nm_nmr) < 0) {
-        PERROR("ioctl");
+        PERROR_NETMAP("ioctl");
         MESG("unabe to get interface info for %s", ifname);
         memset(&nm_nmr, 0, sizeof(nm_nmr));
         close(fd);
@@ -575,7 +574,7 @@ netmap::negate_capabilities()
     strncpy(ifr.ifr_name, ifname, strlen(ifname));
 
     if (ioctl(fd, SIOCGIFCAP, (caddr_t)&ifr) < 0) {
-        PERROR("ioctl");
+        PERROR_NETMAP("ioctl");
         MESG("failed to get interface status");
         close(fd);
         return false;
@@ -585,7 +584,7 @@ netmap::negate_capabilities()
     ifr.ifr_reqcap = 0x0;
 
     if (ioctl(fd, SIOCSIFCAP, (caddr_t)&ifr) < 0) {
-        PERROR("ioctl");
+        PERROR_NETMAP("ioctl");
         MESG("failed to set interface to promisc");
         close(fd);
         return false;
@@ -611,7 +610,7 @@ netmap::set_promisc()
     char* ifname = get_ifname();
     strncpy(ifr.ifr_name, ifname, strlen(ifname));
     if (ioctl(fd, SIOCGIFFLAGS, (caddr_t)&ifr) < 0) {
-        PERROR("ioctl");
+        PERROR_NETMAP("ioctl");
         MESG("failed to get interface status");
         close(fd);
         return false;
@@ -629,7 +628,7 @@ netmap::set_promisc()
     //printf("%04x%04x\n", ifr.ifr_flagshigh, ifr.ifr_flags & 0xffff);
 
     if (ioctl(fd, SIOCSIFFLAGS, (caddr_t)&ifr) < 0) {
-        PERROR("ioctl");
+        PERROR_NETMAP("ioctl");
         MESG("failed to set interface to promisc");
         close(fd);
         return false;
@@ -649,7 +648,7 @@ netmap::set_promisc()
     strncpy (ifr.ifr_name, ifname, strlen(ifname));
 
     if (ioctl (fd, SIOCGIFFLAGS, &ifr) != 0) {
-        PERROR("ioctl");
+        PERROR_NETMAP("ioctl");
         MESG("failed to get interface status");
         close(fd);
         return false;
@@ -660,7 +659,7 @@ netmap::set_promisc()
 
 
     if (ioctl (fd, SIOCSIFFLAGS, &ifr) != 0) {
-        PERROR("ioctl");
+        PERROR_NETMAP("ioctl");
         MESG("failed to set interface status");
         close(fd);
         return false;
@@ -686,7 +685,7 @@ netmap::unset_promisc()
     memset(&ifr, 0, sizeof(ifr));
     strncpy(ifr.ifr_name, ifname, strlen(ifname));
     if (ioctl (fd, SIOCGIFFLAGS, &ifr) != 0) {
-        PERROR("ioctl");
+        PERROR_NETMAP("ioctl");
         MESG("failed to get interface status");
         close(fd);
         return false;
@@ -694,7 +693,7 @@ netmap::unset_promisc()
     
     ifr.ifr_flags &= ~IFF_PROMISC;
     if (ioctl(fd, SIOCSIFFLAGS, &ifr) != 0) {
-        PERROR("ioctl");
+        PERROR_NETMAP("ioctl");
         MESG("failed to set interface to promisc");
         close(fd);
         return false;
@@ -714,7 +713,7 @@ netmap::unset_promisc()
     strncpy (ifr.ifr_name, ifname, strlen(ifname));
 
     if (ioctl (fd, SIOCGIFFLAGS, &ifr) != 0) {
-        PERROR("ioctl");
+        PERROR_NETMAP("ioctl");
         MESG("failed to get interface status");
         close(fd);
         return false;
@@ -723,7 +722,7 @@ netmap::unset_promisc()
     ifr.ifr_flags &= ~IFF_PROMISC;
 
     if (ioctl (fd, SIOCSIFFLAGS, &ifr) != 0) {
-        PERROR("ioctl");
+        PERROR_NETMAP("ioctl");
         MESG("failed to set interface status");
         close(fd);
         return false;
@@ -847,7 +846,7 @@ bool
 netmap::_remove_hw_ring(int ringid)
 {
     if (munmap(nm_mem_addrs[ringid], nm_memsize) != 0) {
-        PERROR("munmap");
+        PERROR_NETMAP("munmap");
         return false;
     }
     nm_mem_addrs[ringid] = NULL;
@@ -864,7 +863,7 @@ netmap::_remove_sw_ring()
 {
     if (nm_mem_addrs == NULL || nm_fd_soft == 0) return true;
     if (munmap(nm_mem_addr_soft, nm_memsize) != 0) {
-        PERROR("munmap");
+        PERROR_NETMAP("munmap");
         return false;
     }
     nm_mem_addr_soft = NULL;

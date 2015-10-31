@@ -101,7 +101,7 @@ bool get_mac_addr(const char* ifname, struct ether_addr* retval)
         struct sockaddr_dl* dl;
 
         if (getifaddrs(&ifs) != 0) {
-            PERROR("getifaddrs");
+            PERROR_NETMAP("getifaddrs");
             MESG("unabe to get interface info for %s", ifname);
             return false;
         }
@@ -161,7 +161,7 @@ get_ifname_list()
     struct ifaddrs *ifp;
 
     if (getifaddrs(&ifs) != 0) {
-        PERROR("getifaddrs");
+        PERROR_NETMAP("getifaddrs");
         exit(EXIT_FAILURE);
     }
 
@@ -189,7 +189,7 @@ get_ifname_list()
     struct ifaddrs *ifp;
 
     if (getifaddrs(&ifs) != 0) {
-        PERROR("getifaddrs");
+        PERROR_NETMAP("getifaddrs");
         exit(EXIT_FAILURE);
     }
 

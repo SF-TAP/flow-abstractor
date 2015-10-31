@@ -508,7 +508,7 @@ fabs_appif::ux_listen()
 {
     m_ev_base = event_base_new();
     if (m_ev_base == NULL) {
-        cerr << "couldn't new ev_base" << endl;
+        cerr << "could not new ev_base" << endl;
         exit(-1);
     }
 
