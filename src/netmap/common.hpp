@@ -9,7 +9,7 @@
 
 #include <string>
 
-bool debug = true;
+bool debug = false;
 
 #ifdef DEBUG
 #define MESG(format, ...) do {                             \
