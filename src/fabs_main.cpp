@@ -27,10 +27,10 @@ void
 print_usage(char *cmd)
 {
 #ifdef USE_NETMAP
-    cout << cmd << " -i [NIF] -c [CONFIG_FILE] -n\n"
-         << cmd << " -i [NIF] -c [CONFIG_FILE] -b [PCAP_BUFSIZE]\n" << endl;
+    cout << "netmap: " << cmd << " -i dev -c conf -n\n"
+         << "pcap:   " << cmd << " -i dev -c conf [-b bufsize]\n" << endl;
 #else
-    cout << cmd << " -i [NIF] -c [CONFIG_FILE] -b [PCAP_BUFSIZE]\n" << endl;
+    cout << cmd << " -i dev -c conf [-b bufsize]\n" << endl;
 #endif // USE_NETMAP
 }
 
