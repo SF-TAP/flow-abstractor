@@ -1,7 +1,5 @@
-
 #ifndef __netmap_hpp__
 #define __netmap_hpp__
-
 
 #include "common.hpp"
 #include "ether.hpp"

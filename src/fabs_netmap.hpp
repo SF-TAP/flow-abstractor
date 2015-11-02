@@ -1,6 +1,8 @@
 #ifndef FABS_NETMAP_CPP
 #define FABS_NETMAP_CPP
 
+#ifdef USE_NETMAP
+
 #define POLL
 
 #include "fabs_dlcap.hpp"
@@ -38,5 +40,7 @@ fabs_netmap::rx_in(struct netmap_ring* rxring)
 
     m_recv_cnt++;
 }
+
+#endif // USE_NETMAP
 
 #endif // FABS_NETMAP_CPP
