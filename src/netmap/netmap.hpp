@@ -1,5 +1,7 @@
+
 #ifndef __netmap_hpp__
 #define __netmap_hpp__
+
 
 #include "common.hpp"
 #include "ether.hpp"
@@ -179,7 +181,7 @@ netmap::open_vale(const char* ifname, int qnum)
     fd = open("/dev/netmap", O_RDWR);
 
     if (fd < 0) {
-        PERROR_NETMAP("open");
+        perror("open");
         MESG("Unable to open /dev/netmap");
         return false;
     }
@@ -191,7 +193,7 @@ netmap::open_vale(const char* ifname, int qnum)
     strncpy(nm_nmr.nr_name, ifname, strlen(ifname));
 
     if (ioctl(fd, NIOCGINFO, &nm_nmr) < 0) {
-        PERROR_NETMAP("ioctl");
+        perror("ioctl");
         MESG("unabe to get interface info for %s", ifname);
         memset(&nm_nmr, 0, sizeof(nm_nmr));
         close(fd);
@@ -258,7 +260,7 @@ netmap::open_if(const char* ifname)
     fd = open("/dev/netmap", O_RDWR);
 
     if (fd < 0) {
-        PERROR_NETMAP("open");
+        perror("open");
         MESG("Unable to open /dev/netmap");
         return false;
     }
@@ -270,7 +272,7 @@ netmap::open_if(const char* ifname)
     strncpy(nm_nmr.nr_name, ifname, strlen(ifname));
 
     if (ioctl(fd, NIOCGINFO, &nm_nmr) < 0) {
-        PERROR_NETMAP("ioctl");
+        perror("ioctl");
         MESG("unabe to get interface info for %s", ifname);
         memset(&nm_nmr, 0, sizeof(nm_nmr));
         close(fd);
@@ -430,7 +432,7 @@ netmap::get_tx_ring_sw()
 inline int
 netmap::get_fd(int ringid)
 {
-    if (ringid > 0 && ringid < nm_rx_qnum) {
+    if (ringid > 0 && ringid >= nm_rx_qnum) {
         return 0;
     }
     return nm_fds[ringid];
@@ -439,7 +441,7 @@ netmap::get_fd(int ringid)
 inline char*
 netmap::get_mem(int ringid)
 {
-    if (ringid > 0 && ringid < nm_rx_qnum) {
+    if (ringid > 0 && ringid >= nm_rx_qnum) {
         return NULL;
     }
     return nm_mem_addrs[ringid];
@@ -448,7 +450,7 @@ netmap::get_mem(int ringid)
 inline struct netmap_ring*
 netmap::get_tx_ring(int ringid)
 {
-    if (ringid > 0 && ringid < nm_tx_qnum) {
+    if (ringid > 0 && ringid >= nm_tx_qnum) {
         return NULL;
     }
     return nm_tx_rings[ringid];
@@ -457,7 +459,7 @@ netmap::get_tx_ring(int ringid)
 inline struct netmap_ring*
 netmap::get_rx_ring(int ringid)
 {
-    if (ringid > 0 && ringid < nm_rx_qnum) {
+    if (ringid > 0 && ringid >= nm_rx_qnum) {
         return NULL;
     }
     return nm_rx_rings[ringid];
@@ -574,7 +576,7 @@ netmap::negate_capabilities()
     strncpy(ifr.ifr_name, ifname, strlen(ifname));
 
     if (ioctl(fd, SIOCGIFCAP, (caddr_t)&ifr) < 0) {
-        PERROR_NETMAP("ioctl");
+        perror("ioctl");
         MESG("failed to get interface status");
         close(fd);
         return false;
@@ -584,7 +586,7 @@ netmap::negate_capabilities()
     ifr.ifr_reqcap = 0x0;
 
     if (ioctl(fd, SIOCSIFCAP, (caddr_t)&ifr) < 0) {
-        PERROR_NETMAP("ioctl");
+        perror("ioctl");
         MESG("failed to set interface to promisc");
         close(fd);
         return false;
@@ -610,7 +612,7 @@ netmap::set_promisc()
     char* ifname = get_ifname();
     strncpy(ifr.ifr_name, ifname, strlen(ifname));
     if (ioctl(fd, SIOCGIFFLAGS, (caddr_t)&ifr) < 0) {
-        PERROR_NETMAP("ioctl");
+        perror("ioctl");
         MESG("failed to get interface status");
         close(fd);
         return false;
@@ -628,7 +630,7 @@ netmap::set_promisc()
     //printf("%04x%04x\n", ifr.ifr_flagshigh, ifr.ifr_flags & 0xffff);
 
     if (ioctl(fd, SIOCSIFFLAGS, (caddr_t)&ifr) < 0) {
-        PERROR_NETMAP("ioctl");
+        perror("ioctl");
         MESG("failed to set interface to promisc");
         close(fd);
         return false;
@@ -648,7 +650,7 @@ netmap::set_promisc()
     strncpy (ifr.ifr_name, ifname, strlen(ifname));
 
     if (ioctl (fd, SIOCGIFFLAGS, &ifr) != 0) {
-        PERROR_NETMAP("ioctl");
+        perror("ioctl");
         MESG("failed to get interface status");
         close(fd);
         return false;
@@ -659,7 +661,7 @@ netmap::set_promisc()
 
 
     if (ioctl (fd, SIOCSIFFLAGS, &ifr) != 0) {
-        PERROR_NETMAP("ioctl");
+        perror("ioctl");
         MESG("failed to set interface status");
         close(fd);
         return false;
@@ -685,7 +687,7 @@ netmap::unset_promisc()
     memset(&ifr, 0, sizeof(ifr));
     strncpy(ifr.ifr_name, ifname, strlen(ifname));
     if (ioctl (fd, SIOCGIFFLAGS, &ifr) != 0) {
-        PERROR_NETMAP("ioctl");
+        perror("ioctl");
         MESG("failed to get interface status");
         close(fd);
         return false;
@@ -693,7 +695,7 @@ netmap::unset_promisc()
     
     ifr.ifr_flags &= ~IFF_PROMISC;
     if (ioctl(fd, SIOCSIFFLAGS, &ifr) != 0) {
-        PERROR_NETMAP("ioctl");
+        perror("ioctl");
         MESG("failed to set interface to promisc");
         close(fd);
         return false;
@@ -713,7 +715,7 @@ netmap::unset_promisc()
     strncpy (ifr.ifr_name, ifname, strlen(ifname));
 
     if (ioctl (fd, SIOCGIFFLAGS, &ifr) != 0) {
-        PERROR_NETMAP("ioctl");
+        perror("ioctl");
         MESG("failed to get interface status");
         close(fd);
         return false;
@@ -722,7 +724,7 @@ netmap::unset_promisc()
     ifr.ifr_flags &= ~IFF_PROMISC;
 
     if (ioctl (fd, SIOCSIFFLAGS, &ifr) != 0) {
-        PERROR_NETMAP("ioctl");
+        perror("ioctl");
         MESG("failed to set interface status");
         close(fd);
         return false;
@@ -755,6 +757,8 @@ bool netmap::_create_nmring(int ringid, int swhw)
         return false;
     }
 
+    //printf("open fd: %d\n", fd);
+
     memset (&nmr, 0, sizeof(nmr));
     //printf("nm_ifname:%s\n", nm_ifname);
     strncpy (nmr.nr_name, nm_ifname, strlen(nm_ifname));
@@ -784,8 +788,6 @@ bool netmap::_create_nmring(int ringid, int swhw)
         return false;
     }
 
-#if NETMAP_API > 4
-
     char* mem;
     if (ringid != 0) {
         mem = nm_mem_addrs[0];
@@ -799,20 +801,6 @@ bool netmap::_create_nmring(int ringid, int swhw)
             return false;
         }
     }
-
-#else
-
-    char* mem = (char*)mmap(NULL, nmr.nr_memsize,
-            PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
-    if (mem == MAP_FAILED) {
-        perror("mmap");
-        MESG("unable to mmap");
-        close(fd);
-        return false;
-    }
-
-#endif
-
 
     nmif = NETMAP_IF(mem, nmr.nr_offset);
 
@@ -846,7 +834,7 @@ bool
 netmap::_remove_hw_ring(int ringid)
 {
     if (munmap(nm_mem_addrs[ringid], nm_memsize) != 0) {
-        PERROR_NETMAP("munmap");
+        perror("munmap");
         return false;
     }
     nm_mem_addrs[ringid] = NULL;
@@ -863,7 +851,7 @@ netmap::_remove_sw_ring()
 {
     if (nm_mem_addrs == NULL || nm_fd_soft == 0) return true;
     if (munmap(nm_mem_addr_soft, nm_memsize) != 0) {
-        PERROR_NETMAP("munmap");
+        perror("munmap");
         return false;
     }
     nm_mem_addr_soft = NULL;

@@ -4,6 +4,7 @@
 
 fabs_netmap::fabs_netmap(std::string conf) : m_ether(conf, this),
                                              m_netmap(NULL),
+                                             m_t(time(NULL)),
                                              m_recv_cnt(0)
 {
 
@@ -34,20 +35,14 @@ fabs_netmap::run()
         pfd[i].fd = m_netmap->get_fd(i);
         pfd[i].events = POLLIN;
     }
-    // printf("max_queue:%d\n", mq);
-    pfd[mq].fd = m_netmap->get_fd_sw();
-    pfd[mq].events = POLLIN;
 
-    // for (int i = 0; i < mq + 1; i++) {
-    //     printf("%d:%d\n", i, pfd[i].fd);
-    // }
+    for (int i = 0; i < mq; i++) {
+        printf("%d:%d\n", i, pfd[i].fd);
+    }
 
     int retval;
-    int loop_count = 0;
     int rx_avail = 0;
-    int tx_avail = 0;
     struct netmap_ring* rx = NULL;
-    struct netmap_ring* tx = NULL;
 
     std::cout << "start capturing " << m_dev << " (netmap)" << std::endl;
 
@@ -60,7 +55,6 @@ fabs_netmap::run()
             return;
         }
 
-        // nic -> host
         for (int i = 0; i < mq; i++) {
 
             if (pfd[i].revents & POLLERR) {
@@ -70,62 +64,15 @@ fabs_netmap::run()
             } else if (pfd[i].revents & POLLIN) {
 
                 rx = m_netmap->get_rx_ring(i);
-                tx = m_netmap->get_tx_ring_sw();
 
                 rx_avail = m_netmap->get_avail(rx);
-                tx_avail = m_netmap->get_avail(tx);
-                int burst = (rx_avail <= tx_avail) ?  rx_avail : tx_avail;
 
-                while (burst--) {
-                    //printf("nic->host:rx_avail:%d\n", rx_avail);
-                    //printf("nic->host:tx_avail:%d\n", tx_avail);
-                    if (tx_avail > 0) {
-                        slot_swap(rx, tx);
-                        m_netmap->next(tx);
+                while (rx_avail--) {
+                        rx_in(rx);
                         m_netmap->next(rx);
-                    } else {
-                        break;
-                    }
                 }
             }
         }
-
-
-        // host -> nic
-        if (pfd[mq].revents & POLLERR) {
-
-            MESG("rx_soft poll error");
-
-        } else if (pfd[mq].revents & POLLIN) {
-
-            int dest_ring = loop_count % mq;
-            rx = m_netmap->get_rx_ring_sw();
-            tx = m_netmap->get_tx_ring(dest_ring);
-
-            rx_avail = m_netmap->get_avail(rx);
-            tx_avail = m_netmap->get_avail(tx);
-            int burst = (rx_avail <= tx_avail) ?  rx_avail : tx_avail;
-
-            while (burst--) {
-                //printf("host->nic:rx_avail:%d\n", rx_avail);
-                //printf("host->nic:tx_avail:%d\n", tx_avail);
-                if (tx_avail > 0) {
-                    slot_swap(rx, tx);
-                    m_netmap->next(tx);
-                    m_netmap->next(rx);
-                } else {
-                    break;
-                }
-            }
-        }
-
-        /*
-        for (int i = 0; i < mq + 1; i++) {
-            pfd[i].revents = 0;
-        }
-        */
-
-        loop_count++;
     }
 }
 
