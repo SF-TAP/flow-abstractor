@@ -36,10 +36,6 @@ fabs_netmap::run()
         pfd[i].events = POLLIN;
     }
 
-    for (int i = 0; i < mq; i++) {
-        printf("%d:%d\n", i, pfd[i].fd);
-    }
-
     int retval;
     int rx_avail = 0;
     struct netmap_ring* rx = NULL;
