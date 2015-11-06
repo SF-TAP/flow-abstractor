@@ -237,13 +237,13 @@ fabs_ether::consume(int idx)
                             delete buf;
                             goto err;
                         default:
-                            delete buf;
                             goto end_loop;
                         }
                     }
                 end_loop:
                     plen = ntohs(ip6h->ip6_plen) + sizeof(ip6_hdr);
                     if (plen > len) {
+                        delete buf;
                         goto err;
                     }
 
