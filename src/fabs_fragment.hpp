@@ -26,12 +26,12 @@ public:
     fabs_fragment(fabs_ether &fether, ptr_fabs_appif appif);
     virtual ~fabs_fragment();
 
-    bool input_ip(fabs_bytes buf);
+    bool input_ip(fabs_bytes *buf);
     void gc_timer();
 
 private:
     struct fragments {
-        boost::shared_ptr<std::map<int, fabs_bytes> > m_bytes;
+        boost::shared_ptr<std::map<int, fabs_bytes*> > m_bytes;
         mutable bool    m_is_last;
         mutable time_t  m_time;
         mutable int     m_size;
@@ -41,7 +41,8 @@ private:
         uint16_t m_id;
 
         fragments ();
-        fragments(const ip *iph4, fabs_bytes bytes);
+        fragments(const ip *iph4, fabs_bytes *bytes);
+        virtual ~fragments();
 
         bool operator< (const fragments &rhs) const;
         bool operator== (const fragments &rhs) const;
@@ -55,7 +56,7 @@ private:
             boost::multi_index::sequenced<>
             > > frag_cont;
 
-    bool defragment(const fragments &frgms, fabs_bytes &buf);
+    bool defragment(const fragments &frgms, fabs_bytes *buf);
 
     frag_cont m_fragments;
 

@@ -12,8 +12,8 @@ fabs_fragment::fragments::fragments ()
 
 }
 
-fabs_fragment::fragments::fragments(const ip *iph4, fabs_bytes bytes)
-    : m_bytes(new std::map<int, fabs_bytes>),
+fabs_fragment::fragments::fragments(const ip *iph4, fabs_bytes *bytes)
+    : m_bytes(new std::map<int, fabs_bytes*>),
       m_is_last(false)
 {
     m_time = m_init = time(NULL);
@@ -31,6 +31,13 @@ fabs_fragment::fragments::fragments(const ip *iph4, fabs_bytes bytes)
     m_ip_src = ntohl(iph4->ip_src.s_addr);
     m_ip_dst = ntohl(iph4->ip_dst.s_addr);
     m_id     = ntohs(iph4->ip_id);
+}
+
+fabs_fragment::fragments::~fragments ()
+{
+    for (auto it = m_bytes->begin(); it != m_bytes->end(); ++it) {
+        delete it->second;
+    }
 }
 
 bool
@@ -104,15 +111,19 @@ fabs_fragment::gc_timer()
 // true:  fragmented
 // false: not fragmented
 bool
-fabs_fragment::input_ip(fabs_bytes buf)
+fabs_fragment::input_ip(fabs_bytes *buf)
 {
-    ip *iph4 = (ip*)buf.get_head();
+    ip *iph4 = (ip*)buf->get_head();
 
-    if (iph4->ip_v != 4)
+    if (iph4->ip_v != 4) {
+        delete buf;
         return false;
+    }
 
-    if (ntohs(iph4->ip_len) > buf.get_len())
+    if (ntohs(iph4->ip_len) > buf->get_len()) {
+        delete buf;
         return false;
+    }
 
     int offset = ntohs(iph4->ip_off) & IP_OFFMASK;
     int mflag  = ntohs(iph4->ip_off) & IP_MF;
@@ -142,11 +153,11 @@ fabs_fragment::input_ip(fabs_bytes buf)
                     }
                 }
             } else {
-                // TODO: fragmentation packets are corrupted
+                delete buf;
             }
 
             if (it->m_is_last) {
-                fabs_bytes buf;
+                fabs_bytes *buf = new fabs_bytes;;
                 if (defragment(*it, buf)) {
                     // packets are defragmented
                     m_fragments.erase(it);
@@ -167,7 +178,7 @@ fabs_fragment::input_ip(fabs_bytes buf)
 }
 
 bool
-fabs_fragment::defragment(const fragments &frg, fabs_bytes &buf)
+fabs_fragment::defragment(const fragments &frg, fabs_bytes *buf)
 {
     int next = 0;
     int hlen;
@@ -175,19 +186,19 @@ fabs_fragment::defragment(const fragments &frg, fabs_bytes &buf)
 
     assert(frg.m_bytes->size() != 0);
 
-    iph = (ip*)frg.m_bytes->begin()->second.get_head();
+    iph = (ip*)frg.m_bytes->begin()->second->get_head();
     hlen = iph->ip_hl * 4;
 
-    buf.alloc(frg.m_size + hlen);
+    buf->alloc(frg.m_size + hlen);
 
-    if (buf.get_len() == 0)
+    if (buf->get_len() == 0)
         return false;
 
-    memcpy(buf.get_head(), iph, hlen);
+    memcpy(buf->get_head(), iph, hlen);
 
     for (auto it = frg.m_bytes->begin(); it != frg.m_bytes->end(); ++it) {
         int offset = it->first;
-        ip *iph4   = (ip*)it->second.get_head();
+        ip *iph4   = (ip*)it->second->get_head();
         int len    = ntohs(iph4->ip_len) - iph4->ip_hl * 4;
         int pos    = offset * 8;
 
@@ -201,13 +212,13 @@ fabs_fragment::defragment(const fragments &frg, fabs_bytes &buf)
             return false;
         }
 
-        memcpy(buf.get_head() + pos + hlen,
-               it->second.get_head() + iph4->ip_hl * 4, len);
+        memcpy(buf->get_head() + pos + hlen,
+               it->second->get_head() + iph4->ip_hl * 4, len);
 
         next += len;
     }
 
-    iph = (ip*)buf.get_head();
+    iph = (ip*)buf->get_head();
 
     iph->ip_id  = 0;
     iph->ip_off = 0;

@@ -19,7 +19,7 @@
 #define ETHERTYPE_IPV6 0x86dd /* IPv6 */
 #endif
 
-#define QNUM 8192
+#define NOTIFY_NUM 1024
 
 time_t t0 = time(NULL);
 
@@ -33,6 +33,7 @@ fabs_ether::fabs_ether(std::string conf, const fabs_dlcap *dlcap)
       m_dlcap(dlcap),
       m_appif(new fabs_appif),
       m_fragment(*this, m_appif),
+      m_is_consuming_frag(false),
       m_thread_consume_frag(boost::bind(&fabs_ether::consume_fragment, this)),
       m_thread_timer(boost::bind(&fabs_ether::timer, this))
 {
@@ -41,23 +42,22 @@ fabs_ether::fabs_ether(std::string conf, const fabs_dlcap *dlcap)
     m_appif->run();
 
     int numtcp = m_appif->get_num_tcp_threads();
-    m_qitem = new qitem[numtcp];
-    m_queue = new std::list<qitem>[numtcp];
+
+    m_queue = new fabs_cb<fabs_bytes*>[numtcp];
+    m_is_consuming = new bool[numtcp];
+
+    for (int i = 0; i < numtcp; i++) {
+        m_is_consuming[i] = false;
+    }
+
     m_mutex = new boost::mutex[numtcp];
     m_condition = new boost::condition[numtcp];
-    m_spinlock = new spinlock[numtcp];
     m_thread_consume = new boost::thread*[numtcp];
 
     for (int i = 0; i < numtcp; i++) {
         m_thread_consume[i] = new boost::thread(boost::bind(&fabs_ether::consume, this, i));
-
-        m_spinlock[i].lock();
-
-        m_qitem[i].m_queue = boost::shared_array<fabs_bytes>(new fabs_bytes[QNUM]);
-        m_qitem[i].m_num   = 0;
-
-        m_spinlock[i].unlock();
     }
+
 
     boost::mutex::scoped_lock lock(m_mutex_init);
     m_condition_init.notify_all();
@@ -85,58 +85,38 @@ fabs_ether::~fabs_ether()
     }
 
     delete[] m_thread_consume;
-    delete[] m_spinlock;
     delete[] m_condition;
     delete[] m_mutex;
     delete[] m_queue;
-    delete[] m_qitem;
 }
 
 void
-fabs_ether::produce(int idx, fabs_bytes &buf)
+fabs_ether::produce(int idx, fabs_bytes *buf)
 {
-    m_spinlock[idx].lock();
-
-    m_qitem[idx].m_queue[m_qitem[idx].m_num] = buf;
-    m_qitem[idx].m_num++;
-
-    if (m_qitem[idx].m_num == QNUM) {
-        boost::mutex::scoped_lock lock(m_mutex[idx]);
-        m_queue[idx].push_back(m_qitem[idx]);
-        m_condition[idx].notify_one();
-
-        m_qitem[idx].m_queue = boost::shared_array<fabs_bytes>(new fabs_bytes[QNUM]);
-        m_qitem[idx].m_num   = 0;
+    if (! m_queue[idx].push(buf)) {
+        std::cerr << "TCP queue (" << idx
+                  << ") is full. Some packets are going to be dropped."
+                  << std::endl;
+        return;
     }
 
-    m_spinlock[idx].unlock();
+    if (m_queue[idx].get_len() >= NOTIFY_NUM) {
+        if (! m_is_consuming[idx]) {
+            boost::try_mutex::scoped_try_lock lock(m_mutex[idx]);
+            if (lock)
+                m_condition[idx].notify_one();
+        }
+    }
 }
 
 inline void
 fabs_ether::produce(int idx, const char *buf, int len)
 {
-    m_spinlock[idx].lock();
+    fabs_bytes *bytes = new fabs_bytes;
 
-    fabs_bytes &bytes = m_qitem[idx].m_queue[m_qitem[idx].m_num];
+    bytes->set_buf(buf, len);
 
-    bytes.set_buf(buf, len);
-    if (bytes.get_len() == 0) {
-        m_spinlock[idx].unlock();
-        return;
-    }
-
-    m_qitem[idx].m_num++;
-
-    if (m_qitem[idx].m_num == QNUM) {
-        boost::mutex::scoped_lock lock(m_mutex[idx]);
-        m_queue[idx].push_back(m_qitem[idx]);
-        m_condition[idx].notify_one();
-
-        m_qitem[idx].m_queue = boost::shared_array<fabs_bytes>(new fabs_bytes[QNUM]);
-        m_qitem[idx].m_num   = 0;
-    }
-
-    m_spinlock[idx].unlock();
+    produce(idx, bytes);
 }
 
 void
@@ -148,22 +128,6 @@ fabs_ether::timer()
     }
 
     for (;;) {
-        for (int i = 0; i < m_appif->get_num_tcp_threads(); i++) {
-            m_spinlock[i].lock();
-
-            if (m_qitem[i].m_num > 0) {
-                boost::mutex::scoped_lock lock(m_mutex[i]);
-                m_queue[i].push_back(m_qitem[i]);
-                m_condition[i].notify_one();
-
-                m_qitem[i].m_queue = boost::shared_array<fabs_bytes>(new fabs_bytes[QNUM]);
-                m_qitem[i].m_num   = 0;
-            }
-
-            m_spinlock[i].unlock();
-        }
-
-
         time_t t1 = time(NULL);
 
         if (t1 - t0 > 10) {
@@ -183,46 +147,35 @@ void
 fabs_ether::consume(int idx)
 {
     for (;;) {
-        int size;
-        std::vector<qitem> items;
-
         {
             boost::mutex::scoped_lock lock(m_mutex[idx]);
-            while (m_queue[idx].empty()) {
-                m_condition[idx].wait(lock);
+            while (m_queue[idx].get_len() == 0) {
+                m_is_consuming[idx] = false;
+
+                boost::system_time timeout = boost::get_system_time() + boost::posix_time::milliseconds(50);
+                m_condition[idx].timed_wait(lock, timeout);
+
                 if (m_is_break)
                     return;
             }
 
-            size = m_queue[idx].size();
-
-            items.resize(size);
-
-            int i = 0;
-            for (auto it = m_queue[idx].begin(); it != m_queue[idx].end();
-                 ++it) {
-                items[i] = *it;
-                i++;
-            }
-
-            m_queue[idx].clear();
+            m_is_consuming[idx] = true;
         }
 
-        for (auto it = items.begin(); it != items.end(); ++it) {
-            for (int i = 0; i < it->m_num; i++) {
-                fabs_bytes &buf = it->m_queue[i];
+        fabs_bytes *buf;
+        for (int i = 0; i < NOTIFY_NUM; i++) {
+            while (m_queue[idx].pop(&buf)) {
                 uint8_t proto;
-                const uint8_t *ip_hdr = get_ip_hdr((uint8_t*)buf.get_head(),
-                                                   buf.get_len(), proto);
+                const uint8_t *ip_hdr = get_ip_hdr((uint8_t*)buf->get_head(),
+                                                   buf->get_len(), proto);
 
-                buf.skip((char*)ip_hdr - buf.get_head());
+                buf->skip((char*)ip_hdr - buf->get_head());
 
-                uint32_t len = buf.get_len();
+                uint32_t len = buf->get_len();
                 uint32_t plen;
-                static int count_frag = 0;
-
 
                 if (ip_hdr == NULL) {
+                    delete buf;
                     continue;
                 }
 
@@ -234,18 +187,18 @@ fabs_ether::consume(int idx)
                     plen = ntohs(iph->ip_len);
 
                     if (plen > len) {
+                        delete buf;
                         goto err;
                     }
 
                     if (off & IP_MF || (off & 0x1fff) > 0) {
                         // produce fragment packet
-                        boost::mutex::scoped_lock lock(m_mutex_frag);
-                        m_queue_frag.push_back(buf);
-                        count_frag++;
+                        m_queue_frag.push(buf);
 
-                        if (count_frag > 1000) {
+                        if (! m_is_consuming_frag &&
+                            m_queue_frag.get_len() > NOTIFY_NUM) {
+                            boost::mutex::scoped_lock lock(m_mutex_frag);
                             m_condition_frag.notify_one();
-                            count_frag = 0;
                         }
                     } else {
                         m_callback(idx, buf);
@@ -281,8 +234,10 @@ fabs_ether::consume(int idx)
                         case IPPROTO_NONE:
                         case IPPROTO_FRAGMENT:
                         case IPPROTO_ICMPV6:
+                            delete buf;
                             goto err;
                         default:
+                            delete buf;
                             goto end_loop;
                         }
                     }
@@ -297,6 +252,7 @@ fabs_ether::consume(int idx)
                     break;
                 }
                 default:
+                    delete buf;
                     break;
                 }
 
@@ -304,8 +260,6 @@ fabs_ether::consume(int idx)
                 do {} while (false);
             }
         }
-
-        items.clear();
     }
 }
 
@@ -318,12 +272,10 @@ fabs_ether::consume_fragment()
     }
 
     for (;;) {
-        int size;
-        std::vector<fabs_bytes> bytes;
-
         {
             boost::mutex::scoped_lock lock(m_mutex_frag);
-            while (m_queue_frag.empty()) {
+            while (m_queue_frag.get_len() == 0) {
+                m_is_consuming_frag = false;
                 boost::system_time timeout = boost::get_system_time() + boost::posix_time::milliseconds(100);
                 m_condition_frag.timed_wait(lock, timeout);
 
@@ -331,26 +283,14 @@ fabs_ether::consume_fragment()
                     return;
                 }
             }
+        }
 
-            size = m_queue_frag.size();
-
-            bytes.resize(size);
-
-            int i = 0;
-            for (auto it = m_queue_frag.begin(); it != m_queue_frag.end();
-                 ++it) {
-                bytes[i] = *it;
-                i++;
+        fabs_bytes *buf;
+        for (int i = 0; i < NOTIFY_NUM; i++) {
+            while (m_queue_frag.pop(&buf)) {
+                m_fragment.input_ip(buf);
             }
-
-            m_queue_frag.clear();
         }
-
-        for (auto it = bytes.begin(); it != bytes.end(); ++it) {
-            m_fragment.input_ip(*it);
-        }
-
-        bytes.clear();
     }
 }
 

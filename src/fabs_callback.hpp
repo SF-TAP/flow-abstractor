@@ -12,7 +12,7 @@ public:
     fabs_callback();
     virtual ~fabs_callback() { delete[] m_tcp;  }
 
-    void operator() (int idx, fabs_bytes buf);
+    void operator() (int idx, fabs_bytes *buf);
     void print_stat() {
         int n = 0;
         int t = 0;

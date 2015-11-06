@@ -7,6 +7,7 @@
 #include "fabs_dlcap.hpp"
 #include "fabs_bytes.hpp"
 #include "fabs_fragment.hpp"
+#include "fabs_cb.hpp"
 
 #include <pcap/pcap.h>
 
@@ -22,27 +23,6 @@
 
 class fabs_fragment;
 
-class spinlock {
-private:
-    typedef enum {Locked, Unlocked} LockState;
-    std::atomic<LockState> state_;
-
-public:
-    spinlock() : state_(Unlocked) {}
-
-    void lock()
-    {
-        while (state_.exchange(Locked, std::memory_order_acquire) == Locked) {
-            /* busy-wait */
-        }
-    }
-
-    void unlock()
-    {
-        state_.store(Unlocked, std::memory_order_release);
-    }
-};
-
 class fabs_ether {
 public:
     fabs_ether(std::string conf, const fabs_dlcap *dlcap);
@@ -54,7 +34,7 @@ public:
     void consume_fragment();
     void timer();
 
-    void produce(int idx, fabs_bytes &buf);
+    void produce(int idx, fabs_bytes *buf);
     inline void produce(int idx, const char *buf, int len);
 
 private:
@@ -72,20 +52,16 @@ private:
     fabs_callback m_callback;
     fabs_fragment m_fragment;
 
-    struct qitem {
-        boost::shared_array<fabs_bytes> m_queue;
-        int m_num;
-    };
+    fabs_cb<fabs_bytes*> *m_queue;
+    fabs_cb<fabs_bytes*>  m_queue_frag;
 
-    qitem *m_qitem;
+    bool *m_is_consuming;
+    bool  m_is_consuming_frag;
 
-    std::list<qitem> *m_queue;
-    std::list<fabs_bytes> m_queue_frag;
     boost::mutex  *m_mutex;
     boost::mutex  m_mutex_frag;
     boost::condition *m_condition;
     boost::condition m_condition_frag;
-    spinlock *m_spinlock;
     boost::thread **m_thread_consume;
     boost::thread m_thread_consume_frag;
     boost::thread m_thread_timer;

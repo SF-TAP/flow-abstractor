@@ -4,6 +4,7 @@
 #include "fabs_common.hpp"
 #include "fabs_id.hpp"
 #include "fabs_spin_rwlock.hpp"
+#include "fabs_cb.hpp"
 
 #include <event.h>
 
@@ -18,6 +19,7 @@
 #include <re2/re2.h>
 
 //#include <boost/regex.hpp>
+#include <boost/shared_array.hpp>
 #include <boost/thread.hpp>
 #include <boost/thread/condition.hpp>
 #include <boost/filesystem/path.hpp>
@@ -50,7 +52,7 @@ public:
     void run();
 
     void in_event(fabs_stream_event st_event,
-                  const fabs_id_dir &id_dir, fabs_bytes bytes);
+                  const fabs_id_dir &id_dir, fabs_bytes *bytes);
 
     void print_info();
 
@@ -121,12 +123,15 @@ private:
         bool       m_is_created;         // sent created event?
         bool       m_is_giveup;
         bool       m_is_buf1, m_is_buf2; // recv data?
-        std::deque<fabs_bytes> m_buf1, m_buf2;
+        std::deque<fabs_bytes*> m_buf1, m_buf2;
         uint32_t   m_hash;
         match_dir  m_match_dir[2];
         fabs_appif_header m_header;
 
+        void clear_buf();
+
         stream_info(const fabs_id &id);
+        virtual ~stream_info();
     };
 
     struct ifrule_storage {
@@ -143,7 +148,7 @@ private:
     struct appif_event {
         fabs_stream_event st_event;
         fabs_id_dir       id_dir;
-        fabs_bytes        bytes;
+        fabs_bytes       *bytes;
     };
 
     struct ifrule_storage2 {
@@ -161,26 +166,27 @@ public:
         appif_consumer(int id, fabs_appif &appif);
         virtual ~appif_consumer();
 
-        void produce(appif_event &ev);
+        void produce(appif_event *ev);
         void consume();
         void run();
 
     private:
         int              m_id;
         bool             m_is_break;
+        bool             m_is_consuming;
         fabs_appif      &m_appif;
         boost::mutex     m_mutex;
         boost::condition m_condition;
         boost::thread    m_thread;
-        std::list<appif_event> m_ev_queue;
+        fabs_cb<appif_event*> m_ev_queue;
         std::map<fabs_id, ptr_info> m_info;
         std::map<int, ptr_ifrule_storage2> m_ifrule_tcp;
         std::map<int, ptr_ifrule_storage2> m_ifrule_udp;
 
         void in_stream_event(fabs_stream_event st_event,
-                             const fabs_id_dir &id_dir, fabs_bytes bytes);
+                             const fabs_id_dir &id_dir, fabs_bytes *bytes);
         bool send_tcp_data(ptr_info p_info, fabs_id_dir id_dir);
-        void in_datagram(const fabs_id_dir &id_dir, fabs_bytes bytes);
+        void in_datagram(const fabs_id_dir &id_dir, fabs_bytes *bytes);
 
         friend class fabs_appif;
     };

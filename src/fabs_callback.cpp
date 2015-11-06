@@ -12,25 +12,30 @@ fabs_callback::fabs_callback()
 }
 
 void
-fabs_callback::operator() (int idx, fabs_bytes buf) {
+fabs_callback::operator() (int idx, fabs_bytes *buf) {
     fabs_direction dir;
     fabs_id        id;
     char          *l4hdr;
     int            len;
 
-    dir = id.set_iph(buf.get_head(), &l4hdr, &len);
+    dir = id.set_iph(buf->get_head(), &l4hdr, &len);
 
-    if (l4hdr == NULL || dir == FROM_NONE)
+    if (l4hdr == NULL || dir == FROM_NONE) {
+        delete buf;
         return;
+    }
 
-    if (len < buf.get_len()) {
-        if (! buf.skip_tail(buf.get_len() - len)) {
+    if (len < buf->get_len()) {
+        if (! buf->skip_tail(buf->get_len() - len)) {
+            delete buf;
             return;
         }
     }
 
-    if (! buf.skip(l4hdr - buf.get_head()))
+    if (! buf->skip(l4hdr - buf->get_head())) {
+        delete buf;
         return;
+    }
 
     switch (id.get_l4_proto()) {
     case IPPROTO_TCP:

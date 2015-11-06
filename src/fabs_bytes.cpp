@@ -14,18 +14,18 @@ namespace io = boost::iostreams; //<-- good practice
 
 
 int
-read_bytes_ec(const deque<fabs_bytes> &bytes, char *buf, int len, char c)
+read_bytes_ec(const deque<fabs_bytes*> &bytes, char *buf, int len, char c)
 {
-    deque<fabs_bytes>::const_iterator it;
+    deque<fabs_bytes*>::const_iterator it;
     int read_len = 0;
 
     for (it = bytes.begin(); it != bytes.end(); ++it) {
-        const char *p = it->m_ptr.get() + it->m_pos;
+        const char *p = (*it)->m_ptr + (*it)->m_pos;
 
-        if (! it->m_ptr)
+        if (! (*it)->m_ptr)
             continue;
 
-        for (int i = 0; i < it->m_len; i++) {
+        for (int i = 0; i < (*it)->m_len; i++) {
             if (read_len >= len)
                 return read_len;
 
@@ -42,26 +42,27 @@ read_bytes_ec(const deque<fabs_bytes> &bytes, char *buf, int len, char c)
 }
 
 int
-skip_bytes(deque<fabs_bytes> &bytes, int len)
+skip_bytes(deque<fabs_bytes*> &bytes, int len)
 {
-    deque<fabs_bytes>::iterator it;
+    deque<fabs_bytes*>::iterator it;
     int skip_len = 0;
 
     for (it = bytes.begin(); it != bytes.end();) {
         int remain = len - skip_len;
 
-        if (! it->m_ptr)
+        if (! (*it)->m_ptr)
             continue;
 
-        if (remain < it->m_len) {
-            it->m_len -= remain;
-            it->m_pos += remain;
+        if (remain < (*it)->m_len) {
+            (*it)->m_len -= remain;
+            (*it)->m_pos += remain;
             skip_len  += remain;
             break;
         }
 
-        skip_len += it->m_len;
+        skip_len += (*it)->m_len;
 
+        delete *it;
         bytes.erase(it++);
     }
 
@@ -69,28 +70,28 @@ skip_bytes(deque<fabs_bytes> &bytes, int len)
 }
 
 int
-read_bytes(deque<fabs_bytes> &bytes, char *buf, int len)
+read_bytes(deque<fabs_bytes*> &bytes, char *buf, int len)
 {
-    deque<fabs_bytes>::iterator it;
+    deque<fabs_bytes*>::iterator it;
     int read_len = 0;
 
     for (it = bytes.begin(); it != bytes.end(); ++it) {
         int remain = len - read_len;
 
-        if (! it->m_ptr)
+        if (! (*it)->m_ptr)
             continue;
 
-        if (remain < it->m_len) {
-            memcpy(buf, it->m_ptr.get() + it->m_pos, remain);
+        if (remain < (*it)->m_len) {
+            memcpy(buf, (*it)->m_ptr + (*it)->m_pos, remain);
             read_len += remain;
 
             break;
         }
 
-        memcpy(buf, it->m_ptr.get() + it->m_pos, it->m_len);
+        memcpy(buf, (*it)->m_ptr + (*it)->m_pos, (*it)->m_len);
 
-        buf += it->m_len;
-        read_len += it->m_len;
+        buf += (*it)->m_len;
+        read_len += (*it)->m_len;
     }
 
     return read_len;

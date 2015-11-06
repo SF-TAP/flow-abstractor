@@ -10,21 +10,17 @@
 #include <vector>
 #include <iostream>
 
-#include <boost/shared_array.hpp>
-
 class fabs_bytes {
 public:
-    fabs_bytes() : m_pos(0), m_len(0) { }
+    fabs_bytes() : m_ptr(nullptr), m_pos(0), m_len(0) { }
     fabs_bytes(const char *str) { *this = str; }
-    fabs_bytes(boost::shared_array<char> ptr, int len) : m_ptr(ptr),
-                                                         m_pos(0),
-                                                         m_len(len) { }
-    fabs_bytes(const fabs_bytes &rhs) { *this = rhs; }
+
+    virtual ~fabs_bytes() { delete[] m_ptr; }
 
     fabs_bytes & operator = (const char *str) {
         int len = strlen(str);
         try {
-            m_ptr = boost::shared_array<char>(new char[len]);
+            m_ptr = new char[len];
         } catch (std::bad_alloc e) {
             std::cerr << __FILE__ << ":" << __LINE__ << ":" << ":"
                       <<__func__ << ": " << e.what() << std::endl;
@@ -33,13 +29,14 @@ public:
             return *this;
         }
 
-        memcpy(m_ptr.get(), str, len);
+        memcpy(m_ptr, str, len);
         m_len = len;
         m_pos = 0;
 
         return *this;
     }
 
+    /*
     fabs_bytes & operator = (const fabs_bytes &rhs) {
         m_ptr = rhs.m_ptr;
         m_len = rhs.m_len;
@@ -47,24 +44,25 @@ public:
 
         return *this;
     }
+    */
 
     bool operator == (const fabs_bytes &rhs) const {
         if (m_len != rhs.m_len)
             return false;
 
-        return memcmp(m_ptr.get() + m_pos, rhs.m_ptr.get() + rhs.m_pos,
+        return memcmp(m_ptr + m_pos, rhs.m_ptr + rhs.m_pos,
                       m_len) == 0;
     }
 
     bool operator < (const fabs_bytes &rhs) const {
         if (m_len == rhs.m_len)
-            return memcmp(m_ptr.get() + m_pos, rhs.m_ptr.get() + rhs.m_pos,
+            return memcmp(m_ptr + m_pos, rhs.m_ptr + rhs.m_pos,
                           m_len) < 0;
 
         int len = m_len < rhs.m_len ? m_len : rhs.m_len;
         int result;
 
-        result = memcmp(m_ptr.get() + m_pos, rhs.m_ptr.get() + rhs.m_pos, len);
+        result = memcmp(m_ptr + m_pos, rhs.m_ptr + rhs.m_pos, len);
         if (result < 0) {
             return true;
         } else if (result > 0) {
@@ -81,15 +79,14 @@ public:
     }
 
     void fill_zero() {
-        memset(m_ptr.get() + m_pos, 0, m_len);
+        memset(m_ptr + m_pos, 0, m_len);
     }
 
     bool is_zero() {
         try {
-            boost::shared_array<char> z(new char[m_len - m_pos]);
-
-            memset(z.get(), 0, m_len - m_pos);
-            return memcmp(z.get(), m_ptr.get(), m_len - m_pos) == 0 ? true : false;
+            char z[m_len - m_pos];
+            memset(z, 0, m_len - m_pos);
+            return memcmp(z, m_ptr, m_len - m_pos) == 0 ? true : false;
         } catch (std::bad_alloc e) {
             std::cerr << __FILE__ << ":" << __LINE__ << ":" << ":"
                       <<__func__ << ": " << e.what() << std::endl;
@@ -99,7 +96,7 @@ public:
 
     void alloc(size_t len) {
         try {
-            m_ptr = boost::shared_array<char>(new char[len]);
+            m_ptr = new char[len];
         } catch (std::bad_alloc e) {
             std::cerr << __FILE__ << ":" << __LINE__ << ":" << ":"
                       <<__func__ << ": " << e.what() << ", len = " << len
@@ -109,7 +106,7 @@ public:
             return;
         }
 
-        if (m_ptr.get() == NULL) {
+        if (m_ptr == nullptr) {
             PERROR();
             exit(-1);
         }
@@ -119,7 +116,8 @@ public:
 
     void set_buf(const char *buf, int len) {
         try {
-            m_ptr = boost::shared_array<char>(new char[len]);
+            delete[] m_ptr;
+            m_ptr = new char[len];
         } catch (std::bad_alloc e) {
             std::cerr << __func__ << e.what() << std::endl;
             m_len = 0;
@@ -127,26 +125,21 @@ public:
             return;
         }
 
-        memcpy(m_ptr.get(), buf, len);
+        memcpy(m_ptr, buf, len);
 
-        m_len = len;
-        m_pos = 0;
-    }
-
-    void set_buf(boost::shared_array<char> ptr, int len) {
-        m_ptr = ptr;
         m_len = len;
         m_pos = 0;
     }
 
     void clear() {
-        m_ptr.reset();
+        delete[] m_ptr;
+        m_ptr = nullptr;
         m_pos = 0;
         m_len = 0;
     }
 
     char* get_head() {
-        return m_ptr.get() + m_pos;
+        return m_ptr + m_pos;
     }
 
     int get_len() {
@@ -172,23 +165,27 @@ public:
         return true;
     }
 
-protected:
-    boost::shared_array<char> m_ptr;
-    int m_pos;
-    int m_len;
+private:
+    char *m_ptr;
+    int   m_pos;
+    int   m_len;
 
-    friend int read_bytes_ec(const std::deque<fabs_bytes> &bytes, char *buf,
+    fabs_bytes(const fabs_bytes &rhs) { }
+    fabs_bytes & operator = (const fabs_bytes &rhs) { return *this; }
+
+    friend int read_bytes_ec(const std::deque<fabs_bytes*> &bytes, char *buf,
                              int len, char c);
-    friend int read_bytes(std::deque<fabs_bytes> &bytes, char *buf, int len);
-    friend int skip_bytes(std::deque<fabs_bytes> &bytes, int len);
+    friend int read_bytes(std::deque<fabs_bytes*> &bytes, char *buf, int len);
+    friend int skip_bytes(std::deque<fabs_bytes*> &bytes, int len);
     friend void get_digest(fabs_bytes &md_value, const char *alg,
                            const char *buf, unsigned int len);
+
 };
 
-int read_bytes_ec(const std::deque<fabs_bytes> &bytes, char *buf, int len,
+int read_bytes_ec(const std::deque<fabs_bytes*> &bytes, char *buf, int len,
                   char c);
-int read_bytes(std::deque<fabs_bytes> &bytes, char *buf, int len);
-int skip_bytes(std::deque<fabs_bytes> &bytes, int len);
+int read_bytes(std::deque<fabs_bytes*> &bytes, char *buf, int len);
+int skip_bytes(std::deque<fabs_bytes*> &bytes, int len);
 int find_char(const char *buf, int len, char c);
 void get_digest(fabs_bytes &md_value, const char *alg, const char *buf,
                 unsigned int len);
