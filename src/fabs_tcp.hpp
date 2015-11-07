@@ -20,13 +20,13 @@
 #define NUM_TCPTREE 128
 
 struct fabs_tcp_packet {
-    fabs_bytes *m_bytes;
-    uint32_t    m_seq;
-    uint32_t    m_nxt_seq;
-    uint8_t     m_flags;
-    int         m_data_pos;
-    int         m_data_len;
-    int         m_read_pos;
+    ptr_fabs_bytes m_bytes;
+    uint32_t m_seq;
+    uint32_t m_nxt_seq;
+    uint8_t  m_flags;
+    int      m_data_pos;
+    int      m_data_len;
+    int      m_read_pos;
 };
 
 struct fabs_tcp_uniflow {
@@ -53,7 +53,7 @@ public:
     fabs_tcp();
     virtual ~fabs_tcp();
 
-    void input_tcp(fabs_id &id, fabs_direction dir, fabs_bytes *buf);
+    void input_tcp(fabs_id &id, fabs_direction dir, ptr_fabs_bytes buf);
     void garbage_collector();
     void set_timeout(time_t t) { m_timeout = t; }
     void print_stat();

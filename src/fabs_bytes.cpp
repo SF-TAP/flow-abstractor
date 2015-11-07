@@ -70,9 +70,9 @@ skip_bytes(deque<fabs_bytes*> &bytes, int len)
 }
 
 int
-read_bytes(deque<fabs_bytes*> &bytes, char *buf, int len)
+read_bytes(deque<ptr_fabs_bytes> &bytes, char *buf, int len)
 {
-    deque<fabs_bytes*>::iterator it;
+    deque<ptr_fabs_bytes>::iterator it;
     int read_len = 0;
 
     for (it = bytes.begin(); it != bytes.end(); ++it) {

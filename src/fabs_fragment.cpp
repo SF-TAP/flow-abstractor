@@ -12,8 +12,8 @@ fabs_fragment::fragments::fragments ()
 
 }
 
-fabs_fragment::fragments::fragments(const ip *iph4, fabs_bytes *bytes)
-    : m_bytes(new std::map<int, fabs_bytes*>),
+fabs_fragment::fragments::fragments(const ip *iph4, ptr_fabs_bytes bytes)
+    : m_bytes(new std::map<int, ptr_fabs_bytes>),
       m_is_last(false)
 {
     m_time = m_init = time(NULL);
@@ -35,9 +35,7 @@ fabs_fragment::fragments::fragments(const ip *iph4, fabs_bytes *bytes)
 
 fabs_fragment::fragments::~fragments ()
 {
-    for (auto it = m_bytes->begin(); it != m_bytes->end(); ++it) {
-        delete it->second;
-    }
+
 }
 
 bool
@@ -111,17 +109,15 @@ fabs_fragment::gc_timer()
 // true:  fragmented
 // false: not fragmented
 bool
-fabs_fragment::input_ip(fabs_bytes *buf)
+fabs_fragment::input_ip(ptr_fabs_bytes buf)
 {
     ip *iph4 = (ip*)buf->get_head();
 
     if (iph4->ip_v != 4) {
-        delete buf;
         return false;
     }
 
     if (ntohs(iph4->ip_len) > buf->get_len()) {
-        delete buf;
         return false;
     }
 
@@ -152,12 +148,10 @@ fabs_fragment::input_ip(fabs_bytes *buf)
                         m_fragments.erase(it);
                     }
                 }
-            } else {
-                delete buf;
             }
 
             if (it->m_is_last) {
-                fabs_bytes *buf = new fabs_bytes;;
+                ptr_fabs_bytes buf(new fabs_bytes);
                 if (defragment(*it, buf)) {
                     // packets are defragmented
                     m_fragments.erase(it);
@@ -167,8 +161,6 @@ fabs_fragment::input_ip(fabs_bytes *buf)
                     uint32_t hash = ntohl(iph4->ip_src.s_addr ^ iph4->ip_dst.s_addr);
 
                     m_ether.produce(hash % m_appif->get_num_tcp_threads(), buf);
-                } else {
-                    delete buf;
                 }
             }
         }
@@ -180,7 +172,7 @@ fabs_fragment::input_ip(fabs_bytes *buf)
 }
 
 bool
-fabs_fragment::defragment(const fragments &frg, fabs_bytes *buf)
+fabs_fragment::defragment(const fragments &frg, ptr_fabs_bytes &buf)
 {
     int next = 0;
     int hlen;

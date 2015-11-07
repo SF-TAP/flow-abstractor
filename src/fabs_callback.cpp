@@ -12,7 +12,7 @@ fabs_callback::fabs_callback()
 }
 
 void
-fabs_callback::operator() (int idx, fabs_bytes *buf) {
+fabs_callback::operator() (int idx, ptr_fabs_bytes buf) {
     fabs_direction dir;
     fabs_id        id;
     char          *l4hdr;
@@ -21,19 +21,16 @@ fabs_callback::operator() (int idx, fabs_bytes *buf) {
     dir = id.set_iph(buf->get_head(), &l4hdr, &len);
 
     if (l4hdr == NULL || dir == FROM_NONE) {
-        delete buf;
         return;
     }
 
     if (len < buf->get_len()) {
         if (! buf->skip_tail(buf->get_len() - len)) {
-            delete buf;
             return;
         }
     }
 
     if (! buf->skip(l4hdr - buf->get_head())) {
-        delete buf;
         return;
     }
 
@@ -45,6 +42,6 @@ fabs_callback::operator() (int idx, fabs_bytes *buf) {
         m_udp.input_udp(id, dir, buf);
         break;
     default:
-        delete buf;
+        ;
     }
 }

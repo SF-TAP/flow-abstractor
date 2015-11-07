@@ -52,7 +52,7 @@ public:
     void run();
 
     void in_event(fabs_stream_event st_event,
-                  const fabs_id_dir &id_dir, fabs_bytes *bytes);
+                  const fabs_id_dir &id_dir, ptr_fabs_bytes bytes);
 
     void print_info();
 
@@ -123,7 +123,7 @@ private:
         bool       m_is_created;         // sent created event?
         bool       m_is_giveup;
         bool       m_is_buf1, m_is_buf2; // recv data?
-        std::deque<fabs_bytes*> m_buf1, m_buf2;
+        std::deque<ptr_fabs_bytes> m_buf1, m_buf2;
         uint32_t   m_hash;
         match_dir  m_match_dir[2];
         fabs_appif_header m_header;
@@ -148,7 +148,7 @@ private:
     struct appif_event {
         fabs_stream_event st_event;
         fabs_id_dir       id_dir;
-        fabs_bytes       *bytes;
+        ptr_fabs_bytes    bytes;
     };
 
     struct ifrule_storage2 {
@@ -184,9 +184,9 @@ public:
         std::map<int, ptr_ifrule_storage2> m_ifrule_udp;
 
         void in_stream_event(fabs_stream_event st_event,
-                             const fabs_id_dir &id_dir, fabs_bytes *bytes);
+                             const fabs_id_dir &id_dir, ptr_fabs_bytes bytes);
         bool send_tcp_data(ptr_info p_info, fabs_id_dir id_dir);
-        void in_datagram(const fabs_id_dir &id_dir, fabs_bytes *bytes);
+        void in_datagram(const fabs_id_dir &id_dir, ptr_fabs_bytes bytes);
 
         friend class fabs_appif;
     };
@@ -219,7 +219,7 @@ private:
     int m_num_consumer;
     boost::shared_array<ptr_consumer> m_consumer;
 
-    ptr_thread          m_thread_listen;
+    ptr_thread  m_thread_listen;
 
     event_base *m_ev_base;
     ptr_path    m_home;

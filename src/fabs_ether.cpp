@@ -43,7 +43,7 @@ fabs_ether::fabs_ether(std::string conf, const fabs_dlcap *dlcap)
 
     int numtcp = m_appif->get_num_tcp_threads();
 
-    m_queue = new fabs_cb<fabs_bytes*>[numtcp];
+    m_queue = new fabs_cb<ptr_fabs_bytes>[numtcp];
     m_is_consuming = new bool[numtcp];
 
     for (int i = 0; i < numtcp; i++) {
@@ -91,13 +91,12 @@ fabs_ether::~fabs_ether()
 }
 
 void
-fabs_ether::produce(int idx, fabs_bytes *buf)
+fabs_ether::produce(int idx, ptr_fabs_bytes buf)
 {
     if (! m_queue[idx].push(buf)) {
         std::cerr << "TCP queue (" << idx
                   << ") is full. Some packets are going to be dropped."
                   << std::endl;
-        delete buf;
         return;
     }
 
@@ -113,7 +112,7 @@ fabs_ether::produce(int idx, fabs_bytes *buf)
 inline void
 fabs_ether::produce(int idx, const char *buf, int len)
 {
-    fabs_bytes *bytes = new fabs_bytes;
+    ptr_fabs_bytes bytes(new fabs_bytes);
 
     bytes->set_buf(buf, len);
 
@@ -163,7 +162,7 @@ fabs_ether::consume(int idx)
             m_is_consuming[idx] = true;
         }
 
-        fabs_bytes *buf;
+        ptr_fabs_bytes buf;
         for (int i = 0; i < NOTIFY_NUM; i++) {
             while (m_queue[idx].pop(&buf)) {
                 uint8_t proto;
@@ -176,7 +175,6 @@ fabs_ether::consume(int idx)
                 uint32_t plen;
 
                 if (ip_hdr == NULL) {
-                    delete buf;
                     continue;
                 }
 
@@ -188,7 +186,6 @@ fabs_ether::consume(int idx)
                     plen = ntohs(iph->ip_len);
 
                     if (plen > len) {
-                        delete buf;
                         goto err;
                     }
 
@@ -235,7 +232,6 @@ fabs_ether::consume(int idx)
                         case IPPROTO_NONE:
                         case IPPROTO_FRAGMENT:
                         case IPPROTO_ICMPV6:
-                            delete buf;
                             goto err;
                         default:
                             goto end_loop;
@@ -244,7 +240,6 @@ fabs_ether::consume(int idx)
                 end_loop:
                     plen = ntohs(ip6h->ip6_plen) + sizeof(ip6_hdr);
                     if (plen > len) {
-                        delete buf;
                         goto err;
                     }
 
@@ -253,7 +248,6 @@ fabs_ether::consume(int idx)
                     break;
                 }
                 default:
-                    delete buf;
                     break;
                 }
 
@@ -286,7 +280,7 @@ fabs_ether::consume_fragment()
             }
         }
 
-        fabs_bytes *buf;
+        ptr_fabs_bytes buf;
         for (int i = 0; i < NOTIFY_NUM; i++) {
             while (m_queue_frag.pop(&buf)) {
                 m_fragment.input_ip(buf);

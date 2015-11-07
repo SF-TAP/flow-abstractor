@@ -34,7 +34,7 @@ public:
     void consume_fragment();
     void timer();
 
-    void produce(int idx, fabs_bytes *buf);
+    void produce(int idx, ptr_fabs_bytes buf);
     inline void produce(int idx, const char *buf, int len);
 
 private:
@@ -52,19 +52,19 @@ private:
     fabs_callback m_callback;
     fabs_fragment m_fragment;
 
-    fabs_cb<fabs_bytes*> *m_queue;
-    fabs_cb<fabs_bytes*>  m_queue_frag;
+    fabs_cb<ptr_fabs_bytes> *m_queue;
+    fabs_cb<ptr_fabs_bytes>  m_queue_frag;
 
     bool *m_is_consuming;
     bool  m_is_consuming_frag;
 
-    boost::mutex  *m_mutex;
+    boost::mutex *m_mutex;
     boost::mutex  m_mutex_frag;
     boost::condition *m_condition;
-    boost::condition m_condition_frag;
+    boost::condition  m_condition_frag;
     boost::thread **m_thread_consume;
-    boost::thread m_thread_consume_frag;
-    boost::thread m_thread_timer;
+    boost::thread   m_thread_consume_frag;
+    boost::thread   m_thread_timer;
 };
 
 #endif // FABS_ETHER_HPP

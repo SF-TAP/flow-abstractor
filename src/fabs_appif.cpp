@@ -822,7 +822,7 @@ fabs_appif::read_conf(string conf)
 
 void
 fabs_appif::in_event(fabs_stream_event st_event,
-                     const fabs_id_dir &id_dir, fabs_bytes *bytes)
+                     const fabs_id_dir &id_dir, ptr_fabs_bytes bytes)
 {
     appif_event *ev = new appif_event;
 
@@ -838,14 +838,12 @@ fabs_appif::in_event(fabs_stream_event st_event,
 void
 fabs_appif::appif_consumer::in_stream_event(fabs_stream_event st_event,
                                             const fabs_id_dir &id_dir,
-                                            fabs_bytes *bytes)
+                                            ptr_fabs_bytes bytes)
 {
     switch (st_event) {
     case STREAM_SYN:
     case STREAM_CREATED:
     {
-        assert(bytes == nullptr);
-
         auto it = m_info.find(id_dir.m_id);
 
         if (it == m_info.end()) {
@@ -861,32 +859,28 @@ fabs_appif::appif_consumer::in_stream_event(fabs_stream_event st_event,
     case STREAM_DATA:
     {
         if (bytes->get_len() <= 0) {
-            delete bytes;
             return;
         }
 
         auto it = m_info.find(id_dir.m_id);
 
         if (it == m_info.end()) {
-            delete bytes;
             return;
         }
 
         if (it->second->m_is_giveup) {
-            delete bytes;
             return;
         }
 
         if (id_dir.m_dir == FROM_ADDR1) {
-            it->second->m_buf1.push_back(bytes);
             it->second->m_dsize1 += bytes->get_len();
+            it->second->m_buf1.push_back(bytes);
             it->second->m_is_buf1 = true;
         } else if (id_dir.m_dir == FROM_ADDR2) {
-            it->second->m_buf2.push_back(bytes);
             it->second->m_dsize2 += bytes->get_len();
+            it->second->m_buf2.push_back(bytes);
             it->second->m_is_buf2 = true;
         } else {
-            delete bytes;
             return;
         }
 
@@ -910,8 +904,6 @@ fabs_appif::appif_consumer::in_stream_event(fabs_stream_event st_event,
     }
     case STREAM_DESTROYED:
     {
-        assert(bytes == nullptr);
-
         auto it = m_info.find(id_dir.m_id);
 
         if (it == m_info.end()) {
@@ -960,8 +952,6 @@ fabs_appif::appif_consumer::in_stream_event(fabs_stream_event st_event,
     case STREAM_TIMEOUT:
     case STREAM_RST:
         // nothing to do
-        assert(bytes == nullptr);
-
         break;
     default:
         assert(st_event != STREAM_CREATED);
@@ -1163,7 +1153,7 @@ fabs_appif::appif_consumer::send_tcp_data(ptr_info p_info, fabs_id_dir id_dir)
     }
 
     // invoke DATA event and send data to I/F
-    deque<fabs_bytes*> *bufs;
+    deque<ptr_fabs_bytes> *bufs;
 
     if (id_dir.m_dir == FROM_ADDR1) {
         bufs = &p_info->m_buf1;
@@ -1187,7 +1177,6 @@ fabs_appif::appif_consumer::send_tcp_data(ptr_info p_info, fabs_id_dir id_dir)
                                 front->get_len());
         }
 
-        delete front;
         bufs->pop_front();
     }
 
@@ -1333,20 +1322,13 @@ fabs_appif::stream_info::stream_info(const fabs_id &id) :
 
 fabs_appif::stream_info::~stream_info()
 {
-    clear_buf();
+
 }
 
 void
 fabs_appif::stream_info::clear_buf()
 {
-    for (auto bytes: m_buf1) {
-        delete bytes;
-    }
     m_buf1.clear();
-
-    for (auto bytes: m_buf2) {
-        delete bytes;
-    }
     m_buf2.clear();
 }
 
@@ -1370,7 +1352,7 @@ fabs_appif::is_in_port(boost::shared_ptr<std::list<std::pair<uint16_t, uint16_t>
 
 void
 fabs_appif::appif_consumer::in_datagram(const fabs_id_dir &id_dir,
-                                        fabs_bytes *bytes)
+                                        ptr_fabs_bytes bytes)
 {
     uint8_t    idx = bytes->get_head()[0];
     ptr_ifrule ifrule;
@@ -1512,9 +1494,6 @@ fabs_appif::appif_consumer::consume()
                 in_stream_event(ev->st_event, ev->id_dir, ev->bytes);
             } else if (ev->id_dir.m_id.get_l4_proto() == IPPROTO_UDP) {
                 in_datagram(ev->id_dir, ev->bytes);
-                delete ev->bytes;
-            } else {
-                delete ev->bytes;
             }
             delete ev;
         }

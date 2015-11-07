@@ -20,14 +20,14 @@ public:
     virtual ~fabs_cb() { delete[] m_buf; }
 
     bool pop(T *p);
-    bool push(const T &val);
+    bool push(T &val);
     int  get_len() { return m_len; }
 
 private:
     int m_max_len;
     volatile int m_len;
     T *m_buf;
-    T *m_buf_end;
+    volatile T *m_buf_end;
 
     T *m_head;
     volatile T *m_tail;
@@ -59,7 +59,7 @@ inline bool fabs_cb<T>::pop(T *p)
 }
 
 template <class T>
-inline bool fabs_cb<T>::push(const T &val)
+inline bool fabs_cb<T>::push(T &val)
 {
     if (m_len == m_max_len) {
         return false;

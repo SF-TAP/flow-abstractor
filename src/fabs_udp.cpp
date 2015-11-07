@@ -21,7 +21,7 @@ fabs_udp::~fabs_udp()
 }
 
 void
-fabs_udp::input_udp(fabs_id &id, fabs_direction dir, fabs_bytes *buf)
+fabs_udp::input_udp(fabs_id &id, fabs_direction dir, ptr_fabs_bytes buf)
 {
     // TODO: checksum
     fabs_id_dir id_dir;

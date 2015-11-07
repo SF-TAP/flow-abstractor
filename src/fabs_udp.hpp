@@ -17,7 +17,7 @@ public:
     fabs_udp();
     virtual ~fabs_udp();
 
-    void input_udp(fabs_id &id, fabs_direction dir, fabs_bytes *buf);
+    void input_udp(fabs_id &id, fabs_direction dir, ptr_fabs_bytes buf);
     void set_appif(ptr_fabs_appif appif) { m_appif = appif; }
 
 private:
