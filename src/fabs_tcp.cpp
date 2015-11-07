@@ -493,25 +493,25 @@ fabs_tcp::input_tcp(fabs_id &id, fabs_direction dir, fabs_bytes *buf)
             packet.m_data_len > 0) {
             auto it = p_uniflow->m_packets.find(packet.m_seq);
             if (it != p_uniflow->m_packets.end()) {
-                delete p_uniflow->m_packets[packet.m_seq].m_bytes;
+                delete buf;
+            } else {
+                p_uniflow->m_packets[packet.m_seq] = packet;
             }
-
-            p_uniflow->m_packets[packet.m_seq] = packet;
         } else if (packet.m_flags & TH_RST) {
             if (p_uniflow->m_is_syn) {
                 auto it = p_uniflow->m_packets.find(packet.m_seq);
                 if (it != p_uniflow->m_packets.end()) {
-                    delete p_uniflow->m_packets[packet.m_seq].m_bytes;
+                    delete buf;
+                } else {
+                    p_uniflow->m_packets[packet.m_seq] = packet;
                 }
-
-                p_uniflow->m_packets[packet.m_seq] = packet;
             } else {
                 auto it = p_uniflow->m_packets.find(p_uniflow->m_min_seq);
                 if (it != p_uniflow->m_packets.end()) {
-                    delete p_uniflow->m_packets[p_uniflow->m_min_seq].m_bytes;
+                    delete buf;
+                } else {
+                    p_uniflow->m_packets[p_uniflow->m_min_seq] = packet;
                 }
-
-                p_uniflow->m_packets[p_uniflow->m_min_seq] = packet;
             }
         }
 

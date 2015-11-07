@@ -45,6 +45,6 @@ fabs_callback::operator() (int idx, fabs_bytes *buf) {
         m_udp.input_udp(id, dir, buf);
         break;
     default:
-        ;
+        delete buf;
     }
 }
