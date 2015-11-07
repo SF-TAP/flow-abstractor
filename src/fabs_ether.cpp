@@ -30,6 +30,7 @@ struct vlanhdr {
 
 fabs_ether::fabs_ether(std::string conf, const fabs_dlcap *dlcap)
     : m_is_break(false),
+      m_num_dropped(0),
       m_dlcap(dlcap),
       m_appif(new fabs_appif),
       m_fragment(*this, m_appif),
@@ -94,9 +95,7 @@ void
 fabs_ether::produce(int idx, ptr_fabs_bytes buf)
 {
     if (! m_queue[idx].push(buf)) {
-        std::cerr << "TCP queue (" << idx
-                  << ") is full. Some packets are going to be dropped."
-                  << std::endl;
+        m_num_dropped++;
         return;
     }
 
@@ -134,6 +133,10 @@ fabs_ether::timer()
             t0 = t1;
 
             m_dlcap->print_stat();
+
+            std::cout << "dropped packets internally: " << m_num_dropped
+                      << std::endl;
+
             m_callback.print_stat();
 
             std::cout << std::endl;
