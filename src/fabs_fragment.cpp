@@ -167,6 +167,8 @@ fabs_fragment::input_ip(fabs_bytes *buf)
                     uint32_t hash = ntohl(iph4->ip_src.s_addr ^ iph4->ip_dst.s_addr);
 
                     m_ether.produce(hash % m_appif->get_num_tcp_threads(), buf);
+                } else {
+                    delete buf;
                 }
             }
         }

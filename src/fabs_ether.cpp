@@ -97,6 +97,7 @@ fabs_ether::produce(int idx, fabs_bytes *buf)
         std::cerr << "TCP queue (" << idx
                   << ") is full. Some packets are going to be dropped."
                   << std::endl;
+        delete buf;
         return;
     }
 

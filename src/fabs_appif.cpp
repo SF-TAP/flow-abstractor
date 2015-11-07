@@ -844,6 +844,8 @@ fabs_appif::appif_consumer::in_stream_event(fabs_stream_event st_event,
     case STREAM_SYN:
     case STREAM_CREATED:
     {
+        assert(bytes == nullptr);
+
         auto it = m_info.find(id_dir.m_id);
 
         if (it == m_info.end()) {
@@ -853,8 +855,6 @@ fabs_appif::appif_consumer::in_stream_event(fabs_stream_event st_event,
 
             it = m_info.find(id_dir.m_id);
         }
-
-        delete bytes;
 
         break;
     }
@@ -910,10 +910,11 @@ fabs_appif::appif_consumer::in_stream_event(fabs_stream_event st_event,
     }
     case STREAM_DESTROYED:
     {
+        assert(bytes == nullptr);
+
         auto it = m_info.find(id_dir.m_id);
 
         if (it == m_info.end()) {
-            delete bytes;
             return;
         }
 
@@ -952,7 +953,6 @@ fabs_appif::appif_consumer::in_stream_event(fabs_stream_event st_event,
         }
 
         m_info.erase(it);
-        delete bytes;
 
         break;
     }
@@ -960,7 +960,8 @@ fabs_appif::appif_consumer::in_stream_event(fabs_stream_event st_event,
     case STREAM_TIMEOUT:
     case STREAM_RST:
         // nothing to do
-        delete bytes;
+        assert(bytes == nullptr);
+
         break;
     default:
         assert(st_event != STREAM_CREATED);
