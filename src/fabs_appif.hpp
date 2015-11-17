@@ -75,7 +75,7 @@ private:
     };
 
     struct ifrule {
-        ptr_regex     m_up, m_down;
+        ptr_regex   m_up, m_down;
         std::string m_name;
         ifproto     m_proto;
         ifformat    m_format;
@@ -95,6 +95,7 @@ private:
     struct uxpeer {
         int          m_fd;
         event       *m_ev;
+        bool         m_is_avail;
         std::string  m_name;
     };
 
