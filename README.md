@@ -2,6 +2,8 @@
 
 SF-TAP flow abstractor provides an abstraction mechanism for application level network traffic analysis.
 
+[![Build Status](https://travis-ci.org/SF-TAP/flow-abstractor.svg?branch=master)](https://travis-ci.org/SF-TAP/flow-abstractor)
+
 ### Dependencies
 
 Required:
