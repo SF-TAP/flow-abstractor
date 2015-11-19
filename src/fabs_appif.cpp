@@ -30,7 +30,6 @@ namespace fs = boost::filesystem;
 
 void ux_read(int fd, short events, void *arg);
 bool read_loopback7(int fd, fabs_appif *appif);
-// bool read_loopback3(int fd, fabs_appif *appif);
 
 fabs_appif::fabs_appif() :
     m_fd7(-1),
@@ -92,14 +91,21 @@ ux_accept(int fd, short events, void *arg)
         return;
     }
 
+    struct timeval tv;
+
+    tv.tv_sec  = 1;
+    tv.tv_usec = 0;
+    setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, (char *)&tv, sizeof(tv));
+
     event *ev = event_new(appif->m_ev_base, sock, EV_READ | EV_PERSIST,
                           ux_read, arg);
     event_add(ev, NULL);
 
     auto peer = fabs_appif::ptr_uxpeer(new fabs_appif::uxpeer);
-    peer->m_fd   = sock;
-    peer->m_ev   = ev;
-    peer->m_name = it2->second;
+    peer->m_fd       = sock;
+    peer->m_ev       = ev;
+    peer->m_is_avail = true;
+    peer->m_name     = it2->second;
 
     appif->m_fd2uxpeer[sock] = peer;
     appif->m_name2uxpeer[it2->second].insert(sock);
@@ -1188,6 +1194,9 @@ fabs_appif::write_event(int fd, const fabs_id_dir &id_dir, ptr_ifrule ifrule,
                         fabs_stream_event event, match_dir match,
                         fabs_appif_header *header, char *body, int bodylen)
 {
+    if (! m_fd2uxpeer[fd]->m_is_avail)
+        return false;
+
     if (ifrule->m_format == IF_TEXT) {
         string s;
         char buf[256];
@@ -1265,10 +1274,21 @@ fabs_appif::write_event(int fd, const fabs_id_dir &id_dir, ptr_ifrule ifrule,
             iov[1].iov_base = body;
             iov[1].iov_len  = bodylen;
 
-            writev(fd, iov, 2);
-        } else {
-            if (write(fd, s.c_str(), s.size()) < 0)
+            if (writev(fd, iov, 2) < 0) {
+                auto p = m_fd2uxpeer[fd];
+                p->m_is_avail = false;
+                std::cerr << "cannot write to " << fd
+                          << "(" << p->m_name << ")" << std::endl;
                 return false;
+            }
+        } else {
+            if (write(fd, s.c_str(), s.size()) < 0) {
+                auto p = m_fd2uxpeer[fd];
+                p->m_is_avail = false;
+                std::cerr << "cannot write to " << fd
+                          << "(" << p->m_name << ")" << std::endl;
+                return false;
+            }
         }
     } else {
         header->event    = event;
@@ -1288,10 +1308,21 @@ fabs_appif::write_event(int fd, const fabs_id_dir &id_dir, ptr_ifrule ifrule,
             iov[1].iov_base = body;
             iov[1].iov_len  = bodylen;
 
-            writev(fd, iov, 2);
-        } else {
-            if (write(fd, header, sizeof(*header)) < 0)
+            if (writev(fd, iov, 2)) {
+                auto p = m_fd2uxpeer[fd];
+                p->m_is_avail = false;
+                std::cerr << "cannot write to " << fd
+                          << "(" << p->m_name << ")" << std::endl;
                 return false;
+            }
+        } else {
+            if (write(fd, header, sizeof(*header)) < 0) {
+                auto p = m_fd2uxpeer[fd];
+                p->m_is_avail = false;
+                std::cerr << "cannot write to " << fd
+                          << "(" << p->m_name << ")" << std::endl;
+                return false;
+            }
         }
     }
 
