@@ -66,7 +66,7 @@ fabs_pcap::print_stat() const
     pcap_stats(m_handle, &stat);
 
     std::cout << "received packets: " << stat.ps_recv
-              << "\ndropped packets: " << stat.ps_drop
+              << "\ndropped packets by pcap: " << stat.ps_drop
               << "\ndropped packets by IF: " << stat.ps_ifdrop
               << std::endl;
 
