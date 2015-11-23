@@ -31,7 +31,7 @@ http:
   format: text # text or binary
   body:   yes  # if specified 'no', only header is output
   nice:   100  # the smaller a value is, the higher a priority is
-#    balance = 2    # flows are balanced by 2 interfaces
+  balance: 3   # flows are balanced by 2 interfaces
 
 http_proxy:
   up:     '^(CONNECT|connect) .+ HTTP/1\.(0\r?\n|1\r?\n([-a-zA-Z]+: .+\r?\n)+)'
