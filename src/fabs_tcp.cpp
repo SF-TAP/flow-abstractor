@@ -79,6 +79,8 @@ fabs_tcp::garbage_collector2(int idx)
         boost::mutex::scoped_lock lock(m_mutex_flow[idx]);
 
         for (auto it = m_flow[idx].begin(); it != m_flow[idx].end(); ++it) {
+            if (m_is_del)
+                return;
             // close half opened connections
             if (((it->second->m_flow1.m_is_syn &&
                   ! it->second->m_flow2.m_is_syn) ||
@@ -236,6 +238,8 @@ fabs_tcp::input_tcp_event(int idx, fabs_id_dir tcp_event)
     fabs_tcp_packet packet;
 
     while (get_packet(idx, tcp_event.m_id, tcp_event.m_dir, packet)) {
+        if (m_is_del) return;
+
         if (packet.m_flags & TH_SYN) {
 #ifdef DEBUG
             cout << "connection opened: addr1 = "

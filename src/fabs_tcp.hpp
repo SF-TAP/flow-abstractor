@@ -79,7 +79,7 @@ private:
     boost::mutex     m_mutex_flow[NUM_TCPTREE];
     boost::mutex     m_mutex_gc;
     boost::condition m_condition_gc;
-    bool             m_is_del;
+    volatile bool    m_is_del;
     int              m_flow_idx;
 
     boost::thread    m_thread_gc;

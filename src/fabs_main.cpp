@@ -29,21 +29,25 @@ bool is_netmap = false;
 fabs_netmap *nm;
 #endif // USE_NETMAP
 
+volatile bool is_break = false;
+
 void
 sig_handler(int s)
 {
+    if (is_break) return;
+
+    std::cout << "\nshutting down..." << std::endl;
 #ifdef USE_NETMAP
-    std::cout << "SIGINT!" << std::endl;
     if (is_netmap) {
         nm->stop();
-        delete nm;
-        exit(0);
+        is_break = true;
+        return;
     }
 #endif // USE_NETMAP
 
     pc->stop();
-    delete pc;
-    exit(0);
+
+    is_break = true;
 }
 
 void
@@ -135,6 +139,5 @@ main(int argc, char *argv[])
     pc->run();
 
     delete pc;
-
     return 0;
 }

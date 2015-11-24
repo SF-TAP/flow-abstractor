@@ -10,7 +10,11 @@
 class fabs_callback {
 public:
     fabs_callback();
-    virtual ~fabs_callback() { delete[] m_tcp;  }
+    virtual ~fabs_callback() {
+        std::cout << "deleting TCP threads... " << std::flush;
+        delete[] m_tcp;
+        std::cout << "done" << std::endl;
+    }
 
     void operator() (int idx, ptr_fabs_bytes buf);
     void print_stat() {

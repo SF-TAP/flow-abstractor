@@ -45,12 +45,20 @@ fabs_appif::fabs_appif() :
 
 fabs_appif::~fabs_appif()
 {
-    spin_lock_write lock(m_rw_mutex);
+    std::cout << "removing flow abstraction interfaces... " << std::flush;
 
-    for (auto p0: m_fd2ifrule) {
-        close(p0.first);
-        remove(fs::path(p0.second->m_fd2name[p0.first]));
+    {
+        spin_lock_write lock(m_rw_mutex);
+
+        for (auto p0: m_fd2ifrule) {
+            close(p0.first);
+            remove(fs::path(p0.second->m_fd2name[p0.first]));
+        }
     }
+
+    m_consumer.reset();
+
+    std::cout << "done" << std::endl;
 }
 
 void

@@ -35,7 +35,7 @@ private:
 
     std::string m_dev;
     pcap_t *m_handle;
-    bool    m_is_break;
+    volatile bool m_is_break;
     int     m_dl_type;
     int     m_bufsize;
 };

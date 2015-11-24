@@ -66,6 +66,8 @@ fabs_ether::fabs_ether(std::string conf, const fabs_dlcap *dlcap)
 
 fabs_ether::~fabs_ether()
 {
+    std::cout << "deleting Ethernet threads... " << std::flush;
+
     m_is_break = true;
 
     {
@@ -85,10 +87,14 @@ fabs_ether::~fabs_ether()
         delete m_thread_consume[i];
     }
 
+    m_thread_timer.join();
+
     delete[] m_thread_consume;
     delete[] m_condition;
     delete[] m_mutex;
     delete[] m_queue;
+
+    std::cout << "done" << std::endl;
 }
 
 void
@@ -143,6 +149,8 @@ fabs_ether::timer()
         }
 
         boost::this_thread::sleep(boost::posix_time::milliseconds(100));
+        if (m_is_break)
+            return;
     }
 }
 
@@ -168,6 +176,9 @@ fabs_ether::consume(int idx)
         ptr_fabs_bytes buf;
         for (int i = 0; i < NOTIFY_NUM; i++) {
             while (m_queue[idx].pop(&buf)) {
+                if (m_is_break)
+                    return;
+
                 uint8_t proto;
                 const uint8_t *ip_hdr = get_ip_hdr((uint8_t*)buf->get_head(),
                                                    buf->get_len(), proto);
@@ -286,6 +297,8 @@ fabs_ether::consume_fragment()
         ptr_fabs_bytes buf;
         for (int i = 0; i < NOTIFY_NUM; i++) {
             while (m_queue_frag.pop(&buf)) {
+                if (m_is_break)
+                    return;
                 m_fragment.input_ip(buf);
             }
         }

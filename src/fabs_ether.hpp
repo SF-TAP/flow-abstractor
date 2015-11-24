@@ -41,7 +41,7 @@ private:
     boost::mutex     m_mutex_init;
     boost::condition m_condition_init;
 
-    bool     m_is_break;
+    volatile bool m_is_break;
     uint64_t m_num_dropped;
 
     inline const uint8_t *get_ip_hdr(const uint8_t *bytes, uint32_t len,
