@@ -47,12 +47,15 @@ fabs_netmap::run()
 
     for (;;) {
 
-        retval = poll(pfd, mq+1, -1);
+        retval = poll(pfd, mq+1, 500);
 
         if (m_is_break)
             return;
 
-        if (retval <= 0) {
+        if (retval == 0)
+            continue;
+
+        if (retval < 0) {
             PERROR();
             return;
         }

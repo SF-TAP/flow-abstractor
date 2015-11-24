@@ -109,6 +109,7 @@ main(int argc, char *argv[])
         nm = new fabs_netmap(conf);
         nm->set_dev(dev);
         nm->run();
+        delete nm;
     } else {
         run_pcap(dev, conf, bufsize);
     }
