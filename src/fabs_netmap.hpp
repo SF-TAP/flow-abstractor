@@ -16,6 +16,7 @@ public:
 
     void set_dev(std::string dev) { m_dev = dev; }
     void run();
+    void stop() { m_is_break = true; }
 
     virtual void print_stat() const;
 

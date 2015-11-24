@@ -7,7 +7,8 @@
 fabs_netmap::fabs_netmap(std::string conf) : m_ether(conf, this),
                                              m_netmap(NULL),
                                              m_t(time(NULL)),
-                                             m_recv_cnt(0)
+                                             m_recv_cnt(0),
+                                             m_is_break(false)
 {
 
 }
@@ -47,6 +48,9 @@ fabs_netmap::run()
     for (;;) {
 
         retval = poll(pfd, mq+1, -1);
+
+        if (m_is_break)
+            return;
 
         if (retval <= 0) {
             PERROR();

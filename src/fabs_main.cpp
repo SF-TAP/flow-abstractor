@@ -23,6 +23,25 @@ extern char *optarg;
 extern int optind, opterr, optopt;
 bool is_stats = false;
 
+#ifdef USE_NETMAP
+bool is_netmap = false;
+fabs_netmap *nm;
+#endif // USE_NETMAP
+
+void
+sig_handler(int s)
+{
+#ifdef USE_NETMAP
+    if (is_netmap) {
+        nm->stop();
+    } else {
+        stop_pcap();
+    }
+#else
+    stop_pcap();
+#endif // USE_NETMAP
+}
+
 void
 print_usage(char *cmd)
 {
@@ -43,7 +62,6 @@ main(int argc, char *argv[])
     string conf;
 
 #ifdef USE_NETMAP
-    bool is_netmap = false;
     const char *optstr = "i:hc:sb:n";
 #else
     const char *optstr = "i:hc:sb:";
@@ -77,11 +95,20 @@ main(int argc, char *argv[])
         }
     }
 
+    struct sigaction sigact;
+
+    sigact.sa_handler = sig_handler;
+    sigemptyset(&sigact.sa_mask);
+    sigact.sa_flags = 0;
+
+    sigaction(SIGINT, &sigact, NULL);
+    sigaction(SIGTERM, &sigact, NULL);
+
 #ifdef USE_NETMAP
     if (is_netmap) {
-        fabs_netmap nm(conf);
-        nm.set_dev(dev);
-        nm.run();
+        nm = new fabs_netmap(conf);
+        nm->set_dev(dev);
+        nm->run();
     } else {
         run_pcap(dev, conf, bufsize);
     }

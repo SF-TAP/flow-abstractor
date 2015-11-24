@@ -207,7 +207,6 @@ private:
     std::map<int, ptr_ifrule_storage> m_ifrule_tcp;
     std::map<int, ptr_ifrule_storage> m_ifrule_udp;
     ptr_ifrule m_ifrule7;
-    ptr_ifrule m_ifrule3;
     ptr_ifrule m_tcp_default;
     ptr_ifrule m_udp_default;
     std::map<int, ptr_ifrule> m_fd2ifrule; // listen socket

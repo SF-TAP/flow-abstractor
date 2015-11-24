@@ -25,7 +25,6 @@
 
 // #include <event2/thread.h>
 
-using namespace std;
 namespace fs = boost::filesystem;
 
 void ux_read(int fd, short events, void *arg);
@@ -46,7 +45,12 @@ fabs_appif::fabs_appif() :
 
 fabs_appif::~fabs_appif()
 {
+    spin_lock_write lock(m_rw_mutex);
 
+    for (auto p0: m_fd2ifrule) {
+        close(p0.first);
+        remove(fs::path(p0.second->m_fd2name[p0.first]));
+    }
 }
 
 void
@@ -110,8 +114,8 @@ ux_accept(int fd, short events, void *arg)
     appif->m_fd2uxpeer[sock] = peer;
     appif->m_name2uxpeer[it2->second].insert(sock);
 
-    cout << "accepted on " << it->second->m_name
-         << " (fd = " << sock << ")" << endl;
+    std::cout << "accepted on " << it->second->m_name
+              << " (fd = " << sock << ")" << std::endl;
 
     if (fd == appif->m_fd7) {
         appif->m_lb7_state[sock] = fabs_appif::ptr_loopback_state(new fabs_appif::loopback_state);
@@ -135,8 +139,8 @@ ux_close(int fd, fabs_appif *appif)
         event_del(it1->second->m_ev);
         event_free(it1->second->m_ev);
 
-        cout << "closed on " << it1->second->m_name
-             << " (fd = " << fd << ")" << endl;
+        std::cout << "closed on " << it1->second->m_name
+                  << " (fd = " << fd << ")" << std::endl;
 
         appif->m_fd2uxpeer.erase(it1);
     }
@@ -214,16 +218,16 @@ read_loopback7(int fd, fabs_appif *appif)
                 // must close fd
                 return true;
             } else if (len != sizeof(*header)) {
-                cerr << "CAUTION! LOOPBACK 7 RECEIVED INVALID HEADER!: socket = "
-                     << fd << endl;
+                std::cerr << "CAUTION! LOOPBACK 7 RECEIVED INVALID HEADER!: socket = "
+                          << fd << std::endl;
                 return false;
             }
 
             header->hop++;
         } else {
             // read text header
-            map<string, string> h;
-            string s;
+            std::map<std::string, std::string> h;
+            std::string s;
 
             for (;;) {
                 char c;
@@ -240,16 +244,16 @@ read_loopback7(int fd, fabs_appif *appif)
                 s += c;
             }
 
-            stringstream ss1(s);
+            std::stringstream ss1(s);
             while (ss1) {
-                string elm;
+                std::string elm;
                 std::getline(ss1, elm, ',');
 
                 if (elm.empty())
                     continue;
 
-                stringstream ss2(elm);
-                string key, val;
+                std::stringstream ss2(elm);
+                std::string key, val;
                 std::getline(ss2, key, '=');
                 std::getline(ss2, val);
 
@@ -278,14 +282,14 @@ read_loopback7(int fd, fabs_appif *appif)
             }
 
             if (inet_pton(af, h["ip1"].c_str(), &header->l3_addr1) <= 0) {
-                cerr << "CAUTION! LOOPBACK 7 RECEIVED INVALID HEADER! (inet_pton ip1): header = "
-                     << s << endl;
+                std::cerr << "CAUTION! LOOPBACK 7 RECEIVED INVALID HEADER! (inet_pton ip1): header = "
+                          << s << std::endl;
                 return false;
             }
 
             if (inet_pton(af, h["ip2"].c_str(), &header->l3_addr2) <= 0) {
-                cerr << "CAUTION! LOOPBACK 7 RECEIVED INVALID HEADER! (inet_pton ip2): header = "
-                     << s << endl;
+                std::cerr << "CAUTION! LOOPBACK 7 RECEIVED INVALID HEADER! (inet_pton ip2): header = "
+                          << s << std::endl;
                 return false;
             }
 
@@ -302,8 +306,8 @@ read_loopback7(int fd, fabs_appif *appif)
                     header->len = boost::lexical_cast<int>(it_len->second);
                 }
             } catch (boost::bad_lexical_cast e) {
-                cerr << "CAUTION! LOOPBACK 7 RECEIVED INVALID HEADER! (lexical_cast): header = "
-                     << s << endl;
+                std::cerr << "CAUTION! LOOPBACK 7 RECEIVED INVALID HEADER! (lexical_cast): header = "
+                          << s << std::endl;
                 return false;
             }
 
@@ -391,8 +395,8 @@ read_loopback7(int fd, fabs_appif *appif)
 
             return false;
         } else {
-            cerr << "CAUTION! LOOPBACK 7 RECEIVED INVALID EVENT!: event = "
-                 << header->event << endl;
+            std::cerr << "CAUTION! LOOPBACK 7 RECEIVED INVALID EVENT!: event = "
+                      << header->event << std::endl;
             // must close fd
             return true;
         }
@@ -413,8 +417,8 @@ read_loopback7(int fd, fabs_appif *appif)
             // must close fd
             return true;
         } else if (len != header->len) {
-            cerr << "CAUTION! LOOPBACK 7 RECEIVED INVALID BODY LENGTH!: len = "
-                 << header->len << endl;
+            std::cerr << "CAUTION! LOOPBACK 7 RECEIVED INVALID BODY LENGTH!: len = "
+                      << header->len << std::endl;
             // must close fd
             return true;
         }
@@ -433,15 +437,15 @@ fabs_appif::makedir(fs::path path)
 {
     if (fs::exists(path)) {
         if (! fs::is_directory(path)) {
-            cerr << path.string() << " is not directory" << endl;
+            std::cerr << path.string() << " is not directory" << std::endl;
             exit(-1);
         }
     } else {
         try {
             fs::create_directories(path);
         } catch (fs::filesystem_error e) {
-            cerr << "cannot create directories: " << e.path1().string()
-                 << endl;
+            std::cerr << "cannot create directories: " << e.path1().string()
+                      << std::endl;
             exit(-1);
         }
     }
@@ -472,7 +476,7 @@ fabs_appif::ux_listen_ifrule(ptr_ifrule ifrule)
         }
 
         if (ifrule->m_balance > 1) {
-            path += fs::path(boost::lexical_cast<string>(i));
+            path += fs::path(boost::lexical_cast<std::string>(i));
         }
 
         strncpy(sa.sun_path, path.string().c_str(), sizeof(sa.sun_path));
@@ -498,8 +502,8 @@ fabs_appif::ux_listen_ifrule(ptr_ifrule ifrule)
         ifrule->m_fd2name[sock] = path.string();
         m_fd2ifrule[sock] = ifrule;
 
-        cout << "listening on " << path.string()
-             << " (" << ifrule->m_balance_name[i] << ")" << endl;
+        std::cout << "listening on " << path.string()
+                  << " (" << ifrule->m_balance_name[i] << ")" << std::endl;
 
         if (ifrule->m_name == "loopback7") {
             m_fd7 = sock;
@@ -514,7 +518,7 @@ fabs_appif::ux_listen()
 {
     m_ev_base = event_base_new();
     if (m_ev_base == NULL) {
-        cerr << "could not new ev_base" << endl;
+        std::cerr << "could not new ev_base" << std::endl;
         exit(-1);
     }
 
@@ -563,9 +567,6 @@ fabs_appif::ux_listen()
         if (m_ifrule7)
             ux_listen_ifrule(m_ifrule7);
 
-        if (m_ifrule3)
-            ux_listen_ifrule(m_ifrule3);
-
         if (m_tcp_default)
             ux_listen_ifrule(m_tcp_default);
 
@@ -582,7 +583,7 @@ fabs_appif::ux_listen()
 }
 
 void
-fabs_appif::read_conf(string conf)
+fabs_appif::read_conf(std::string conf)
 {
     fabs_conf c;
 
@@ -601,8 +602,8 @@ fabs_appif::read_conf(string conf)
                 try {
                     m_tcp_timeout = boost::lexical_cast<time_t>(it2->second);
                 } catch (boost::bad_lexical_cast e) {
-                    cerr << "cannot convert \"" << it2->second
-                         << "\" to time_t" << endl;
+                    std::cerr << "cannot convert \"" << it2->second
+                              << "\" to time_t" << std::endl;
                     continue;
                 }
             }
@@ -634,8 +635,8 @@ fabs_appif::read_conf(string conf)
                 try {
                     m_num_consumer = boost::lexical_cast<int>(it2->second);
                 } catch (boost::bad_lexical_cast e) {
-                    cerr << "cannot convert \"" << it2->second
-                         << "\" to int" << endl;
+                    std::cerr << "cannot convert \"" << it2->second
+                              << "\" to int" << std::endl;
                     continue;
                 }
             }
@@ -651,8 +652,8 @@ fabs_appif::read_conf(string conf)
                 try {
                     m_num_tcp_threads = boost::lexical_cast<int>(it2->second);
                 } catch (boost::bad_lexical_cast e) {
-                    cerr << "cannot convert \"" << it2->second
-                         << "\" to int" << endl;
+                    std::cerr << "cannot convert \"" << it2->second
+                              << "\" to int" << std::endl;
                     continue;
                 }
             }
@@ -688,8 +689,8 @@ fabs_appif::read_conf(string conf)
                 try {
                     rule->m_nice = boost::lexical_cast<int>(it3->second);
                 } catch (boost::bad_lexical_cast e) {
-                    cerr << "cannot convert \"" << it3->second
-                         << "\" to int" << endl;
+                    std::cerr << "cannot convert \"" << it3->second
+                              << "\" to int" << std::endl;
                     continue;
                 }
             }
@@ -738,18 +739,18 @@ fabs_appif::read_conf(string conf)
                         rule->m_balance = 1;
                     }
                 } catch (boost::bad_lexical_cast e) {
-                    cerr << "cannot convert \"" << it3->second
-                         << "\" to int" << endl;
+                    std::cerr << "cannot convert \"" << it3->second
+                              << "\" to int" << std::endl;
                     continue;
                 }
             }
 
             it3 = it1->second.find("port");
             if (it3 != it1->second.end()) {
-                stringstream ss(it3->second);
+                std::stringstream ss(it3->second);
 
                 while (ss) {
-                    string port, n1, n2;
+                    std::string port, n1, n2;
                     std::getline(ss, port, ',');
 
                     if (port.empty())
@@ -757,20 +758,20 @@ fabs_appif::read_conf(string conf)
 
                     port = trim(port);
 
-                    stringstream ss2(port);
+                    std::stringstream ss2(port);
                     std::getline(ss2, n1, '-');
                     std::getline(ss2, n2);
 
                     n1 = trim(n1);
                     n2 = trim(n2);
 
-                    pair<uint16_t, uint16_t> range;
+                    std::pair<uint16_t, uint16_t> range;
 
                     try {
                         range.first = boost::lexical_cast<uint16_t>(n1);
                     } catch (boost::bad_lexical_cast e) {
-                        cerr << "cannot convert \"" << n1
-                             << "\" to uint16_t" << endl;
+                        std::cerr << "cannot convert \"" << n1
+                                  << "\" to uint16_t" << std::endl;
                         continue;
                     }
 
@@ -778,8 +779,8 @@ fabs_appif::read_conf(string conf)
                         try {
                             range.second = boost::lexical_cast<uint16_t>(n2);
                         } catch (boost::bad_lexical_cast e) {
-                            cerr << "cannot convert \"" << n2
-                                 << "\" to uint16_t" << endl;
+                            std::cerr << "cannot convert \"" << n2
+                                      << "\" to uint16_t" << std::endl;
                             continue;
                         }
                     } else {
@@ -935,7 +936,7 @@ fabs_appif::appif_consumer::in_stream_event(fabs_stream_event st_event,
         if (it->second->m_ifrule) {
             // invoke DESTROYED event
             int idx = it->second->m_hash % it->second->m_ifrule->m_balance;
-            string &name = it->second->m_ifrule->m_balance_name[idx];
+            std::string &name = it->second->m_ifrule->m_balance_name[idx];
 
             spin_lock_read lock(m_appif.m_rw_mutex);
 
@@ -990,8 +991,10 @@ fabs_appif::appif_consumer::send_tcp_data(ptr_info p_info, fabs_id_dir id_dir)
                 if (len1 > 0) {
                     idx = (uint8_t)buf1[0];
                     if (cache_up[idx] &&
-                        RE2::PartialMatch(string(buf1, len1), *cache_up[idx]->m_up) &&
-                        RE2::PartialMatch(string(buf2, len2), *cache_up[idx]->m_down)) {
+                        RE2::PartialMatch(std::string(buf1, len1),
+                                          *cache_up[idx]->m_up) &&
+                        RE2::PartialMatch(std::string(buf2, len2),
+                                          *cache_up[idx]->m_down)) {
                         ifrule = cache_up[idx];
                         is_classified = true;
                         p_info->m_match_dir[0] = MATCH_UP;
@@ -1000,8 +1003,10 @@ fabs_appif::appif_consumer::send_tcp_data(ptr_info p_info, fabs_id_dir id_dir)
 
                         break;
                     } else if (cache_down[idx] &&
-                               RE2::PartialMatch(string(buf1, len1), *cache_down[idx]->m_down) &&
-                               RE2::PartialMatch(string(buf2, len2), *cache_down[idx]->m_up)) {
+                               RE2::PartialMatch(std::string(buf1, len1),
+                                                 *cache_down[idx]->m_down) &&
+                               RE2::PartialMatch(std::string(buf2, len2),
+                                                 *cache_down[idx]->m_up)) {
                         ifrule = cache_down[idx];
                         is_classified = true;
                         p_info->m_match_dir[0] = MATCH_DOWN;
@@ -1015,8 +1020,10 @@ fabs_appif::appif_consumer::send_tcp_data(ptr_info p_info, fabs_id_dir id_dir)
                 if (len2 > 0) {
                     idx = (uint8_t)buf2[0];
                     if (cache_up[idx] &&
-                        RE2::PartialMatch(string(buf1, len1), *cache_up[idx]->m_up) &&
-                        RE2::PartialMatch(string(buf2, len2), *cache_up[idx]->m_down)) {
+                        RE2::PartialMatch(std::string(buf1, len1),
+                                          *cache_up[idx]->m_up) &&
+                        RE2::PartialMatch(std::string(buf2, len2),
+                                          *cache_up[idx]->m_down)) {
                         ifrule = cache_up[idx];
                         is_classified = true;
                         p_info->m_match_dir[0] = MATCH_DOWN;
@@ -1025,8 +1032,10 @@ fabs_appif::appif_consumer::send_tcp_data(ptr_info p_info, fabs_id_dir id_dir)
 
                         break;
                     } else if (cache_down[idx] &&
-                               RE2::PartialMatch(string(buf1, len1), *cache_down[idx]->m_down) &&
-                               RE2::PartialMatch(string(buf2, len2), *cache_down[idx]->m_up)) {
+                               RE2::PartialMatch(std::string(buf1, len1),
+                                                 *cache_down[idx]->m_down) &&
+                               RE2::PartialMatch(std::string(buf2, len2),
+                                                 *cache_down[idx]->m_up)) {
                         ifrule = cache_down[idx];
                         is_classified = true;
                         p_info->m_match_dir[0] = MATCH_UP;
@@ -1043,8 +1052,10 @@ fabs_appif::appif_consumer::send_tcp_data(ptr_info p_info, fabs_id_dir id_dir)
                  it1 != it_tcp->second->ifrule.end(); ++it1) {
                 if (m_appif.is_in_port((*it1)->m_port, id_dir.get_port_src(),
                                id_dir.get_port_dst())) {
-                    if (RE2::PartialMatch(string(buf1, len1), *(*it1)->m_up) &&
-                        RE2::PartialMatch(string(buf2, len2), *(*it1)->m_down)) {
+                    if (RE2::PartialMatch(std::string(buf1, len1),
+                                          *(*it1)->m_up) &&
+                        RE2::PartialMatch(std::string(buf2, len2),
+                                          *(*it1)->m_down)) {
                         ifrule = *it1;
                         is_classified = true;
                         p_info->m_match_dir[0] = MATCH_UP;
@@ -1065,8 +1076,10 @@ fabs_appif::appif_consumer::send_tcp_data(ptr_info p_info, fabs_id_dir id_dir)
                         }
 
                         goto brk;
-                    } else if (RE2::PartialMatch(string(buf1, len1), *(*it1)->m_down) &&
-                               RE2::PartialMatch(string(buf2, len2), *(*it1)->m_up)) {
+                    } else if (RE2::PartialMatch(std::string(buf1, len1),
+                                                 *(*it1)->m_down) &&
+                               RE2::PartialMatch(std::string(buf2, len2),
+                                                 *(*it1)->m_up)) {
                         ifrule = *it1;
                         is_classified = true;
                         p_info->m_match_dir[0] = MATCH_DOWN;
@@ -1135,7 +1148,7 @@ fabs_appif::appif_consumer::send_tcp_data(ptr_info p_info, fabs_id_dir id_dir)
     }
 
     int idx = p_info->m_hash % p_info->m_ifrule->m_balance;
-    string &name = p_info->m_ifrule->m_balance_name[idx];
+    std::string &name = p_info->m_ifrule->m_balance_name[idx];
 
     std::vector<int> fdvec;
 
@@ -1159,7 +1172,7 @@ fabs_appif::appif_consumer::send_tcp_data(ptr_info p_info, fabs_id_dir id_dir)
     }
 
     // invoke DATA event and send data to I/F
-    deque<ptr_fabs_bytes> *bufs;
+    std::deque<ptr_fabs_bytes> *bufs;
 
     if (id_dir.m_dir == FROM_ADDR1) {
         bufs = &p_info->m_buf1;
@@ -1198,7 +1211,7 @@ fabs_appif::write_event(int fd, const fabs_id_dir &id_dir, ptr_ifrule ifrule,
         return false;
 
     if (ifrule->m_format == IF_TEXT) {
-        string s;
+        std::string s;
         char buf[256];
 
         s  = "ip1=";
@@ -1210,13 +1223,13 @@ fabs_appif::write_event(int fd, const fabs_id_dir &id_dir, ptr_ifrule ifrule,
         s += buf;
 
         s += ",port1=";
-        s += boost::lexical_cast<string>(htons(id_dir.get_port1()));
+        s += boost::lexical_cast<std::string>(htons(id_dir.get_port1()));
 
         s += ",port2=";
-        s += boost::lexical_cast<string>(htons(id_dir.get_port2()));
+        s += boost::lexical_cast<std::string>(htons(id_dir.get_port2()));
 
         s += ",hop=";
-        s += boost::lexical_cast<string>((int)id_dir.m_id.m_hop);
+        s += boost::lexical_cast<std::string>((int)id_dir.m_id.m_hop);
 
         if (id_dir.m_id.get_l3_proto() == IPPROTO_IP) {
             s += ",l3=ipv4";
@@ -1258,7 +1271,7 @@ fabs_appif::write_event(int fd, const fabs_id_dir &id_dir, ptr_ifrule ifrule,
             }
 
             s += ",len=";
-            s += boost::lexical_cast<string>(bodylen);
+            s += boost::lexical_cast<std::string>(bodylen);
             s += "\n";
             break;
         default:
@@ -1401,7 +1414,8 @@ fabs_appif::appif_consumer::in_datagram(const fabs_id_dir &id_dir,
 
             assert(ifrule && ifrule->m_up);
 
-            if (RE2::PartialMatch(string(bytes->get_head(), bytes->get_len()),
+            if (RE2::PartialMatch(std::string(bytes->get_head(),
+                                              bytes->get_len()),
                                   *ifrule->m_up)) {
                 // hit cache
                 match = MATCH_UP;
@@ -1416,8 +1430,8 @@ fabs_appif::appif_consumer::in_datagram(const fabs_id_dir &id_dir,
                  it1 != it_udp->second->ifrule.end(); ++it1) {
                 if (m_appif.is_in_port((*it1)->m_port, id_dir.get_port_src(),
                                        id_dir.get_port_dst()) &&
-                    RE2::PartialMatch(string(bytes->get_head(),
-                                             bytes->get_len()),
+                    RE2::PartialMatch(std::string(bytes->get_head(),
+                                                  bytes->get_len()),
                                       *(*it1)->m_up)) {
                     // found in list
                     ifrule = *it1;
@@ -1483,7 +1497,7 @@ brk:
     header.match    = match;
 
     int idx2 = id_dir.m_id.get_hash() % ifrule->m_balance;
-    string &name = ifrule->m_balance_name[idx2];
+    std::string &name = ifrule->m_balance_name[idx2];
 
     spin_lock_read lock(m_appif.m_rw_mutex);
 
@@ -1591,7 +1605,7 @@ fabs_appif::print_info()
     spin_lock_read lock(m_rw_mutex);
 
     for (int i = 0; i < m_num_consumer; i++) {
-        cout << "thread = " << m_consumer[i]->m_id << endl;
+        std::cout << "thread = " << m_consumer[i]->m_id << std::endl;
         for (auto it = m_consumer[i]->m_info.begin();
              it != m_consumer[i]->m_info.end(); ++it) {
             it->first.print_id();
