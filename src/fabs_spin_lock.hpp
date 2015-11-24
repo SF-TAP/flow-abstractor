@@ -1,7 +1,7 @@
 #ifndef FABS_SPIN_LOCK_HPP
 #define FABS_SPIN_LOCK_HPP
 
-#if defined(__x86_64__) || defined(__i386__)
+#if defined(__x86_64__) || defined(__i686__)
   #include <xmmintrin.h>
   #define _MM_PAUSE _mm_pause
 #else
