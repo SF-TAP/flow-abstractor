@@ -1,11 +1,11 @@
 # global configuration
 global:
   home:    /tmp/sf-tap
-  timeout: 30  # close long-lived (over 600[s]) but do-nothing connections 
+  timeout: 30  # close long-lived (over 30[s]) but do-nothing connections 
   lru:     yes # bring the least recently used pattern to front of list
   cache:   yes # use cache for regex
-  tcp_threads:   7
-  regex_threads: 7
+  tcp_threads:   2
+  regex_threads: 2
 
 loopback7:
   if:     loopback7
@@ -122,9 +122,17 @@ torrent_dht: # BitTorrent DHT
   format: text
   nice:   100
 
+syslog:
+  up:     '^<[0-9]|[1-9][0-9]|1[0-8][0-9]|19[0-1]>'
+  proto:  UDP
+  if:     syslog
+  format: text
+  port:   514
+  nice:   100
+
 dns_udp:
   proto:  UDP
   if:     dns
-  port:   53
+  port:   53,5353,5355 # 53: UDP DNS, 5353: multicast DNS, 5355: LLMNR
   format: text
   nice:   200
