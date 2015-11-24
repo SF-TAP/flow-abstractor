@@ -29,7 +29,7 @@ private:
 
     std::string m_dev;
     int m_recv_cnt;
-    bool m_is_break;
+    volatile bool m_is_break;
 };
 
 inline void

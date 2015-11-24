@@ -32,6 +32,7 @@ void
 sig_handler(int s)
 {
 #ifdef USE_NETMAP
+    std::cout << "SIGINT!" << std::endl;
     if (is_netmap) {
         nm->stop();
     } else {

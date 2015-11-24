@@ -75,6 +75,9 @@ fabs_netmap::run()
                 while (rx_avail--) {
                         rx_in(rx);
                         m_netmap->next(rx);
+        if (m_is_break)
+            return;
+
                 }
             }
         }
