@@ -36,11 +36,14 @@ sig_handler(int s)
     std::cout << "SIGINT!" << std::endl;
     if (is_netmap) {
         nm->stop();
-        return;
+        delete nm;
+        exit(0);
     }
 #endif // USE_NETMAP
 
     pc->stop();
+    delete pc;
+    exit(0);
 }
 
 void

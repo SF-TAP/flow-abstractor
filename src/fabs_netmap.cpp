@@ -73,11 +73,11 @@ fabs_netmap::run()
                 rx_avail = m_netmap->get_avail(rx);
 
                 while (rx_avail--) {
-                        rx_in(rx);
-                        m_netmap->next(rx);
-        if (m_is_break)
-            return;
+                    rx_in(rx);
+                    m_netmap->next(rx);
 
+                    if (m_is_break)
+                        return;
                 }
             }
         }
