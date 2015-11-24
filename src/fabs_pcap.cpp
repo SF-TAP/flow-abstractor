@@ -3,15 +3,6 @@
 #include <iostream>
 #include <string>
 
-boost::shared_ptr<fabs_pcap> pcap_inst;
-bool pcap_is_running = false;
-
-void
-stop_pcap()
-{
-    pcap_inst->stop();
-}
-
 void
 pcap_callback(uint8_t *user, const struct pcap_pkthdr *h, const uint8_t *bytes)
 {
@@ -131,25 +122,3 @@ fabs_pcap::run()
     }
 }
 
-void
-run_pcap(std::string dev, std::string conf, int bufsize)
-{
-    for (;;) {
-        if (pcap_is_running) {
-            stop_pcap();
-            sleep(1);
-        } else {
-            break;
-        }
-    }
-
-    pcap_is_running = true;
-
-    pcap_inst = boost::shared_ptr<fabs_pcap>(new fabs_pcap(conf));
-
-    pcap_inst->set_dev(dev);
-    pcap_inst->set_bufsize(bufsize);
-    pcap_inst->run();
-
-    pcap_is_running = false;
-}

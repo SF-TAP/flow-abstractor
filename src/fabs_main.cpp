@@ -22,6 +22,7 @@ using namespace std;
 extern char *optarg;
 extern int optind, opterr, optopt;
 bool is_stats = false;
+fabs_pcap *pc;
 
 #ifdef USE_NETMAP
 bool is_netmap = false;
@@ -35,12 +36,24 @@ sig_handler(int s)
     std::cout << "SIGINT!" << std::endl;
     if (is_netmap) {
         nm->stop();
-    } else {
-        stop_pcap();
+        return;
     }
-#else
-    stop_pcap();
 #endif // USE_NETMAP
+
+    pc->stop();
+}
+
+void
+set_sig_handler()
+{
+    struct sigaction sigact;
+
+    sigact.sa_handler = sig_handler;
+    sigemptyset(&sigact.sa_mask);
+    sigact.sa_flags = 0;
+
+    sigaction(SIGINT, &sigact, NULL);
+    sigaction(SIGTERM, &sigact, NULL);
 }
 
 void
@@ -96,27 +109,29 @@ main(int argc, char *argv[])
         }
     }
 
-    struct sigaction sigact;
-
-    sigact.sa_handler = sig_handler;
-    sigemptyset(&sigact.sa_mask);
-    sigact.sa_flags = 0;
-
-    sigaction(SIGINT, &sigact, NULL);
-    sigaction(SIGTERM, &sigact, NULL);
-
 #ifdef USE_NETMAP
     if (is_netmap) {
         nm = new fabs_netmap(conf);
+
+        set_sig_handler();
+
         nm->set_dev(dev);
         nm->run();
+
         delete nm;
-    } else {
-        run_pcap(dev, conf, bufsize);
+        return 0;
     }
-#else
-    run_pcap(dev, conf, bufsize);
-#endif
+#endif // USE_NETMAP
+
+    pc = new fabs_pcap(conf);
+
+    set_sig_handler();
+    
+    pc->set_dev(dev);
+    pc->set_bufsize(bufsize);
+    pc->run();
+
+    delete pc;
 
     return 0;
 }
