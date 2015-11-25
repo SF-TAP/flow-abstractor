@@ -214,34 +214,37 @@ fabs_id::print_id() const
 uint32_t
 fabs_id::get_hash() const
 {
-    uint32_t hash __attribute__((may_alias));
+    union {
+        uint32_t h32;
+        uint16_t h16[2];
+    } hash;
 
-    hash = ntohs(m_addr1->l4_port ^ m_addr2->l4_port);
+    hash.h32 = ntohs(m_addr1->l4_port ^ m_addr2->l4_port);
 
     if (m_l3_proto == IPPROTO_IP) {
-        hash ^= ntohl(m_addr1->l3_addr.b32 ^ m_addr2->l3_addr.b32);
+        hash.h32 ^= ntohl(m_addr1->l3_addr.b32 ^ m_addr2->l3_addr.b32);
     } else if (get_l3_proto() == IPPROTO_IPV6) {
         uint32_t *p = (uint32_t*)m_addr1->l3_addr.b128;
 
-        hash ^= ntohl(p[0]);
-        hash ^= ntohl(p[1]);
-        hash ^= ntohl(p[2]);
-        hash ^= ntohl(p[3]);
-        hash ^= ntohl(p[4]);
+        hash.h32 ^= ntohl(p[0]);
+        hash.h32 ^= ntohl(p[1]);
+        hash.h32 ^= ntohl(p[2]);
+        hash.h32 ^= ntohl(p[3]);
+        hash.h32 ^= ntohl(p[4]);
 
 
         p = (uint32_t*)m_addr2->l3_addr.b128;
 
-        hash ^= ntohl(p[0]);
-        hash ^= ntohl(p[1]);
-        hash ^= ntohl(p[2]);
-        hash ^= ntohl(p[3]);
-        hash ^= ntohl(p[4]);
+        hash.h32 ^= ntohl(p[0]);
+        hash.h32 ^= ntohl(p[1]);
+        hash.h32 ^= ntohl(p[2]);
+        hash.h32 ^= ntohl(p[3]);
+        hash.h32 ^= ntohl(p[4]);
     }
 
-    hash += m_hop;
+    hash.h32 += m_hop;
 
-    uint16_t hash2 = ((uint16_t*)&hash)[0] ^ ((uint16_t*)&hash)[1];
+    uint16_t hash2 = hash.h16[0] ^ hash.h16[1];
 
     return hash2;
 }
