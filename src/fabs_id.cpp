@@ -214,7 +214,7 @@ fabs_id::print_id() const
 uint32_t
 fabs_id::get_hash() const
 {
-    uint32_t hash;
+    uint32_t hash __attribute__((may_alias));
 
     hash = ntohs(m_addr1->l4_port ^ m_addr2->l4_port);
 

@@ -455,7 +455,7 @@ fabs_tcp::input_tcp(fabs_id &id, fabs_direction dir, ptr_fabs_bytes buf)
             } else {
                 return;
             }
-        } else if (! packet.m_flags & TH_RST &&
+        } else if (! (packet.m_flags & TH_RST) &&
                    (int32_t)packet.m_seq - (int32_t)p_uniflow->m_min_seq < 0) {
             return;
         }

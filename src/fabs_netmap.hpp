@@ -28,7 +28,7 @@ private:
     time_t     m_t;
 
     std::string m_dev;
-    int m_recv_cnt;
+    uint64_t    m_recv_cnt;
     volatile bool m_is_break;
 };
 

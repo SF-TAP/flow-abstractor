@@ -27,10 +27,10 @@ private:
     int m_max_len;
     volatile int m_len;
     T *m_buf;
-    volatile T *m_buf_end;
+    T *m_buf_end;
 
     T *m_head;
-    volatile T *m_tail;
+    T *m_tail;
 
     fabs_spin_lock m_lock;
 };

@@ -1,6 +1,6 @@
 # SF-TAP Flow Abstractor
 
-SF-TAP flow abstractor provides an abstraction mechanism for application level network traffic analysis.
+The SF-TAP flow abstractor provides flow abstraction interfaces for application level network traffic analysis.
 
 [![Build Status](https://travis-ci.org/SF-TAP/flow-abstractor.svg?branch=master)](https://travis-ci.org/SF-TAP/flow-abstractor)
 
@@ -27,6 +27,15 @@ SF-TAP flow abstractor is available on the following OSes.
 * MacOS X
 
 ### How to Compile
+
+#### Environement Variables
+
+Before compiling, set environment variables for cmake as follows.
+
+    $ export CMAKE_LIBRARY_PATH=/lib:/usr/lib:/usr/local/lib
+    $ export CMAKE_INCLUDE_PATH=/usr/include:/usr/local/include
+
+#### Compile
 
     $ cmake -DCMAKE_BUILD_TYPE=Release CMakeLists.txt
     $ make
