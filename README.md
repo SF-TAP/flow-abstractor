@@ -92,11 +92,11 @@ please install the suitable language package like as follows.
     $ apt-get install language-pack-ja
 
 
-### Tutorials
+### Documents
 
-Tutorials are available on the following link.
+Other documents are available on the following link.
 
-[SF-TAP Tutorial](https://github.com/SF-TAP/documents "SF-TAP Tutorial")
+[SF-TAP's Home Page](http://sf-tap.github.io/ "SF-TAP")
 
 
 ### To Do:
