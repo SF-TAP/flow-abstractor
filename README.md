@@ -28,7 +28,7 @@ SF-TAP flow abstractor is available on the following OSes.
 
 ### How to Compile
 
-#### Environement Variables
+#### Environment Variables
 
 Before compiling, set environment variables for cmake as follows.
 
