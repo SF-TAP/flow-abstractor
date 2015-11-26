@@ -28,7 +28,7 @@ SF-TAP flow abstractor is available on the following OSes.
 
 ### How to Compile
 
-#### Environement Variables
+#### Environment Variables
 
 Before compiling, set environment variables for cmake as follows.
 
@@ -83,14 +83,15 @@ If you encounter an error as follows,
     terminate called after throwing an instance of 'std::runtime_error'
     what():  locale::facet::_S_create_c_locale name not valid
 
-If you want to use netmap, pass -n option as follows,
-
-    $ ./src/sftap_fabs -i eth0 -c ./examples/fabs.conf -n
-
 please install the suitable language package like as follows.
 
     $ apt-get install language-pack-ja
 
+### Use netmap
+
+If you want to use netmap, pass -n option as follows.
+
+    $ ./src/sftap_fabs -i eth0 -c ./examples/fabs.conf -n
 
 ### Documents
 
