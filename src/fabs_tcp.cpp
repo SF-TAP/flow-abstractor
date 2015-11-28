@@ -21,7 +21,6 @@
 using namespace std;
 
 #define TCP_GC_TIMER 30
-#define GC_THRESHOLD 100000
 
 // #define DEBUG
 
@@ -29,7 +28,6 @@ fabs_tcp::fabs_tcp() :
     m_timeout(600),
     m_total_session(0),
     m_is_del(false),
-    m_flow_idx(0),
     m_thread_gc(boost::bind(&fabs_tcp::garbage_collector, this))
 {
 
@@ -72,7 +70,7 @@ fabs_tcp::print_stat()
 }
 
 void
-fabs_tcp::garbage_collector2(int idx)
+fabs_tcp::garbage_collector2(int idx, time_t now)
 {
     list<fabs_id_dir> garbages;
     {
@@ -86,7 +84,7 @@ fabs_tcp::garbage_collector2(int idx)
                   ! it->second->m_flow2.m_is_syn) ||
                  (it->second->m_flow1.m_is_fin &&
                   ! it->second->m_flow2.m_is_fin)) &&
-                time(NULL) - it->second->m_flow1.m_time > TCP_GC_TIMER) {
+                now - it->second->m_flow1.m_time > TCP_GC_TIMER) {
 
                 it->second->m_flow1.m_is_rm = true;
 
@@ -96,11 +94,12 @@ fabs_tcp::garbage_collector2(int idx)
                 id_dir.m_dir = FROM_ADDR1;
 
                 garbages.push_back(id_dir);
-            } else if (((! it->second->m_flow1.m_is_syn &&
+                continue;
+            } if (((! it->second->m_flow1.m_is_syn &&
                          it->second->m_flow2.m_is_syn) ||
                         (! it->second->m_flow1.m_is_fin &&
                          it->second->m_flow2.m_is_fin)) &&
-                       time(NULL) - it->second->m_flow2.m_time > TCP_GC_TIMER) {
+                       now - it->second->m_flow2.m_time > TCP_GC_TIMER) {
 
                 it->second->m_flow2.m_is_rm = true;
 
@@ -110,10 +109,10 @@ fabs_tcp::garbage_collector2(int idx)
                 id_dir.m_dir = FROM_ADDR2;
 
                 garbages.push_back(id_dir);
+                continue;
             }
 
             // close long-lived but do-nothing connections
-            time_t now = time(NULL);
             if (now - it->second->m_flow1.m_time > m_timeout &&
                 now - it->second->m_flow2.m_time > m_timeout) {
 
@@ -125,6 +124,7 @@ fabs_tcp::garbage_collector2(int idx)
                 id_dir.m_dir = FROM_ADDR1;
 
                 garbages.push_back(id_dir);
+                continue;
             }
 
             // close compromised connections
@@ -139,6 +139,7 @@ fabs_tcp::garbage_collector2(int idx)
                 id_dir.m_dir = FROM_ADDR1;
 
                 garbages.push_back(id_dir);
+                continue;
             }
         }
     }
@@ -165,20 +166,9 @@ fabs_tcp::garbage_collector()
             return;
         }
 
-        int num_session = 0;
-
+        time_t now = time(NULL);
         for (int i = 0; i < NUM_TCPTREE; i++) {
-            num_session += m_flow[i].size();
-        }
-
-        if (num_session < GC_THRESHOLD) {
-            for (int i = 0; i < NUM_TCPTREE; i++) {
-                garbage_collector2(i);
-            }
-        } else {
-            m_flow_idx++;
-            m_flow_idx %= NUM_TCPTREE;
-            garbage_collector2(m_flow_idx);
+            garbage_collector2(i, now);
         }
     }
 }

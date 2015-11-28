@@ -72,7 +72,7 @@ private:
     bool recv_fin(int idx, const fabs_id &id, fabs_direction dir);
     void rm_flow(int idx, const fabs_id &id, fabs_direction dir);
     void input_tcp_event(int idx, fabs_id_dir tcp_event);
-    void garbage_collector2(int idx);
+    void garbage_collector2(int idx, time_t now);
 
     std::atomic<uint64_t> m_total_session;
 
@@ -80,7 +80,6 @@ private:
     boost::mutex     m_mutex_gc;
     boost::condition m_condition_gc;
     volatile bool    m_is_del;
-    int              m_flow_idx;
 
     boost::thread    m_thread_gc;
 };
