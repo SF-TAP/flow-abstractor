@@ -118,11 +118,12 @@ ux_accept(int fd, short events, void *arg)
     peer->m_ev       = ev;
     peer->m_is_avail = true;
     peer->m_ifrule   = it->second;
+    peer->m_path     = it2->second;
 
     appif->m_fd2uxpeer[sock] = peer;
     appif->m_name2uxpeer[it2->second].insert(sock);
 
-    std::cout << "accepted on " << it->second->m_name
+    std::cout << "accepted on " << peer->m_path
               << " (fd = " << sock << ")" << std::endl;
 
     if (fd == appif->m_fd7) {
@@ -135,7 +136,7 @@ ux_close(int fd, fabs_appif *appif)
 {
     auto it1 = appif->m_fd2uxpeer.find(fd);
     if (it1 != appif->m_fd2uxpeer.end()) {
-        auto it2 = appif->m_name2uxpeer.find(it1->second->m_name);
+        auto it2 = appif->m_name2uxpeer.find(it1->second->m_path);
         if (it2 != appif->m_name2uxpeer.end()) {
             it2->second.erase(fd);
 
@@ -147,7 +148,7 @@ ux_close(int fd, fabs_appif *appif)
         event_del(it1->second->m_ev);
         event_free(it1->second->m_ev);
 
-        std::cout << "closed on " << it1->second->m_name
+        std::cout << "closed on " << it1->second->m_path
                   << " (fd = " << fd << ")" << std::endl;
 
         appif->m_fd2uxpeer.erase(it1);
@@ -1298,7 +1299,7 @@ fabs_appif::write_event(int fd, const fabs_id_dir &id_dir, ptr_ifrule ifrule,
                 auto p = m_fd2uxpeer[fd];
                 p->m_is_avail = false;
                 std::cerr << "cannot write to " << fd
-                          << "(" << p->m_name << ")" << std::endl;
+                          << "(" << p->m_path << ")" << std::endl;
                 return false;
             }
         } else {
@@ -1306,7 +1307,7 @@ fabs_appif::write_event(int fd, const fabs_id_dir &id_dir, ptr_ifrule ifrule,
                 auto p = m_fd2uxpeer[fd];
                 p->m_is_avail = false;
                 std::cerr << "cannot write to " << fd
-                          << "(" << p->m_name << ")" << std::endl;
+                          << "(" << p->m_path << ")" << std::endl;
                 return false;
             }
         }
@@ -1332,7 +1333,7 @@ fabs_appif::write_event(int fd, const fabs_id_dir &id_dir, ptr_ifrule ifrule,
                 auto p = m_fd2uxpeer[fd];
                 p->m_is_avail = false;
                 std::cerr << "cannot write to " << fd
-                          << "(" << p->m_name << ")" << std::endl;
+                          << "(" << p->m_path << ")" << std::endl;
                 return false;
             }
         } else {
@@ -1340,7 +1341,7 @@ fabs_appif::write_event(int fd, const fabs_id_dir &id_dir, ptr_ifrule ifrule,
                 auto p = m_fd2uxpeer[fd];
                 p->m_is_avail = false;
                 std::cerr << "cannot write to " << fd
-                          << "(" << p->m_name << ")" << std::endl;
+                          << "(" << p->m_path << ")" << std::endl;
                 return false;
             }
         }

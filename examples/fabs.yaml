@@ -15,7 +15,7 @@ tcp_default:
   if:     default # for every flow that wasn't matched by any rules 
   proto:  TCP
   format: text
-  body:   no
+  body:   yes
 
 udp_default:
   if:     default # for every flow that wasn't matched by any rules
@@ -64,7 +64,7 @@ ssl:
   down:   '^((\x16\x03[\x00-\x03]..\x02...(\x02\x00|\x03[\x00-\x03]))|(..\x02(\x02\x00|\x03[\x00-\x03])))'
   proto:  TCP
   if:     ssl
-  body:   no
+  body:   yes
   format: text
   nice:   100
 

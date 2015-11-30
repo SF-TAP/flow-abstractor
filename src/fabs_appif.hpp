@@ -99,7 +99,7 @@ private:
         event       *m_ev;
         bool         m_is_avail;
         ptr_ifrule   m_ifrule;
-        std::string  m_name;
+        std::string  m_path;
     };
 
     enum match_dir {
