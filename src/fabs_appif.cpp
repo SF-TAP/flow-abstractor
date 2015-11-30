@@ -52,7 +52,7 @@ fabs_appif::~fabs_appif()
 
         for (auto p0: m_fd2ifrule) {
             close(p0.first);
-            remove(fs::path(p0.second->m_fd2name[p0.first]));
+            remove(fs::path(p0.second->m_fd2path[p0.first]));
         }
     }
 
@@ -97,8 +97,8 @@ ux_accept(int fd, short events, void *arg)
         return;
     }
 
-    auto it2 = it->second->m_fd2name.find(fd);
-    if (it2 == it->second->m_fd2name.end()) {
+    auto it2 = it->second->m_fd2path.find(fd);
+    if (it2 == it->second->m_fd2path.end()) {
         assert(false);
         return;
     }
@@ -117,7 +117,7 @@ ux_accept(int fd, short events, void *arg)
     peer->m_fd       = sock;
     peer->m_ev       = ev;
     peer->m_is_avail = true;
-    peer->m_name     = it2->second;
+    peer->m_ifrule   = it->second;
 
     appif->m_fd2uxpeer[sock] = peer;
     appif->m_name2uxpeer[it2->second].insert(sock);
@@ -185,7 +185,7 @@ ux_read(int fd, short events, void *arg)
     }
 
     if (peer) {
-        if (peer->m_name == "loopback7") {
+        if (peer->m_ifrule->m_name == "loopback7") {
             if (read_loopback7(fd, appif)) {
                 spin_lock_write lock(appif->m_rw_mutex);
 
@@ -333,9 +333,9 @@ read_loopback7(int fd, fabs_appif *appif)
                 return false;
             }
 
-            if (h["from"] == "0") {
+            if (h["from"] == "1") {
                 header->from = FROM_ADDR1;
-            } else if (h["from"] == "1") {
+            } else if (h["from"] == "2") {
                 header->from = FROM_ADDR2;
             } else {
                 header->from = FROM_NONE;
@@ -370,16 +370,15 @@ read_loopback7(int fd, fabs_appif *appif)
 
         id_dir.m_id.set_appif_header(*header);
 
-        if (header->from == 1) {
+        if (header->from == FROM_ADDR1) {
             id_dir.m_dir = FROM_ADDR1;
-        } else if (header->from == 2) {
+        } else if (header->from == FROM_ADDR2) {
             id_dir.m_dir = FROM_ADDR2;
         } else {
             id_dir.m_dir = FROM_NONE;
         }
 
         it->second->id_dir = id_dir;
-
 
         if (header->event == STREAM_DATA) {
             it->second->is_header = false;
@@ -507,7 +506,7 @@ fabs_appif::ux_listen_ifrule(ptr_ifrule ifrule)
         event_add(ev, NULL);
 
         ifrule->m_balance_name.push_back(path.string());
-        ifrule->m_fd2name[sock] = path.string();
+        ifrule->m_fd2path[sock] = path.string();
         m_fd2ifrule[sock] = ifrule;
 
         std::cout << "listening on " << path.string()

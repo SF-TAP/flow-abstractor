@@ -84,7 +84,7 @@ private:
         int         m_nice;
         int         m_balance;
         std::vector<std::string>   m_balance_name;
-        std::map<int, std::string> m_fd2name; // listen socket to name
+        std::map<int, std::string> m_fd2path; // listen socket to path
         boost::shared_ptr<std::list<std::pair<uint16_t, uint16_t> > > m_port;
 
         ifrule() : m_proto(IF_OTHER), m_format(IF_TEXT), m_is_body(true),
@@ -92,14 +92,15 @@ private:
                    m_port(new std::list<std::pair<uint16_t, uint16_t> >) { }
     };
 
+    typedef boost::shared_ptr<ifrule> ptr_ifrule;
+
     struct uxpeer {
         int          m_fd;
         event       *m_ev;
         bool         m_is_avail;
+        ptr_ifrule   m_ifrule;
         std::string  m_name;
     };
-
-    typedef boost::shared_ptr<ifrule>        ptr_ifrule;
 
     enum match_dir {
         MATCH_UP   = 0,

@@ -13,6 +13,11 @@
 
 #include <boost/shared_ptr.hpp>
 
+enum fabs_direction {
+    FROM_ADDR1 = 0,
+    FROM_ADDR2 = 1,
+    FROM_NONE  = 3,
+};
 
 struct fabs_appif_header {
     union {
@@ -29,7 +34,7 @@ struct fabs_appif_header {
     uint16_t l4_port2; // big endian
 
     uint8_t  event; // 0: created, 1: destroyed, 2: data
-    uint8_t  from;  // 0: from addr1, 1: from addr2
+    uint8_t  from;  // FROM_ADDR1: from addr1, FROM_ADDR2: from addr2
     uint16_t len;
     uint8_t  hop;
     uint8_t  l3_proto; // IPPROTO_IP or IPPROTO_IPV6
@@ -67,12 +72,6 @@ struct fabs_peer {
         memcpy(this, &rhs, sizeof(fabs_peer));
         return *this;
     }
-};
-
-enum fabs_direction {
-    FROM_ADDR1 = 0,
-    FROM_ADDR2 = 1,
-    FROM_NONE,
 };
 
 class fabs_id {
