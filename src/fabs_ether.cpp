@@ -140,8 +140,13 @@ fabs_ether::timer()
 
             m_dlcap->print_stat();
 
-            std::cout << "dropped packets internally: " << m_num_dropped
-                      << std::endl;
+            std::cout << "dropped packets internally: " << m_num_dropped << std::endl;
+
+            if (m_num_dropped > 0) {
+                std::cout << "    (Warning. increase the number of threads for TPC and regex,\n"
+                          << "     or use the SF-TAP cell incubator)"
+                          << std::endl;
+            }
 
             m_callback.print_stat();
 
