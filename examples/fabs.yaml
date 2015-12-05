@@ -108,13 +108,6 @@ pop:
   format: text
   nice:   100
 
-dns_tcp:
-  proto:  TCP
-  if:     dns
-  port:   53
-  format: text
-  nice:   200
-
 torrent_dht: # BitTorrent DHT
   up:     '^d.*1:y1:[eqr].*e$'
   proto:  UDP
@@ -122,9 +115,18 @@ torrent_dht: # BitTorrent DHT
   format: text
   nice:   100
 
-syslog:
-  up:     '^<([0-9]|[1-9][0-9]|1[0-8][0-9]|19[0-1])>'
+syslog_udp:
+  up:     '^<([0-9]|[1-9][0-9]|1[0-8][0-9]|19[01])>'
   proto:  UDP
+  if:     syslog
+  format: text
+  port:   514
+  nice:   100
+
+syslog_tcp:
+  up:     '^([1-9][0-9]* )?<([0-9]|[1-9][0-9]|1[0-8][0-9]|19[01])>'
+  down:   '^.?'
+  proto:  TCP
   if:     syslog
   format: text
   port:   514
@@ -136,3 +138,11 @@ dns_udp:
   port:   53,5353,5355 # 53: UDP DNS, 5353: multicast DNS, 5355: LLMNR
   format: text
   nice:   200
+
+dns_tcp:
+  proto:  TCP
+  if:     dns
+  port:   53
+  format: text
+  nice:   200
+
