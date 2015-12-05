@@ -7,6 +7,7 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
+#include <sys/time.h>
 
 #include <stdint.h>
 #include <string.h>
@@ -29,6 +30,8 @@ struct fabs_appif_header {
         uint32_t b32; // big endian
         uint8_t  b128[16];
     } l3_addr2;
+
+    timeval  tm;
 
     uint16_t l4_port1; // big endian
     uint16_t l4_port2; // big endian

@@ -1335,6 +1335,8 @@ fabs_appif::write_event(int fd, const fabs_id_dir &id_dir, ptr_ifrule ifrule,
         header->len      = bodylen;
         header->match    = match;
 
+        memcpy(&header->tm, tm, sizeof(*tm));
+
         if (bodylen > 0 && ifrule->m_is_body) {
             iovec iov[2];
 
