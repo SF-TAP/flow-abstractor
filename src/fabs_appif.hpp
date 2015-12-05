@@ -118,6 +118,8 @@ private:
         }
     };
 
+    typedef fabs_exclusive_ptr<timeval> ptr_timeval;
+
     struct stream_info {
         ptr_ifrule m_ifrule;
         timeval    m_create_time;
@@ -129,6 +131,7 @@ private:
         uint32_t   m_hash;
         match_dir  m_match_dir[2];
         fabs_appif_header m_header;
+        ptr_timeval m_tm;
 
         void clear_buf();
 
@@ -233,7 +236,8 @@ private:
     void makedir(boost::filesystem::path path);
     bool write_event(int fd, const fabs_id_dir &id_dir, ptr_ifrule ifrule,
                      fabs_stream_event event, match_dir match,
-                     fabs_appif_header *header, char *body, int bodylen);
+                     fabs_appif_header *header, char *body, int bodylen,
+                     timeval *tm);
     void ux_listen();
     void ux_listen_ifrule(ptr_ifrule ifrule);
     bool is_in_port(boost::shared_ptr<std::list<std::pair<uint16_t, uint16_t> > > range,

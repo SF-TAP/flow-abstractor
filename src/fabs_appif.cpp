@@ -841,6 +841,9 @@ fabs_appif::in_event(fabs_stream_event st_event,
 {
     appif_event *ev = new appif_event;
 
+    if (bytes.get() != nullptr)
+        gettimeofday(&bytes->m_tm, nullptr);
+
     ev->st_event = st_event;
     ev->id_dir   = id_dir;
     ev->bytes    = bytes;
@@ -945,6 +948,9 @@ fabs_appif::appif_consumer::in_stream_event(fabs_stream_event st_event,
             // invoke DESTROYED event
             int idx = it->second->m_hash % it->second->m_ifrule->m_balance;
             std::string &name = it->second->m_ifrule->m_balance_name[idx];
+            timeval tm;
+
+            gettimeofday(&tm, nullptr);
 
             spin_lock_read lock(m_appif.m_rw_mutex);
 
@@ -954,7 +960,8 @@ fabs_appif::appif_consumer::in_stream_event(fabs_stream_event st_event,
                      ++it3) {
                     m_appif.write_event(*it3, id_dir, it->second->m_ifrule,
                                         STREAM_DESTROYED, MATCH_NONE,
-                                        &it->second->m_header, NULL, 0);
+                                        &it->second->m_header, NULL, 0,
+                                        &tm);
                 }
             }
         }
@@ -1175,7 +1182,8 @@ fabs_appif::appif_consumer::send_tcp_data(ptr_info p_info, fabs_id_dir id_dir)
         for (auto fd: fdvec) {
             m_appif.write_event(fd, id_dir, p_info->m_ifrule,
                                 STREAM_CREATED, MATCH_NONE,
-                                &p_info->m_header, NULL, 0);
+                                &p_info->m_header, NULL, 0,
+                                &p_info->m_create_time);
         }
     }
 
@@ -1201,7 +1209,8 @@ fabs_appif::appif_consumer::send_tcp_data(ptr_info p_info, fabs_id_dir id_dir)
                                 STREAM_DATA, mdir,
                                 &p_info->m_header,
                                 front->get_head(),
-                                front->get_len());
+                                front->get_len(),
+                                &front->m_tm);
         }
 
         bufs->pop_front();
@@ -1213,7 +1222,8 @@ fabs_appif::appif_consumer::send_tcp_data(ptr_info p_info, fabs_id_dir id_dir)
 bool
 fabs_appif::write_event(int fd, const fabs_id_dir &id_dir, ptr_ifrule ifrule,
                         fabs_stream_event event, match_dir match,
-                        fabs_appif_header *header, char *body, int bodylen)
+                        fabs_appif_header *header, char *body, int bodylen,
+                        timeval *tm)
 {
     if (! m_fd2uxpeer[fd]->m_is_avail)
         return false;
@@ -1253,10 +1263,10 @@ fabs_appif::write_event(int fd, const fabs_id_dir &id_dir, ptr_ifrule ifrule,
 
         switch (event) {
         case STREAM_CREATED:
-            s += ",event=CREATED\n";
+            s += ",event=CREATED";
             break;
         case STREAM_DESTROYED:
-            s += ",event=DESTROYED\n";
+            s += ",event=DESTROYED";
             break;
         case STREAM_DATA:
             s += ",event=DATA,from=";
@@ -1280,11 +1290,16 @@ fabs_appif::write_event(int fd, const fabs_id_dir &id_dir, ptr_ifrule ifrule,
 
             s += ",len=";
             s += boost::lexical_cast<std::string>(bodylen);
-            s += "\n";
             break;
         default:
             assert(false);
         }
+
+        double t = tm->tv_sec + tm->tv_usec * 0.000001;
+
+        s += ",time=";
+        s += boost::lexical_cast<std::string>(t);
+        s += "\n";
 
         if (bodylen > 0 && ifrule->m_is_body) {
             iovec iov[2];
@@ -1516,7 +1531,7 @@ brk:
              it4 != it3->second.end(); ++it4) {
             if (! m_appif.write_event(*it4, id_dir, ifrule, STREAM_DATA,
                                       match, &header, bytes->get_head(),
-                                      bytes->get_len())) {
+                                      bytes->get_len(), &bytes->m_tm)) {
                 continue;
             }
         }

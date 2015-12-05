@@ -4,6 +4,8 @@
 #include "fabs_common.hpp"
 #include "fabs_exclusive_ptr.hpp"
 
+#include <sys/time.h>
+
 #include <string.h>
 
 #include <deque>
@@ -165,6 +167,8 @@ public:
 
         return true;
     }
+
+    timeval m_tm;
 
 private:
     char *m_ptr;
