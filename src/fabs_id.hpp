@@ -31,14 +31,14 @@ struct fabs_appif_header {
         uint8_t  b128[16];
     } l3_addr2;
 
-    timeval  tm;
+    timeval  tm; // machine-dependent endian
 
     uint16_t l4_port1; // big endian
     uint16_t l4_port2; // big endian
 
     uint8_t  event; // 0: created, 1: destroyed, 2: data
     uint8_t  from;  // FROM_ADDR1: from addr1, FROM_ADDR2: from addr2
-    uint16_t len;
+    uint16_t len;   // machine-dependent endian
     uint8_t  hop;
     uint8_t  l3_proto; // IPPROTO_IP or IPPROTO_IPV6
     uint8_t  l4_proto; // IPPROTO_TCP or IPPROTO_UDP
