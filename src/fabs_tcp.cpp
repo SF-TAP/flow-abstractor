@@ -412,7 +412,7 @@ fabs_tcp::input_tcp(fabs_id &id, fabs_direction dir, ptr_fabs_bytes buf)
             p_tcp_flow = ptr_fabs_tcp_flow(new fabs_tcp_flow);
             m_flow[idx][id] = p_tcp_flow;
 
-            m_total_session++;
+            __sync_fetch_and_add(&m_total_session, 1);
         } else if (it_flow == m_flow[idx].end()) {
             return;
         } else {

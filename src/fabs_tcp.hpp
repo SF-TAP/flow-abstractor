@@ -74,7 +74,7 @@ private:
     void input_tcp_event(int idx, fabs_id_dir tcp_event);
     void garbage_collector2(int idx, time_t now);
 
-    std::atomic<uint64_t> m_total_session;
+    uint64_t m_total_session;
 
     boost::mutex     m_mutex_flow[NUM_TCPTREE];
     boost::mutex     m_mutex_gc;
