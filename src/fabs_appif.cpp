@@ -682,14 +682,24 @@ fabs_appif::read_conf(std::string conf)
                 rule->m_ux = ptr_path(new fs::path(it3->second));
             }
 
+            RE2::RE2::Options opt;
+            opt.set_dot_nl(true);
+            opt.set_utf8(false);
+
+            it3 = it1->second.find("utf8");
+            if (it3 != it1->second.end()) {
+                if (it3->second == "yes")
+                    opt.set_utf8(true);
+            }
+
             it3 = it1->second.find("up");
             if (it3 != it1->second.end()) {
-                rule->m_up = ptr_regex(new RE2(it3->second));
+                rule->m_up = ptr_regex(new RE2(it3->second, opt));
             }
 
             it3 = it1->second.find("down");
             if (it3 != it1->second.end()) {
-                rule->m_down = ptr_regex(new RE2(it3->second));
+                rule->m_down = ptr_regex(new RE2(it3->second, opt));
             }
 
             it3 = it1->second.find("nice");

@@ -31,6 +31,7 @@ http:
   format: text # text or binary
   body:   yes  # if specified 'no', only header is output
   nice:   100  # the smaller a value is, the higher a priority is
+  utf8:   no   # treat data as UTF8 or latin1 (binary). used for regex
 #  balance: 4   # flows are balanced by 4 interfaces
 
 http_proxy:
@@ -41,6 +42,7 @@ http_proxy:
   format: text # text or binary
   body:   yes  # if specified 'no', only header is output
   nice:   90   # the smaller a value is, the higher a priority is
+  utf8:   no   # treat data as UTF8 or latin1 (binary)
 
 websocket:
   up:     '^GET .+ HTTP/1.1\r\n'
@@ -50,6 +52,7 @@ websocket:
   format: text # text or binary
   body:   yes  # if specified 'no', only header is output
   nice:   90   # the smaller a value is, the higher a priority is
+  utf8:   no   # treat data as UTF8 or latin1 (binary)
 
 torrent_tracker: # BitTorrent Tracker
   up:     '^GET .*(announce|scrape).*\?.*info_hash=.+&.+ HTTP/1\.(0\r?\n|1\r?\n([-a-zA-Z]+: .+\r?\n)+)'
@@ -58,6 +61,7 @@ torrent_tracker: # BitTorrent Tracker
   if:     torrent_tracker
   format: text
   nice:   90
+  utf8:   no
 
 ssl:
   up:     '^((\x16\x03[\x00-\x03]..\x01...(\x02\x00|\x03[\x00-\x03]))|(..\x01(\x02\x00|\x03[\x00-\x03])))'
@@ -67,6 +71,7 @@ ssl:
   body:   yes
   format: text
   nice:   100
+  utf8:   no
 
 ssh:
   up:     '^SSH-[12]\.[0-9]+-.+\r\n'
@@ -75,6 +80,7 @@ ssh:
   if:     ssh
   format: text
   nice:   100
+  utf8:   no
 
 irc:
   up:     '^(PASS .+\r\n)?USER .+\r\nNICK .+\r\n'
@@ -83,6 +89,7 @@ irc:
   if:     irc
   format: text
   nice:   100
+  utf8:   no
 
 ftp:
   up:     '^USER .+\r\n'
@@ -91,6 +98,7 @@ ftp:
   if:     ftp
   format: text
   nice:   100
+  utf8:   no
 
 smtp:
   up:     '^(EH|HE)LO .+\r\n'
@@ -99,6 +107,7 @@ smtp:
   if:     smtp
   format: text
   nice:   100
+  utf8:   no
 
 pop:
   up:     '^\+OK .+\r\n'
@@ -107,6 +116,7 @@ pop:
   if:     smtp
   format: text
   nice:   100
+  utf8:   no
 
 torrent_dht: # BitTorrent DHT
   up:     '^d.*1:y1:[eqr].*e$'
@@ -114,6 +124,7 @@ torrent_dht: # BitTorrent DHT
   if:     torrent_dht
   format: text
   nice:   100
+  utf8:   no
 
 syslog_udp:
   up:     '^<([0-9]|[1-9][0-9]|1[0-8][0-9]|19[01])>'
@@ -122,6 +133,7 @@ syslog_udp:
   format: text
   port:   514
   nice:   100
+  utf8:   no
 
 syslog_tcp:
   up:     '^([1-9][0-9]* )?<([0-9]|[1-9][0-9]|1[0-8][0-9]|19[01])>'
@@ -131,6 +143,7 @@ syslog_tcp:
   format: text
   port:   514
   nice:   100
+  utf8:   no
 
 dns_udp:
   proto:  UDP
@@ -138,6 +151,7 @@ dns_udp:
   port:   53,5353,5355 # 53: UDP DNS, 5353: multicast DNS, 5355: LLMNR
   format: text
   nice:   200
+  utf8:   no
 
 dns_tcp:
   proto:  TCP
@@ -145,4 +159,5 @@ dns_tcp:
   port:   53
   format: text
   nice:   200
+  utf8:   no
 
