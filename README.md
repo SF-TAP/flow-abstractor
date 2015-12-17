@@ -99,12 +99,17 @@ Other documents are available on the following link.
 
 [SF-TAP's Home Page](http://sf-tap.github.io/ "SF-TAP")
 
+### TODO
 
-### To Do:
+Next release.
 
 * read pcap file
 * open multiple interfaces
-* protect from SYN flooding
-* deal with fast TCP open
 * calculate checksum
 * daemon mode
+
+Future work.
+
+* handling fast TCP open
+* handling web socket
+* handling QUIC
