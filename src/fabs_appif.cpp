@@ -912,21 +912,7 @@ fabs_appif::appif_consumer::in_stream_event(fabs_stream_event st_event,
             return;
         }
 
-        if (send_tcp_data(it->second, id_dir)) {
-            if (id_dir.m_dir == FROM_ADDR1 &&
-                it->second->m_buf2.size() > 0) {
-                fabs_id_dir id_dir2;
-                id_dir2.m_id  = id_dir.m_id;
-                id_dir2.m_dir = FROM_ADDR2;
-                send_tcp_data(it->second, id_dir2);
-            } else if (id_dir.m_dir == FROM_ADDR2 &&
-                       it->second->m_buf1.size() > 0) {
-                fabs_id_dir id_dir2;
-                id_dir2.m_id  = id_dir.m_id;
-                id_dir2.m_dir = FROM_ADDR1;
-                send_tcp_data(it->second, id_dir2);
-            }
-        }
+        send_tcp_data(it->second, id_dir);
 
         break;
     }
@@ -1198,32 +1184,65 @@ fabs_appif::appif_consumer::send_tcp_data(ptr_info p_info, fabs_id_dir id_dir)
     }
 
     // invoke DATA event and send data to I/F
-    std::deque<ptr_fabs_bytes> *bufs;
+    std::deque<ptr_fabs_bytes> *buf1, *buf2;
+    
+    buf1 = &p_info->m_buf1;
+    buf2 = &p_info->m_buf2;
+    
+    match_dir mdir1, mdir2;
+    
+    mdir1 = p_info->m_match_dir[FROM_ADDR1];
+    mdir2 = p_info->m_match_dir[FROM_ADDR2];
+    
+    fabs_id_dir id_dir1, id_dir2;
+    
+    id_dir1.m_id = id_dir.m_id;
+    id_dir2.m_id = id_dir.m_id;
+    
+    id_dir1.m_dir = FROM_ADDR1;
+    id_dir2.m_dir = FROM_ADDR2;
 
-    if (id_dir.m_dir == FROM_ADDR1) {
-        bufs = &p_info->m_buf1;
-    } else if (id_dir.m_dir == FROM_ADDR2) {
-        bufs = &p_info->m_buf2;
-    } else {
-        assert(false);
-    }
-
-    match_dir mdir;
-    mdir = p_info->m_match_dir[id_dir.m_dir];
-
-    while (! bufs->empty()) {
-        auto front = bufs->front();
-
+    auto func = [&](fabs_id_dir id_dir, match_dir mdir, fabs_bytes *pkt) {
         for (auto fd: fdvec) {
             m_appif.write_event(fd, id_dir, p_info->m_ifrule,
                                 STREAM_DATA, mdir,
                                 &p_info->m_header,
-                                front->get_head(),
-                                front->get_len(),
-                                &front->m_tm);
+                                pkt->get_head(),
+                                pkt->get_len(),
+                                &pkt->m_tm);
+        }
+    };
+
+    while (! (buf1->empty() && buf2->empty())) {
+        if (buf2->empty()) {
+            auto pkt = buf1->front().get();
+            // write addr1
+            func(id_dir1, mdir1, pkt);
+            buf1->pop_front();
+            continue;
+        } else if (buf1->empty()) {
+            auto pkt = buf2->front().get();
+            // write  addr2
+            func(id_dir2, mdir2, pkt);
+            buf2->pop_front();
+            continue;
         }
 
-        bufs->pop_front();
+        auto pkt1 = buf1->front().get();
+        auto pkt2 = buf2->front().get();
+        
+        double t1 = pkt1->m_tm.tv_sec + pkt1->m_tm.tv_usec * 0.000001;
+        double t2 = pkt2->m_tm.tv_sec + pkt2->m_tm.tv_usec * 0.000001;
+
+        if (t1 < t2) {
+            // write addr1
+            func(id_dir1, mdir1, pkt1);
+            buf1->pop_front();
+        } else {
+            // write addr2
+            func(id_dir2, mdir2, pkt2);
+            buf2->pop_front();
+        }
     }
 
     return is_classified;
