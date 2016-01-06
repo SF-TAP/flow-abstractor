@@ -1,4 +1,6 @@
-cmake_policy(SET CMP0022 OLD)
+if(POLICY CMP0026)
+  cmake_policy(SET CMP0022 OLD)
+endif()
 
 option(USE_JEMALLOC "Use jemalloc" 0)
 
