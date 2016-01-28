@@ -31,10 +31,10 @@ struct fabs_appif_header {
         uint8_t  b128[16];
     } l3_addr2;
 
+    timeval  tm; // machine-dependent endian
+
     uint16_t l4_port1; // big endian
     uint16_t l4_port2; // big endian
-
-    timeval  tm; // machine-dependent endian
 
     uint8_t  event; // 0: created, 1: destroyed, 2: data
     uint8_t  from;  // FROM_ADDR1: from addr1, FROM_ADDR2: from addr2
