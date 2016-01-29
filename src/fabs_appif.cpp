@@ -1375,7 +1375,7 @@ fabs_appif::write_event(int fd, const fabs_id_dir &id_dir, ptr_ifrule ifrule,
             iov[1].iov_base = body;
             iov[1].iov_len  = bodylen;
 
-            if (writev(fd, iov, 2)) {
+            if (writev(fd, iov, 2) < 0) {
                 auto p = m_fd2uxpeer[fd];
                 p->m_is_avail = false;
                 std::cerr << "cannot write to " << fd
