@@ -69,7 +69,7 @@ ssl:
   proto:  TCP
   if:     ssl
   body:   yes
-  format: text
+  format: binary
   nice:   100
   utf8:   no
 
