@@ -18,8 +18,6 @@ ELSE(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
   set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 ENDIF(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 
-include_directories(BEFORE ${RE2_INCLUDE_DIR} ${Boost_INCLUDE_DIR} ${EVENT_INCLUDE_DIR} ${PCAP_INCLUDE_DIR} ${YAMLCPP_INCLUDE_DIR})
-
 option(COMPILE_STATIC_LIB "Compile Static Library" 0)
 
 FILE(GLOB CPPSources *.cpp)
@@ -33,6 +31,8 @@ find_package(PCAP REQUIRED)
 find_package(Event REQUIRED)
 find_package(RE2 REQUIRED)
 find_package(YAMLCPP REQUIRED)
+
+include_directories(BEFORE ${RE2_INCLUDE_DIR} ${Boost_INCLUDE_DIR} ${EVENT_INCLUDE_DIR} ${PCAP_INCLUDE_DIR} ${YAMLCPP_INCLUDE_DIR})
 
 add_library(fabs SHARED ${CPPSources})
 add_executable(sftap_fabs ${CPPMain})
