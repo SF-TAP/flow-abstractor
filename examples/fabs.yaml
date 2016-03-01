@@ -29,7 +29,7 @@ http:
   proto:  TCP  # TCP or UDP
   if:     http
   format: binary # text or binary
-  body:   no  # if specified 'no', only header is output
+  body:   yes  # if specified 'no', only header is output
   nice:   100  # the smaller a value is, the higher a priority is
   utf8:   no   # treat data as UTF8 or latin1 (binary). used for regex
 #  balance: 4   # flows are balanced by 4 interfaces
@@ -68,7 +68,7 @@ ssl:
   down:   '^((\x16\x03[\x00-\x03]..\x02...(\x02\x00|\x03[\x00-\x03]))|(..\x02(\x02\x00|\x03[\x00-\x03])))'
   proto:  TCP
   if:     ssl
-  body:   no
+  body:   yes
   format: text
   nice:   100
   utf8:   no
