@@ -16,7 +16,7 @@ fabs_callback::operator() (int idx, ptr_fabs_bytes buf) {
     fabs_direction dir;
     fabs_id        id;
     char          *l4hdr;
-    int            len;
+    int            len; // payload length
 
     dir = id.set_iph(buf->get_head(), &l4hdr, &len);
 
@@ -24,14 +24,13 @@ fabs_callback::operator() (int idx, ptr_fabs_bytes buf) {
         return;
     }
 
+    if (! buf->skip(l4hdr - buf->get_head()))
+        return;
+
     if (len < buf->get_len()) {
-        if (! buf->skip_tail(buf->get_len() - len)) {
+        if (! buf->skip_tail(buf->get_len() - len)) { // skip ethernet padding
             return;
         }
-    }
-
-    if (! buf->skip(l4hdr - buf->get_head())) {
-        return;
     }
 
     switch (id.get_l4_proto()) {

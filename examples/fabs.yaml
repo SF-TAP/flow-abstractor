@@ -68,8 +68,8 @@ ssl:
   down:   '^((\x16\x03[\x00-\x03]..\x02...(\x02\x00|\x03[\x00-\x03]))|(..\x02(\x02\x00|\x03[\x00-\x03])))'
   proto:  TCP
   if:     ssl
-  body:   yes
-  format: binary
+  body:   no
+  format: text
   nice:   100
   utf8:   no
 
