@@ -22,8 +22,8 @@ Optional:
 
 SF-TAP flow abstractor is available on the following OSes.
 
-* Linux
-* *BSD
+* [Linux](http://sf-tap.github.io/installation/2015/11/21/install-flow-abstractor.html)
+* [*BSD](http://sf-tap.github.io/installation/2015/11/21/install-cell-incubator.html)
 * MacOS X
 
 ### How to Compile
