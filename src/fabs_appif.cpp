@@ -19,6 +19,7 @@
 #include <fstream>
 #include <sstream>
 #include <iterator>
+#include <memory>
 
 #include <boost/bind.hpp>
 #include <boost/lexical_cast.hpp>
@@ -87,6 +88,10 @@ void
 ux_accept(int fd, short events, void *arg)
 {
     int sock = accept(fd, NULL, NULL);
+    
+    int sendbuff = 1024 * 1024;
+    setsockopt(sock, SOL_SOCKET, SO_SNDBUF, &sendbuff, sizeof(sendbuff));
+    
     fabs_appif *appif = static_cast<fabs_appif*>(arg);
 
     spin_lock_write lock(appif->m_rw_mutex);
@@ -116,7 +121,6 @@ ux_accept(int fd, short events, void *arg)
     auto peer = fabs_appif::ptr_uxpeer(new fabs_appif::uxpeer);
     peer->m_fd       = sock;
     peer->m_ev       = ev;
-    peer->m_is_avail = true;
     peer->m_ifrule   = it->second;
     peer->m_path     = it2->second;
 
@@ -1248,14 +1252,43 @@ fabs_appif::appif_consumer::send_tcp_data(ptr_info p_info, fabs_id_dir id_dir)
     return is_classified;
 }
 
+static
+void
+print_write_err(int fd, std::string path)
+{
+     std::cerr << "could not write to " << fd
+               << "(" << path << ")\n"
+               << "Data is discarded because the send buffer is full!\n"
+               << "Consider to use the load balance mechanism or SF-TAP cell incubator.\n"
+               << "See http://sf-tap.github.io/tutorial/2015/11/23/load-balancing.html or\n"
+               << "http://sf-tap.github.io/tutorial/2015/11/21/tutorial-qb.html for more details.\n"
+               << std::endl;
+}
+
 bool
 fabs_appif::write_event(int fd, const fabs_id_dir &id_dir, ptr_ifrule ifrule,
                         fabs_stream_event event, match_dir match,
                         fabs_appif_header *header, char *body, int bodylen,
                         timeval *tm)
 {
-    if (! m_fd2uxpeer[fd]->m_is_avail)
-        return false;
+    auto &ebuf = m_fd2uxpeer[fd]->m_event_buf;
+    if (ebuf.size() > 0) {
+        while (! ebuf.empty()) {
+            auto &p = ebuf.front();
+
+            if (ifrule->m_format == IF_TEXT) {
+                if (write(fd, p->m_header_str.c_str(), p->m_header_str.size()) < 0) {
+                    break;
+                }
+            } else {
+                if (write(fd, &p->m_header, sizeof(p->m_header)) < 0) {
+                    break;
+                }
+            }
+            
+            ebuf.pop_front();
+        }
+    }
 
     if (ifrule->m_format == IF_TEXT) {
         std::string s;
@@ -1341,17 +1374,22 @@ fabs_appif::write_event(int fd, const fabs_id_dir &id_dir, ptr_ifrule ifrule,
 
             if (writev(fd, iov, 2) < 0) {
                 auto p = m_fd2uxpeer[fd];
-                p->m_is_avail = false;
-                std::cerr << "cannot write to " << fd
-                          << "(" << p->m_path << ")" << std::endl;
+                print_write_err(fd, p->m_path);
                 return false;
             }
         } else {
             if (write(fd, s.c_str(), s.size()) < 0) {
                 auto p = m_fd2uxpeer[fd];
-                p->m_is_avail = false;
-                std::cerr << "cannot write to " << fd
-                          << "(" << p->m_path << ")" << std::endl;
+                print_write_err(fd, p->m_path);
+                
+                if (event == STREAM_CREATED || event == STREAM_DESTROYED) {
+                    std::unique_ptr<event_buf> evbuf(new event_buf);
+
+                    evbuf->m_header_str = s;
+                    
+                    p->m_event_buf.push_back(std::move(evbuf));
+                }
+                
                 return false;
             }
         }
@@ -1377,17 +1415,22 @@ fabs_appif::write_event(int fd, const fabs_id_dir &id_dir, ptr_ifrule ifrule,
 
             if (writev(fd, iov, 2) < 0) {
                 auto p = m_fd2uxpeer[fd];
-                p->m_is_avail = false;
-                std::cerr << "cannot write to " << fd
-                          << "(" << p->m_path << ")" << std::endl;
+                print_write_err(fd, p->m_path);
                 return false;
             }
         } else {
             if (write(fd, header, sizeof(*header)) < 0) {
                 auto p = m_fd2uxpeer[fd];
-                p->m_is_avail = false;
-                std::cerr << "cannot write to " << fd
-                          << "(" << p->m_path << ")" << std::endl;
+                print_write_err(fd, p->m_path);
+                
+                if (event == STREAM_CREATED || event == STREAM_DESTROYED) {
+                    std::unique_ptr<event_buf> evbuf(new event_buf);
+
+                    evbuf->m_header = *header;
+                    
+                    p->m_event_buf.push_back(std::move(evbuf));
+                }
+
                 return false;
             }
         }

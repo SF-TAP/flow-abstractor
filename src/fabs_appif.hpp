@@ -94,12 +94,18 @@ private:
 
     typedef boost::shared_ptr<ifrule> ptr_ifrule;
 
+    struct event_buf {
+        std::string       m_header_str;
+        fabs_appif_header m_header;
+    };
+
     struct uxpeer {
         int          m_fd;
         event       *m_ev;
         bool         m_is_avail;
         ptr_ifrule   m_ifrule;
         std::string  m_path;
+        std::deque<std::unique_ptr<event_buf>> m_event_buf;
     };
 
     enum match_dir {
