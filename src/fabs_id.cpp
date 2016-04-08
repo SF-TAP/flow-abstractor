@@ -58,7 +58,7 @@ fabs_id::set_iph(char *iph, char **l4hdr, int *len)
         m_l3_proto = IPPROTO_IP;
         m_l4_proto = iph4->ip_p;
 
-        *len = ntohs(iph4->ip_len);
+        *len = ntohs(iph4->ip_len) -  iph4->ip_hl * 4;
 
         if (*addr1 < *addr2) {
             m_addr1 = addr1;
