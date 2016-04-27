@@ -88,8 +88,6 @@ main(int argc, char *argv[])
     const char *optstr = "i:hc:sb:";
 #endif // USE_NETMAP
 
-    signal( SIGPIPE , SIG_IGN ); 
-
     while ((opt = getopt(argc, argv, optstr)) != -1) {
         switch (opt) {
         case 'i':
@@ -114,6 +112,14 @@ main(int argc, char *argv[])
             print_usage(argv[0]);
             return 0;
         }
+    }
+
+    sigset_t sigpipe_mask;
+    sigemptyset(&sigpipe_mask);
+    sigaddset(&sigpipe_mask, SIGPIPE);
+    if (pthread_sigmask(SIG_BLOCK, &sigpipe_mask, NULL) == -1) {
+        perror("pthread_sigmask");
+        exit(1);
     }
 
 #ifdef USE_NETMAP

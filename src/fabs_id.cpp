@@ -29,8 +29,8 @@ fabs_id::set_iph(char *iph, char **l4hdr, int *len)
     switch (protocol) {
     case 0x40:
     {
-        boost::shared_ptr<fabs_peer> addr1(new fabs_peer);
-        boost::shared_ptr<fabs_peer> addr2(new fabs_peer);
+        std::shared_ptr<fabs_peer> addr1(new fabs_peer);
+        std::shared_ptr<fabs_peer> addr2(new fabs_peer);
         ip *iph4 = (ip*)iph;
 
         memset(addr1.get(), 0, sizeof(fabs_peer));
@@ -77,8 +77,8 @@ fabs_id::set_iph(char *iph, char **l4hdr, int *len)
     }
     case 0x60:
     {
-        boost::shared_ptr<fabs_peer> addr1(new fabs_peer);
-        boost::shared_ptr<fabs_peer> addr2(new fabs_peer);
+        std::shared_ptr<fabs_peer> addr1(new fabs_peer);
+        std::shared_ptr<fabs_peer> addr2(new fabs_peer);
         ip6_hdr *iph6 = (ip6_hdr*)iph;
         uint8_t  nxt  = iph6->ip6_nxt;
         char    *p    = (char*)iph6 + sizeof(ip6_hdr);
@@ -172,8 +172,8 @@ fabs_id::set_iph(char *iph, char **l4hdr, int *len)
 void
 fabs_id::set_appif_header(fabs_appif_header &header)
 {
-    boost::shared_ptr<fabs_peer> addr1(new fabs_peer);
-    boost::shared_ptr<fabs_peer> addr2(new fabs_peer);
+    std::shared_ptr<fabs_peer> addr1(new fabs_peer);
+    std::shared_ptr<fabs_peer> addr2(new fabs_peer);
 
     memcpy(&addr1->l3_addr, &header.l3_addr1, sizeof(addr1->l3_addr));
     memcpy(&addr2->l3_addr, &header.l3_addr2, sizeof(addr2->l3_addr));

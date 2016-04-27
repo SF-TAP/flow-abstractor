@@ -12,7 +12,7 @@
 #include <stdint.h>
 #include <string.h>
 
-#include <boost/shared_ptr.hpp>
+#include <memory>
 
 enum fabs_direction {
     FROM_ADDR1 = 0,
@@ -47,7 +47,7 @@ struct fabs_appif_header {
     uint8_t  unused[4]; // safety packing for 32 bytes boundary
 } __attribute__((packed, aligned(32)));
 
-typedef boost::shared_ptr<fabs_appif_header> ptr_appif_header;
+typedef std::shared_ptr<fabs_appif_header> ptr_appif_header;
 
 struct fabs_peer {
     union {
@@ -134,7 +134,7 @@ public:
     uint8_t get_l3_proto() const { return m_l3_proto; }
     uint8_t get_l4_proto() const { return m_l4_proto; }
 
-    boost::shared_ptr<fabs_peer> m_addr1, m_addr2;
+    std::shared_ptr<fabs_peer> m_addr1, m_addr2;
     uint8_t m_hop;
 
     uint32_t get_hash() const;
@@ -165,7 +165,7 @@ struct fabs_id_dir {
 
 
     void get_addr_src(char *buf, int len) const {
-        boost::shared_ptr<fabs_peer> addr;
+        std::shared_ptr<fabs_peer> addr;
 
         addr = (m_dir == FROM_ADDR1) ? m_id.m_addr1 : m_id.m_addr2;
 
@@ -173,7 +173,7 @@ struct fabs_id_dir {
     }
 
     void get_addr_dst(char *buf, int len) const {
-        boost::shared_ptr<fabs_peer> addr;
+        std::shared_ptr<fabs_peer> addr;
 
         addr = (m_dir == FROM_ADDR1) ? m_id.m_addr2 : m_id.m_addr1;
 
@@ -224,7 +224,7 @@ struct fabs_id_dir {
     uint8_t get_l4_proto() const { return m_id.get_l4_proto(); }
 
 private:
-    void get_addr(boost::shared_ptr<fabs_peer> addr, char *buf, int len) const {
+    void get_addr(std::shared_ptr<fabs_peer> addr, char *buf, int len) const {
         if (m_id.get_l3_proto() == IPPROTO_IP) {
             inet_ntop(AF_INET, &addr->l3_addr.b32, buf, len);
         } else if (m_id.get_l3_proto() == IPPROTO_IPV6) {
