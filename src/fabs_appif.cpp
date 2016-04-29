@@ -1271,22 +1271,28 @@ fabs_appif::write_event(int fd, const fabs_id_dir &id_dir, ptr_ifrule ifrule,
                         fabs_appif_header *header, char *body, int bodylen,
                         timeval *tm)
 {
-    auto &ebuf = m_fd2uxpeer[fd]->m_event_buf;
-    if (ebuf.size() > 0) {
-        while (! ebuf.empty()) {
-            auto &p = ebuf.front();
+    auto peer  = m_fd2uxpeer[fd];
+    auto &ebuf = peer->m_event_buf;
 
-            if (ifrule->m_format == IF_TEXT) {
-                if (write(fd, p->m_header_str.c_str(), p->m_header_str.size()) < 0) {
-                    break;
-                }
-            } else {
-                if (write(fd, &p->m_header, sizeof(p->m_header)) < 0) {
-                    break;
-                }
-            }
+    if (ebuf.size() > 0) {
+        fabs_spin_lock_ac lock(peer->m_lock);
+
+        if (ebuf.size() > 0) {
+            while (! ebuf.empty()) {
+                auto &p = ebuf.front();
             
-            ebuf.pop_front();
+                if (ifrule->m_format == IF_TEXT) {
+                    if (write(fd, p->m_header_str.c_str(), p->m_header_str.size()) < 0) {
+                        break;
+                    }
+                } else {
+                    if (write(fd, &p->m_header, sizeof(p->m_header)) < 0) {
+                        break;
+                    }
+                }
+                
+                ebuf.pop_front();
+            }
         }
     }
 
@@ -1373,21 +1379,20 @@ fabs_appif::write_event(int fd, const fabs_id_dir &id_dir, ptr_ifrule ifrule,
             iov[1].iov_len  = bodylen;
 
             if (writev(fd, iov, 2) < 0) {
-                auto p = m_fd2uxpeer[fd];
-                print_write_err(fd, p->m_path);
+                print_write_err(fd, peer->m_path);
                 return false;
             }
         } else {
             if (write(fd, s.c_str(), s.size()) < 0) {
-                auto p = m_fd2uxpeer[fd];
-                print_write_err(fd, p->m_path);
+                print_write_err(fd, peer->m_path);
                 
                 if (event == STREAM_CREATED || event == STREAM_DESTROYED) {
                     std::unique_ptr<event_buf> evbuf(new event_buf);
 
                     evbuf->m_header_str = s;
                     
-                    p->m_event_buf.push_back(std::move(evbuf));
+                    fabs_spin_lock_ac lock(peer->m_lock);
+                    ebuf.push_back(std::move(evbuf));
                 }
                 
                 return false;
@@ -1414,21 +1419,20 @@ fabs_appif::write_event(int fd, const fabs_id_dir &id_dir, ptr_ifrule ifrule,
             iov[1].iov_len  = bodylen;
 
             if (writev(fd, iov, 2) < 0) {
-                auto p = m_fd2uxpeer[fd];
-                print_write_err(fd, p->m_path);
+                print_write_err(fd, peer->m_path);
                 return false;
             }
         } else {
             if (write(fd, header, sizeof(*header)) < 0) {
-                auto p = m_fd2uxpeer[fd];
-                print_write_err(fd, p->m_path);
+                print_write_err(fd, peer->m_path);
                 
                 if (event == STREAM_CREATED || event == STREAM_DESTROYED) {
                     std::unique_ptr<event_buf> evbuf(new event_buf);
 
                     evbuf->m_header = *header;
                     
-                    p->m_event_buf.push_back(std::move(evbuf));
+                    fabs_spin_lock_ac lock(peer->m_lock);
+                    ebuf.push_back(std::move(evbuf));
                 }
 
                 return false;

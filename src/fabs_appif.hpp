@@ -100,11 +100,12 @@ private:
     };
 
     struct uxpeer {
-        int          m_fd;
-        event       *m_ev;
-        bool         m_is_avail;
-        ptr_ifrule   m_ifrule;
-        std::string  m_path;
+        int            m_fd;
+        event         *m_ev;
+        bool           m_is_avail;
+        ptr_ifrule     m_ifrule;
+        std::string    m_path;
+        fabs_spin_lock m_lock;
         std::deque<std::unique_ptr<event_buf>> m_event_buf;
     };
 
