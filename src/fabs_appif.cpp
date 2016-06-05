@@ -1,6 +1,7 @@
 #include "fabs_appif.hpp"
 #include "fabs_conf.hpp"
 #include "fabs_callback.hpp"
+#include "fabs_ether.hpp"
 
 #include <stdio.h>
 #include <string.h>
@@ -8,11 +9,14 @@
 
 #include <arpa/inet.h>
 
+#include <sys/ioctl.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <sys/uio.h>
+
+#include <pcap/pcap.h>
 
 #include <list>
 #include <iostream>
@@ -28,12 +32,18 @@
 
 namespace fs = boost::filesystem;
 
+#define SWAP_ENDIAN4(val) ((int) ( \
+    (((val) & 0x000000ff) << 24) | \
+    (((val) & 0x0000ff00) <<  8) | \
+    (((val) & 0x00ff0000) >>  8) | \
+    (((val) & 0xff000000) >> 24) ))
+
 void ux_read(int fd, short events, void *arg);
 void ux_read_loopback7(int fd, short events, void *arg);
 void ux_read_pcap(int fd, short events, void *arg);
 bool read_loopback7(int fd, fabs_appif *appif);
 
-fabs_appif::fabs_appif() :
+fabs_appif::fabs_appif(fabs_ether &ether) :
     m_fd7(-1),
     m_fd3(-1),
     m_lb7_format(IF_TEXT),
@@ -41,7 +51,8 @@ fabs_appif::fabs_appif() :
     m_num_consumer(1),
     m_home(new fs::path(fs::current_path())),
     m_is_lru(true),
-    m_is_cache(true)
+    m_is_cache(true),
+    m_ether(ether)
 {
 
 }
@@ -199,7 +210,104 @@ ux_read_loopback7(int fd, short events, void *arg)
 void
 ux_read_pcap(int fd, short events, void *arg)
 {
+    fabs_appif *appif = static_cast<fabs_appif*>(arg);
+
+    int count;
+    ioctl(fd, FIONREAD, &count);
+
+    ptr_fabs_bytes bytes = std::unique_ptr<fabs_bytes>(new fabs_bytes);
     
+    bytes->alloc(count);
+    
+    int recv_size = read(fd, bytes->get_head(), count);
+
+    if (recv_size <= 0) {
+        appif->m_ifpcap_info.erase(fd);
+        spin_lock_write lock(appif->m_rw_mutex);
+
+        ux_close(fd, appif);
+        return;
+    }
+    
+    auto it = appif->m_ifpcap_info.find(fd);
+    
+    it->second->m_bytes.push_back(std::move(bytes));
+    
+    for (;;) {
+        if (it->second->m_state == fabs_appif::IFPCAP_GLOBAL) {
+            pcap_hdr_t ghdr;
+            int len = read_bytes(it->second->m_bytes, (char*)&ghdr, sizeof(ghdr));
+            if (len != sizeof(ghdr)) 
+                break;
+            
+            skip_bytes(it->second->m_bytes, sizeof(ghdr));
+            
+            if (ghdr.magic_number == 0xa1b2c3d4) {
+                it->second->m_is_native = true;
+            } else if (ghdr.magic_number == 0xd4c3b2a1) {
+                it->second->m_is_native = false;
+            } else {
+                it->second->m_is_fail = true;
+                it->second->m_bytes.clear();
+                break;
+            }
+            
+            if (it->second->m_is_native) {
+                if (ghdr.network != DLT_EN10MB) {
+                    it->second->m_is_fail = true;
+                    it->second->m_bytes.clear();
+                    std::cerr << "datalink type of pcap file is not Ethernet!" << std::endl;
+                    break;
+                }
+            } else {
+                if (SWAP_ENDIAN4(ghdr.network) == DLT_EN10MB) {
+                    it->second->m_is_fail = true;
+                    it->second->m_bytes.clear();
+                    std::cerr << "datalink type of pcap file is not Ethernet!" << std::endl;
+                    break;
+                }
+            }
+
+            it->second->m_state = fabs_appif::IFPCAP_HEADER;
+        } else if (it->second->m_state == fabs_appif::IFPCAP_HEADER) {
+            if (it->second->m_is_fail) {
+                it->second->m_bytes.clear();
+                break;
+            }
+            
+            pcaprec_hdr_t hdr;
+            int len = read_bytes(it->second->m_bytes, (char*)&hdr, sizeof(hdr));
+            if (len != sizeof(hdr)) 
+                break;
+            
+            skip_bytes(it->second->m_bytes, sizeof(hdr));
+
+            if (it->second->m_is_native)
+                it->second->m_dlen = hdr.incl_len;
+            else
+                it->second->m_dlen = SWAP_ENDIAN4(hdr.incl_len);
+            
+            it->second->m_state = fabs_appif::IFPCAP_DATA;
+        } else if (it->second->m_state == fabs_appif::IFPCAP_DATA) {
+            if (it->second->m_is_fail) {
+                it->second->m_bytes.clear();
+                break;
+            }
+
+            std::vector<char> buf;
+            buf.resize(it->second->m_dlen);
+            
+            int len = read_bytes(it->second->m_bytes, &buf[0], it->second->m_dlen);
+            if (len != it->second->m_dlen)
+                break;
+            
+            skip_bytes(it->second->m_bytes, it->second->m_dlen);
+            
+            appif->m_ether.ether_input((uint8_t*)&buf[0], it->second->m_dlen);
+
+            it->second->m_state = fabs_appif::IFPCAP_HEADER;
+        }
+    }
 }
 
 void
