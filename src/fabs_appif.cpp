@@ -29,6 +29,8 @@
 namespace fs = boost::filesystem;
 
 void ux_read(int fd, short events, void *arg);
+void ux_read_loopback7(int fd, short events, void *arg);
+void ux_read_pcap(int fd, short events, void *arg);
 bool read_loopback7(int fd, fabs_appif *appif);
 
 fabs_appif::fabs_appif() :
@@ -57,7 +59,7 @@ fabs_appif::~fabs_appif()
         }
     }
 
-    m_consumer.reset();
+    m_consumer.clear();
 
     std::cout << "done" << std::endl;
 }
@@ -74,10 +76,8 @@ fabs_appif::run()
 
         m_thread_listen = ptr_thread(new boost::thread(boost::bind(&fabs_appif::ux_listen, this)));
 
-        m_consumer = boost::shared_array<ptr_consumer>(new ptr_consumer[m_num_consumer]);
-
         for (int i = 0; i < m_num_consumer; i++) {
-            m_consumer[i] = ptr_consumer(new appif_consumer(i, *this));
+            m_consumer.push_back(ptr_consumer(new appif_consumer(i, *this)));
         }
     }
 
@@ -114,8 +114,19 @@ ux_accept(int fd, short events, void *arg)
     tv.tv_usec = 0;
     setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, (char *)&tv, sizeof(tv));
 
-    event *ev = event_new(appif->m_ev_base, sock, EV_READ | EV_PERSIST,
-                          ux_read, arg);
+    event *ev;
+    if (it->second->m_name == "loopback7") {
+        auto ptr = fabs_appif::ptr_loopback_state(new fabs_appif::loopback_state);
+        appif->m_lb7_state[sock] = std::move(ptr);
+        ev = event_new(appif->m_ev_base, sock, EV_READ | EV_PERSIST, ux_read_loopback7, arg);
+    } else if (it->second->m_name == "pcap") {
+        auto ptr = fabs_appif::ptr_ifpcap_info(new fabs_appif::ifpcap_info);
+        appif->m_ifpcap_info[sock] = std::move(ptr);
+        ev = event_new(appif->m_ev_base, sock, EV_READ | EV_PERSIST, ux_read_pcap, arg);
+    } else {
+        ev = event_new(appif->m_ev_base, sock, EV_READ | EV_PERSIST, ux_read, arg);
+    }
+
     event_add(ev, NULL);
 
     auto peer = fabs_appif::ptr_uxpeer(new fabs_appif::uxpeer);
@@ -124,15 +135,11 @@ ux_accept(int fd, short events, void *arg)
     peer->m_ifrule   = it->second;
     peer->m_path     = it2->second;
 
-    appif->m_fd2uxpeer[sock] = peer;
-    appif->m_name2uxpeer[it2->second].insert(sock);
-
     std::cout << "accepted on " << peer->m_path
               << " (fd = " << sock << ")" << std::endl;
 
-    if (fd == appif->m_fd7) {
-        appif->m_lb7_state[sock] = fabs_appif::ptr_loopback_state(new fabs_appif::loopback_state);
-    }
+    appif->m_fd2uxpeer[sock] = std::move(peer);
+    appif->m_name2uxpeer[it2->second].insert(sock);
 }
 
 void
@@ -178,34 +185,43 @@ ux_close(int fd, fabs_appif *appif)
 }
 
 void
+ux_read_loopback7(int fd, short events, void *arg)
+{
+    fabs_appif *appif = static_cast<fabs_appif*>(arg);
+
+    if (read_loopback7(fd, appif)) {
+        spin_lock_write lock(appif->m_rw_mutex);
+
+        ux_close(fd, appif);
+    }
+}
+
+void
+ux_read_pcap(int fd, short events, void *arg)
+{
+    
+}
+
+void
 ux_read(int fd, short events, void *arg)
 {
     fabs_appif *appif = static_cast<fabs_appif*>(arg);
-    fabs_appif::ptr_uxpeer peer;
+    fabs_appif::uxpeer *peer = nullptr;
 
     auto it1 = appif->m_fd2uxpeer.find(fd);
     if (it1 != appif->m_fd2uxpeer.end()) {
-        peer = it1->second;
+        peer = it1->second.get();
     }
 
     if (peer) {
-        if (peer->m_ifrule->m_name == "loopback7") {
-            if (read_loopback7(fd, appif)) {
-                spin_lock_write lock(appif->m_rw_mutex);
+        char buf[4096];
+        int  recv_size = read(fd, buf, sizeof(buf) - 1);
 
-                ux_close(fd, appif);
-                return;
-            }
-        } else {
-            char buf[4096];
-            int  recv_size = read(fd, buf, sizeof(buf) - 1);
+        if (recv_size <= 0) {
+            spin_lock_write lock(appif->m_rw_mutex);
 
-            if (recv_size <= 0) {
-                spin_lock_write lock(appif->m_rw_mutex);
-
-                ux_close(fd, appif);
-                return;
-            }
+            ux_close(fd, appif);
+            return;
         }
     }
 }
@@ -579,6 +595,9 @@ fabs_appif::ux_listen()
 
         if (m_udp_default)
             ux_listen_ifrule(m_udp_default);
+
+        if (m_ifpcap)
+            ux_listen_ifrule(m_ifpcap);
     }
 
     {
@@ -816,6 +835,8 @@ fabs_appif::read_conf(std::string conf)
                 m_tcp_default = rule;
             } else if (rule->m_name == "udp_default") {
                 m_udp_default = rule;
+            } else if (rule->m_name == "pcap") {
+                m_ifpcap = rule;
             } else if (rule->m_proto == IF_UDP) {
                 auto it_udp = m_ifrule_udp.find(rule->m_nice);
                 if (it_udp == m_ifrule_udp.end()) {
@@ -876,7 +897,7 @@ fabs_appif::appif_consumer::in_stream_event(fabs_stream_event st_event,
         if (it == m_info.end()) {
             ptr_info info = ptr_info(new stream_info(id_dir.m_id));
 
-            m_info[id_dir.m_id] = info;
+            m_info[id_dir.m_id] = std::move(info);
 
             it = m_info.find(id_dir.m_id);
         }
@@ -911,7 +932,7 @@ fabs_appif::appif_consumer::in_stream_event(fabs_stream_event st_event,
             return;
         }
 
-        send_tcp_data(it->second, id_dir);
+        send_tcp_data(it->second.get(), id_dir);
 
         break;
     }
@@ -929,13 +950,13 @@ fabs_appif::appif_consumer::in_stream_event(fabs_stream_event st_event,
         if (! it->second->m_buf1.empty()) {
             fabs_id_dir id_dir2 = id_dir;
             id_dir2.m_dir = FROM_ADDR1;
-            send_tcp_data(it->second, id_dir2);
+            send_tcp_data(it->second.get(), id_dir2);
         }
 
         if (! it->second->m_buf2.empty()) {
             fabs_id_dir id_dir2 = id_dir;
             id_dir2.m_dir = FROM_ADDR2;
-            send_tcp_data(it->second, id_dir2);
+            send_tcp_data(it->second.get(), id_dir2);
         }
 
 
@@ -976,7 +997,7 @@ fabs_appif::appif_consumer::in_stream_event(fabs_stream_event st_event,
 }
 
 bool
-fabs_appif::appif_consumer::send_tcp_data(ptr_info p_info, fabs_id_dir id_dir)
+fabs_appif::appif_consumer::send_tcp_data(stream_info *p_info, fabs_id_dir id_dir)
 {
     bool is_classified = false;
 
@@ -1060,8 +1081,8 @@ fabs_appif::appif_consumer::send_tcp_data(ptr_info p_info, fabs_id_dir id_dir)
             // check list
             for (auto it1 = it_tcp->second->ifrule.begin();
                  it1 != it_tcp->second->ifrule.end(); ++it1) {
-                if (m_appif.is_in_port((*it1)->m_port, id_dir.get_port_src(),
-                               id_dir.get_port_dst())) {
+                if (m_appif.is_in_port(*(*it1)->m_port, id_dir.get_port_src(),
+                                       id_dir.get_port_dst())) {
                     if (RE2::PartialMatch(std::string(buf1, len1),
                                           *(*it1)->m_up) &&
                         RE2::PartialMatch(std::string(buf2, len2),
@@ -1117,8 +1138,8 @@ fabs_appif::appif_consumer::send_tcp_data(ptr_info p_info, fabs_id_dir id_dir)
             // check no regex list
             for (auto it2 = it_tcp->second->ifrule_no_regex.begin();
                  it2 != it_tcp->second->ifrule_no_regex.end(); ++it2) {
-                if (m_appif.is_in_port((*it2)->m_port, id_dir.get_port_src(),
-                               id_dir.get_port_dst())) {
+                if (m_appif.is_in_port(*(*it2)->m_port, id_dir.get_port_src(),
+                                       id_dir.get_port_dst())) {
                     ifrule = *it2;
                     is_classified = true;
                     p_info->m_ifrule = ifrule;
@@ -1266,7 +1287,7 @@ fabs_appif::write_event(int fd, const fabs_id_dir &id_dir, ptr_ifrule ifrule,
                         fabs_appif_header *header, char *body, int bodylen,
                         timeval *tm)
 {
-    auto peer  = m_fd2uxpeer[fd];
+    auto peer  = m_fd2uxpeer[fd].get();
     auto &ebuf = peer->m_event_buf;
 
     if (ebuf.size() > 0) {
@@ -1473,13 +1494,13 @@ fabs_appif::stream_info::clear_buf()
 }
 
 bool
-fabs_appif::is_in_port(boost::shared_ptr<std::list<std::pair<uint16_t, uint16_t> > > range,
+fabs_appif::is_in_port(const std::list<std::pair<uint16_t, uint16_t>> &range,
                        uint16_t port1, uint16_t port2)
 {
-    if (range->empty())
+    if (range.empty())
         return true;
 
-    for (auto it = range->begin(); it != range->end(); ++it) {
+    for (auto it = range.begin(); it != range.end(); ++it) {
         if ((it->first <= ntohs(port1) && ntohs(port1) <= it->second) ||
             (it->first <= ntohs(port2) && ntohs(port2) <= it->second)) {
             return true;
@@ -1503,7 +1524,7 @@ fabs_appif::appif_consumer::in_datagram(const fabs_id_dir &id_dir,
         // check cache
         auto cache_udp = it_udp->second->cache_up;
         if (m_appif.m_is_cache && cache_udp[idx] &&
-            m_appif.is_in_port(cache_udp[idx]->m_port,
+            m_appif.is_in_port(*cache_udp[idx]->m_port,
                                id_dir.get_port_src(), id_dir.get_port_dst())) {
 
             ifrule = cache_udp[idx];
@@ -1524,7 +1545,7 @@ fabs_appif::appif_consumer::in_datagram(const fabs_id_dir &id_dir,
         if (! it_udp->second->ifrule.empty()) {
             for (auto it1 = it_udp->second->ifrule.begin();
                  it1 != it_udp->second->ifrule.end(); ++it1) {
-                if (m_appif.is_in_port((*it1)->m_port, id_dir.get_port_src(),
+                if (m_appif.is_in_port(*(*it1)->m_port, id_dir.get_port_src(),
                                        id_dir.get_port_dst()) &&
                     RE2::PartialMatch(std::string(bytes->get_head(),
                                                   bytes->get_len()),
@@ -1551,7 +1572,7 @@ fabs_appif::appif_consumer::in_datagram(const fabs_id_dir &id_dir,
         for (auto it2 = it_udp->second->ifrule_no_regex.begin();
              it2 != it_udp->second->ifrule_no_regex.end(); ++it2) {
 
-            if (m_appif.is_in_port((*it2)->m_port, id_dir.get_port_src(),
+            if (m_appif.is_in_port(*(*it2)->m_port, id_dir.get_port_src(),
                                    id_dir.get_port_dst())) {
                 // found in list
                 ifrule = *it2;
@@ -1669,7 +1690,7 @@ fabs_appif::appif_consumer::appif_consumer(int id, fabs_appif &appif) :
         p->ifrule = it_tcp->second->ifrule;
         p->ifrule_no_regex = it_tcp->second->ifrule_no_regex;
 
-        m_ifrule_tcp[it_tcp->first] = p;
+        m_ifrule_tcp[it_tcp->first] = std::move(p);
     }
 
     for (auto it_udp = appif.m_ifrule_udp.begin();
@@ -1679,7 +1700,7 @@ fabs_appif::appif_consumer::appif_consumer(int id, fabs_appif &appif) :
         p->ifrule = it_udp->second->ifrule;
         p->ifrule_no_regex = it_udp->second->ifrule_no_regex;
 
-        m_ifrule_udp[it_udp->first] = p;
+        m_ifrule_udp[it_udp->first] = std::move(p);
     }
 }
 

@@ -386,7 +386,7 @@ void
 fabs_tcp::input_tcp(fabs_id &id, fabs_direction dir, ptr_fabs_bytes buf)
 {
     map<fabs_id, ptr_fabs_tcp_flow>::iterator it_flow;
-    ptr_fabs_tcp_flow p_tcp_flow;
+    fabs_tcp_flow *p_tcp_flow;
     fabs_tcp_packet   packet;
     tcphdr *tcph = (tcphdr*)buf->get_head();
 
@@ -413,14 +413,14 @@ fabs_tcp::input_tcp(fabs_id &id, fabs_direction dir, ptr_fabs_bytes buf)
         it_flow = m_flow[idx].find(id);
 
         if ((tcph->th_flags & TH_SYN) && it_flow == m_flow[idx].end()) {
-            p_tcp_flow = ptr_fabs_tcp_flow(new fabs_tcp_flow);
-            m_flow[idx][id] = p_tcp_flow;
-
+            auto ptr = ptr_fabs_tcp_flow(new fabs_tcp_flow);
+            p_tcp_flow = ptr.get();
+            m_flow[idx][id] = std::move(ptr);
             __sync_fetch_and_add(&m_total_session, 1);
         } else if (it_flow == m_flow[idx].end()) {
             return;
         } else {
-            p_tcp_flow = it_flow->second;
+            p_tcp_flow = it_flow->second.get();
         }
 
         packet.m_seq      = ntohl(tcph->th_seq);

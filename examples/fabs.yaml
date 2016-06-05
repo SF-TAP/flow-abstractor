@@ -11,6 +11,9 @@ loopback7:
   if:     loopback7
   format: text
 
+pcap:
+  if: pcap
+
 tcp_default:
   if:     default # for every flow that wasn't matched by any rules 
   proto:  TCP
