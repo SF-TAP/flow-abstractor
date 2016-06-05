@@ -121,7 +121,7 @@ fabs_ether::produce(int idx, const char *buf, int len)
 
     bytes->set_buf(buf, len);
 
-    produce(idx, bytes);
+    produce(idx, std::move(bytes));
 }
 
 void
@@ -218,7 +218,7 @@ fabs_ether::consume(int idx)
                             m_condition_frag.notify_one();
                         }
                     } else {
-                        m_callback(idx, buf);
+                        m_callback(idx, std::move(buf));
                     }
 
                     break;
@@ -262,7 +262,7 @@ fabs_ether::consume(int idx)
                         goto err;
                     }
 
-                    m_callback(idx, buf);
+                    m_callback(idx, std::move(buf));
 
                     break;
                 }
@@ -304,7 +304,7 @@ fabs_ether::consume_fragment()
             while (m_queue_frag.pop(&buf)) {
                 if (m_is_break)
                     return;
-                m_fragment.input_ip(buf);
+                m_fragment.input_ip(std::move(buf));
             }
         }
     }

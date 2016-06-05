@@ -21,7 +21,7 @@ fabs_fragment::fragments::fragments(const ip *iph4, ptr_fabs_bytes bytes)
     int offset = ntohs(iph4->ip_off) & IP_OFFMASK;
     int mflag  = ntohs(iph4->ip_off) & IP_MF;
 
-    (*m_bytes)[offset] = bytes;
+    (*m_bytes)[offset] = std::move(bytes);
 
     if (! mflag) {
         m_is_last = true;
@@ -134,11 +134,11 @@ fabs_fragment::input_ip(ptr_fabs_bytes buf)
         boost::mutex::scoped_lock lock(m_mutex);
         auto it = m_fragments.find(frag);
         if (it == m_fragments.end()) {
-            m_fragments.insert(fragments(iph4, buf));
+            m_fragments.insert(fragments(iph4, std::move(buf)));
         } else {
             auto it2 = it->m_bytes->find(offset);
             if (it2 == it->m_bytes->end()) {
-                (*it->m_bytes)[offset] = buf;
+                (*it->m_bytes)[offset] = std::move(buf);
 
                 if (! mflag) {
                     it->m_is_last = true;
@@ -160,7 +160,7 @@ fabs_fragment::input_ip(ptr_fabs_bytes buf)
 
                     uint32_t hash = ntohl(iph4->ip_src.s_addr ^ iph4->ip_dst.s_addr);
 
-                    m_ether.produce(hash % m_appif->get_num_tcp_threads(), buf);
+                    m_ether.produce(hash % m_appif->get_num_tcp_threads(), std::move(buf));
                 }
             }
         }

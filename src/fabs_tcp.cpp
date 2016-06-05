@@ -180,8 +180,6 @@ fabs_tcp::input_tcp_event(int idx, fabs_id_dir tcp_event)
     char addr1[32], addr2[32];
 #endif // DEBUG
 
-    ptr_fabs_bytes  null_bytes;
-
     {
         boost::mutex::scoped_lock lock(m_mutex_flow[idx]);
 
@@ -209,7 +207,7 @@ fabs_tcp::input_tcp_event(int idx, fabs_id_dir tcp_event)
              it_flow->second->m_flow1.m_is_rm) ||
             (tcp_event.m_dir == FROM_ADDR2 &&
              it_flow->second->m_flow2.m_is_rm)) {
-            m_appif->in_event(STREAM_TIMEOUT, tcp_event, null_bytes);
+            m_appif->in_event(STREAM_TIMEOUT, tcp_event, nullptr);
             is_rm = true;
         }
 
@@ -219,7 +217,7 @@ fabs_tcp::input_tcp_event(int idx, fabs_id_dir tcp_event)
 
             fabs_id_dir id_dir = tcp_event;
             id_dir.m_dir = FROM_NONE;
-            m_appif->in_event(STREAM_DESTROYED, id_dir, null_bytes);
+            m_appif->in_event(STREAM_DESTROYED, id_dir, nullptr);
 
             return;
         }
@@ -242,14 +240,14 @@ fabs_tcp::input_tcp_event(int idx, fabs_id_dir tcp_event)
                  << endl;
 #endif // DEBUG
 
-            m_appif->in_event(STREAM_SYN, tcp_event, null_bytes);
+            m_appif->in_event(STREAM_SYN, tcp_event, nullptr);
         } else if (packet.m_flags & TH_FIN) {
             if (packet.m_data_len > 0 &&
                 packet.m_bytes->skip(packet.m_data_pos)) {
-                m_appif->in_event(STREAM_DATA, tcp_event, packet.m_bytes);
+                m_appif->in_event(STREAM_DATA, tcp_event, std::move(packet.m_bytes));
             }
 
-            m_appif->in_event(STREAM_FIN, tcp_event, null_bytes);
+            m_appif->in_event(STREAM_FIN, tcp_event, nullptr);
 
 #ifdef DEBUG
             cout << "connection closed: addr1 = "
@@ -265,7 +263,7 @@ fabs_tcp::input_tcp_event(int idx, fabs_id_dir tcp_event)
             if (recv_fin(idx, tcp_event.m_id, tcp_event.m_dir)) {
                 fabs_id_dir id_dir = tcp_event;
                 id_dir.m_dir = FROM_NONE;
-                m_appif->in_event(STREAM_DESTROYED, id_dir, null_bytes);
+                m_appif->in_event(STREAM_DESTROYED, id_dir, nullptr);
             }
         } else if (packet.m_flags & TH_RST) {
 #ifdef DEBUG
@@ -278,13 +276,13 @@ fabs_tcp::input_tcp_event(int idx, fabs_id_dir tcp_event)
                  << endl;
 #endif // DEBUG
 
-            m_appif->in_event(STREAM_RST, tcp_event, null_bytes);
+            m_appif->in_event(STREAM_RST, tcp_event, nullptr);
 
             rm_flow(idx, tcp_event.m_id, tcp_event.m_dir);
 
             fabs_id_dir id_dir = tcp_event;
             id_dir.m_dir = FROM_NONE;
-            m_appif->in_event(STREAM_DESTROYED, id_dir, null_bytes);
+            m_appif->in_event(STREAM_DESTROYED, id_dir, nullptr);
         } else {
 #ifdef DEBUG
             cout << "data in: addr1 = "
@@ -298,7 +296,7 @@ fabs_tcp::input_tcp_event(int idx, fabs_id_dir tcp_event)
 #endif // DEBUG
 
             if (packet.m_bytes->skip(packet.m_data_pos)) {
-                m_appif->in_event(STREAM_DATA, tcp_event, packet.m_bytes);
+                m_appif->in_event(STREAM_DATA, tcp_event, std::move(packet.m_bytes));
             }
         }
     }
@@ -364,8 +362,14 @@ fabs_tcp::get_packet(int idx, const fabs_id &id, fabs_direction dir,
     if (it_pkt == p_uniflow->m_packets.end()) {
         return false;
     }
-
-    packet = it_pkt->second;
+    
+    packet.m_bytes    = std::move(it_pkt->second.m_bytes);
+    packet.m_seq      = it_pkt->second.m_seq;
+    packet.m_nxt_seq  = it_pkt->second.m_nxt_seq;
+    packet.m_flags    = it_pkt->second.m_flags;
+    packet.m_data_pos = it_pkt->second.m_data_pos;
+    packet.m_data_len = it_pkt->second.m_data_len;
+    packet.m_read_pos = it_pkt->second.m_read_pos;
 
     p_uniflow->m_packets.erase(it_pkt);
 
@@ -425,7 +429,7 @@ fabs_tcp::input_tcp(fabs_id &id, fabs_direction dir, ptr_fabs_bytes buf)
         packet.m_data_len = buf->get_len() - packet.m_data_pos;
         packet.m_nxt_seq  = packet.m_seq + packet.m_data_len;
         packet.m_read_pos = 0;
-        packet.m_bytes    = buf;
+        packet.m_bytes    = std::move(buf);
 
         fabs_tcp_uniflow *p_uniflow;
         
@@ -452,12 +456,30 @@ fabs_tcp::input_tcp(fabs_id &id, fabs_direction dir, ptr_fabs_bytes buf)
 
         if (packet.m_flags & TH_SYN || packet.m_flags & TH_FIN ||
             packet.m_data_len > 0) {
-            p_uniflow->m_packets[packet.m_seq] = packet;
+            p_uniflow->m_packets[packet.m_seq].m_bytes    = std::move(packet.m_bytes);
+            p_uniflow->m_packets[packet.m_seq].m_seq      = packet.m_seq;
+            p_uniflow->m_packets[packet.m_seq].m_nxt_seq  = packet.m_nxt_seq;
+            p_uniflow->m_packets[packet.m_seq].m_flags    = packet.m_flags;
+            p_uniflow->m_packets[packet.m_seq].m_data_pos = packet.m_data_pos;
+            p_uniflow->m_packets[packet.m_seq].m_data_len = packet.m_data_len;
+            p_uniflow->m_packets[packet.m_seq].m_read_pos = packet.m_read_pos;
         } else if (packet.m_flags & TH_RST) {
             if (p_uniflow->m_is_syn) {
-                p_uniflow->m_packets[packet.m_seq] = packet;
+                p_uniflow->m_packets[packet.m_seq].m_bytes    = std::move(packet.m_bytes);
+                p_uniflow->m_packets[packet.m_seq].m_seq      = packet.m_seq;
+                p_uniflow->m_packets[packet.m_seq].m_nxt_seq  = packet.m_nxt_seq;
+                p_uniflow->m_packets[packet.m_seq].m_flags    = packet.m_flags;
+                p_uniflow->m_packets[packet.m_seq].m_data_pos = packet.m_data_pos;
+                p_uniflow->m_packets[packet.m_seq].m_data_len = packet.m_data_len;
+                p_uniflow->m_packets[packet.m_seq].m_read_pos = packet.m_read_pos;
             } else {
-                p_uniflow->m_packets[p_uniflow->m_min_seq] = packet;
+                p_uniflow->m_packets[p_uniflow->m_min_seq].m_bytes    = std::move(packet.m_bytes);
+                p_uniflow->m_packets[p_uniflow->m_min_seq].m_seq      = packet.m_seq;
+                p_uniflow->m_packets[p_uniflow->m_min_seq].m_nxt_seq  = packet.m_nxt_seq;
+                p_uniflow->m_packets[p_uniflow->m_min_seq].m_flags    = packet.m_flags;
+                p_uniflow->m_packets[p_uniflow->m_min_seq].m_data_pos = packet.m_data_pos;
+                p_uniflow->m_packets[p_uniflow->m_min_seq].m_data_len = packet.m_data_len;
+                p_uniflow->m_packets[p_uniflow->m_min_seq].m_read_pos = packet.m_read_pos;
             }
         }
 

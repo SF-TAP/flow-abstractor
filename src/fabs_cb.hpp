@@ -8,7 +8,7 @@
 #define QNUM (1024 * 1024 * 10)
 
 // multiple writers and single reader
-template <class T>
+template <typename T>
 class fabs_cb {
 public:
     fabs_cb() : m_max_len(QNUM),
@@ -35,7 +35,7 @@ private:
     fabs_spin_lock m_lock;
 };
 
-template <class T>
+template <typename T>
 inline bool fabs_cb<T>::pop(T *p)
 {
     if (m_len == 0) {
@@ -58,7 +58,7 @@ inline bool fabs_cb<T>::pop(T *p)
     return true;
 }
 
-template <class T>
+template <typename T>
 inline bool fabs_cb<T>::push(T &val)
 {
     if (m_len == m_max_len) {
@@ -68,6 +68,50 @@ inline bool fabs_cb<T>::push(T &val)
     fabs_spin_lock_ac lock(m_lock);
 
     *m_tail = val;
+    m_len++;
+    m_tail++;
+
+    if (m_tail == m_buf_end) {
+        m_tail = m_buf;
+    }
+
+    return true;
+}
+
+
+template <>
+inline bool fabs_cb<ptr_fabs_bytes>::pop(ptr_fabs_bytes *p)
+{
+    if (m_len == 0) {
+        return false;
+    }
+
+    *p = std::move(*m_head);
+
+    {
+        fabs_spin_lock_ac lock(m_lock);
+        m_len--;
+    }
+
+    m_head++;
+
+    if (m_head == m_buf_end) {
+        m_head = m_buf;
+    }
+
+    return true;
+}
+
+template <>
+inline bool fabs_cb<ptr_fabs_bytes>::push(ptr_fabs_bytes &val)
+{
+    if (m_len == m_max_len) {
+        return false;
+    }
+
+    fabs_spin_lock_ac lock(m_lock);
+
+    *m_tail = std::move(val);
     m_len++;
     m_tail++;
 

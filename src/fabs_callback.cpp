@@ -35,10 +35,10 @@ fabs_callback::operator() (int idx, ptr_fabs_bytes buf) {
 
     switch (id.get_l4_proto()) {
     case IPPROTO_TCP:
-        m_tcp[idx].input_tcp(id, dir, buf);
+        m_tcp[idx].input_tcp(id, dir, std::move(buf));
         break;
     case IPPROTO_UDP:
-        m_udp.input_udp(id, dir, buf);
+        m_udp.input_udp(id, dir, std::move(buf));
         break;
     default:
         ;

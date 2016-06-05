@@ -30,6 +30,6 @@ fabs_udp::input_udp(fabs_id &id, fabs_direction dir, ptr_fabs_bytes buf)
     id_dir.m_dir = dir;
 
     if (buf->skip(sizeof(udphdr))) {
-        m_appif->in_event(STREAM_DATA, id_dir, buf);
+        m_appif->in_event(STREAM_DATA, id_dir, std::move(buf));
     }
 }
