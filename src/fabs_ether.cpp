@@ -32,7 +32,7 @@ fabs_ether::fabs_ether(std::string conf, const fabs_dlcap *dlcap)
     : m_is_break(false),
       m_num_dropped(0),
       m_dlcap(dlcap),
-      m_appif(new fabs_appif),
+      m_appif(new fabs_appif(*this)),
       m_fragment(*this, m_appif),
       m_is_consuming_frag(false),
       m_thread_consume_frag(boost::bind(&fabs_ether::consume_fragment, this)),

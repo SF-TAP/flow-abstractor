@@ -7,6 +7,7 @@
 #include "fabs_cb.hpp"
 
 #include <event.h>
+#include <re2/re2.h>
 
 #include <sys/time.h>
 
@@ -16,8 +17,6 @@
 #include <string>
 #include <deque>
 #include <memory>
-
-#include <re2/re2.h>
 
 //#include <boost/regex.hpp>
 #include <boost/thread.hpp>
@@ -42,10 +41,28 @@ static const int DATAGRAM_DATA = STREAM_DATA; // SYNONYM
 
 class fabs_callback;
 class fabs_tcp;
+class fabs_ether;
+
+struct pcap_hdr_t {
+    uint32_t magic_number;   /* magic number */
+    uint16_t version_major;  /* major version number */
+    uint16_t version_minor;  /* minor version number */
+    int32_t  thiszone;       /* GMT to local correction */
+    uint32_t sigfigs;        /* accuracy of timestamps */
+    uint32_t snaplen;        /* max length of captured packets, in octets */
+    uint32_t network;        /* data link type */
+};
+
+struct pcaprec_hdr_t {
+    uint32_t ts_sec;         /* timestamp seconds */
+    uint32_t ts_usec;        /* timestamp microseconds */
+    uint32_t incl_len;       /* number of octets of packet saved in file */
+    uint32_t orig_len;       /* actual length of packet */
+};
 
 class fabs_appif {
 public:
-    fabs_appif();
+    fabs_appif(fabs_ether &ether);
     virtual ~fabs_appif();
 
     void read_conf(std::string conf);
@@ -148,15 +165,18 @@ private:
     
     enum ifpcap_state {
         IFPCAP_GLOBAL,
-        IFPCAP_HDR,
+        IFPCAP_HEADER,
         IFPCAP_DATA,
     };
     
     struct ifpcap_info {
         ifpcap_state               m_state;
         std::deque<ptr_fabs_bytes> m_bytes;
+        uint32_t                   m_dlen;
+        bool                       m_is_native;
+        bool                       m_is_fail;
         
-        ifpcap_info() : m_state(IFPCAP_GLOBAL) { }
+        ifpcap_info() : m_state(IFPCAP_GLOBAL), m_is_fail(false) { }
     };
 
     struct ifrule_storage {
@@ -256,6 +276,8 @@ private:
     bool        m_is_cache;
 
     int         m_tcp_timeout;
+    
+    fabs_ether &m_ether;
 
     void makedir(boost::filesystem::path path);
     bool write_event(int fd, const fabs_id_dir &id_dir, ptr_ifrule ifrule,
@@ -270,6 +292,7 @@ private:
     friend void ux_accept(int fd, short events, void *arg);
     friend void ux_read(int fd, short events, void *arg);
     friend void ux_read_loopback7(int fd, short events, void *arg);
+    friend void ux_read_pcap(int fd, short events, void *arg);
     friend void ux_close(int fd, fabs_appif *appif);
     friend bool read_loopback7(int fd, fabs_appif *appif);
 //    friend bool read_loopback3(int fd, fabs_appif *appif);
