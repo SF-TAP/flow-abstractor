@@ -20,7 +20,6 @@
 #include <re2/re2.h>
 
 //#include <boost/regex.hpp>
-#include <boost/shared_array.hpp>
 #include <boost/thread.hpp>
 #include <boost/thread/condition.hpp>
 #include <boost/filesystem/path.hpp>
@@ -61,8 +60,8 @@ public:
     int  get_num_tcp_threads() const { return m_num_tcp_threads; }
 
 private:
-    typedef boost::shared_ptr<RE2> ptr_regex;
-    typedef boost::shared_ptr<boost::filesystem::path> ptr_path;
+    typedef std::unique_ptr<RE2> ptr_regex;
+    typedef std::unique_ptr<boost::filesystem::path> ptr_path;
 
     enum ifproto {
         IF_UDP,
@@ -86,14 +85,14 @@ private:
         int         m_balance;
         std::vector<std::string>   m_balance_name;
         std::map<int, std::string> m_fd2path; // listen socket to path
-        boost::shared_ptr<std::list<std::pair<uint16_t, uint16_t> > > m_port;
+        std::unique_ptr<std::list<std::pair<uint16_t, uint16_t> > > m_port;
 
         ifrule() : m_proto(IF_OTHER), m_format(IF_TEXT), m_is_body(true),
                    m_nice(100), m_balance(1),
                    m_port(new std::list<std::pair<uint16_t, uint16_t> >) { }
     };
 
-    typedef boost::shared_ptr<ifrule> ptr_ifrule;
+    typedef std::shared_ptr<ifrule> ptr_ifrule;
 
     struct event_buf {
         std::string       m_header_str;
@@ -146,17 +145,31 @@ private:
         stream_info(const fabs_id &id);
         virtual ~stream_info();
     };
+    
+    enum ifpcap_state {
+        IFPCAP_GLOBAL,
+        IFPCAP_HDR,
+        IFPCAP_DATA,
+    };
+    
+    struct ifpcap_info {
+        ifpcap_state               m_state;
+        std::deque<ptr_fabs_bytes> m_bytes;
+        
+        ifpcap_info() : m_state(IFPCAP_GLOBAL) { }
+    };
 
     struct ifrule_storage {
         std::list<ptr_ifrule> ifrule;
         std::list<ptr_ifrule> ifrule_no_regex;
     };
 
-    typedef boost::shared_ptr<uxpeer>         ptr_uxpeer;
-    typedef boost::shared_ptr<boost::thread>  ptr_thread;
-    typedef boost::shared_ptr<loopback_state> ptr_loopback_state;
-    typedef boost::shared_ptr<stream_info>    ptr_info;
-    typedef boost::shared_ptr<ifrule_storage> ptr_ifrule_storage;
+    typedef std::unique_ptr<uxpeer>         ptr_uxpeer;
+    typedef std::unique_ptr<boost::thread>  ptr_thread;
+    typedef std::unique_ptr<loopback_state> ptr_loopback_state;
+    typedef std::unique_ptr<stream_info>    ptr_info;
+    typedef std::unique_ptr<ifrule_storage> ptr_ifrule_storage;
+    typedef std::unique_ptr<ifpcap_info>    ptr_ifpcap_info;
 
     struct appif_event {
         fabs_stream_event st_event;
@@ -171,7 +184,7 @@ private:
         ptr_ifrule cache_down[256];
     };
 
-    typedef boost::shared_ptr<ifrule_storage2> ptr_ifrule_storage2;
+    typedef std::unique_ptr<ifrule_storage2> ptr_ifrule_storage2;
 
 public:
     class appif_consumer {
@@ -198,7 +211,7 @@ public:
 
         void in_stream_event(fabs_stream_event st_event,
                              const fabs_id_dir &id_dir, ptr_fabs_bytes bytes);
-        bool send_tcp_data(ptr_info p_info, fabs_id_dir id_dir);
+        bool send_tcp_data(stream_info *p_info, fabs_id_dir id_dir);
         void in_datagram(const fabs_id_dir &id_dir, ptr_fabs_bytes bytes);
 
         friend class fabs_appif;
@@ -208,7 +221,7 @@ private:
     boost::mutex     m_mutex_init;
     boost::condition m_condition_init;
 
-    typedef boost::shared_ptr<appif_consumer> ptr_consumer;
+    typedef std::unique_ptr<appif_consumer> ptr_consumer;
 
     int m_fd7;
     int m_fd3;
@@ -216,11 +229,14 @@ private:
     std::map<int, ptr_loopback_state> m_lb7_state;
     ifformat m_lb7_format;
 
+    std::map<int, ptr_ifpcap_info> m_ifpcap_info;
+
     std::map<int, ptr_ifrule_storage> m_ifrule_tcp;
     std::map<int, ptr_ifrule_storage> m_ifrule_udp;
     ptr_ifrule m_ifrule7;
     ptr_ifrule m_tcp_default;
     ptr_ifrule m_udp_default;
+    ptr_ifrule m_ifpcap;
     std::map<int, ptr_ifrule> m_fd2ifrule; // listen socket
     std::map<int, ptr_uxpeer> m_fd2uxpeer; // accepted socket
     std::map<std::string, std::set<int> > m_name2uxpeer;
@@ -229,7 +245,7 @@ private:
 
     int m_num_tcp_threads;
     int m_num_consumer;
-    boost::shared_array<ptr_consumer> m_consumer;
+    std::vector<ptr_consumer> m_consumer;
 
     ptr_thread  m_thread_listen;
 
@@ -248,16 +264,17 @@ private:
                      timeval *tm);
     void ux_listen();
     void ux_listen_ifrule(ptr_ifrule ifrule);
-    bool is_in_port(boost::shared_ptr<std::list<std::pair<uint16_t, uint16_t> > > range,
+    bool is_in_port(const std::list<std::pair<uint16_t, uint16_t>> &range,
                     uint16_t port1, uint16_t port2);
 
     friend void ux_accept(int fd, short events, void *arg);
     friend void ux_read(int fd, short events, void *arg);
+    friend void ux_read_loopback7(int fd, short events, void *arg);
     friend void ux_close(int fd, fabs_appif *appif);
     friend bool read_loopback7(int fd, fabs_appif *appif);
 //    friend bool read_loopback3(int fd, fabs_appif *appif);
 };
 
-typedef boost::shared_ptr<fabs_appif> ptr_fabs_appif;
+typedef std::shared_ptr<fabs_appif> ptr_fabs_appif;
 
 #endif // FABS_APPIF_HPP

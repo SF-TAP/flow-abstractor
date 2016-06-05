@@ -46,7 +46,7 @@ struct fabs_tcp_flow {
     fabs_tcp_uniflow m_flow1, m_flow2;
 };
 
-typedef boost::shared_ptr<fabs_tcp_flow> ptr_fabs_tcp_flow;
+typedef std::unique_ptr<fabs_tcp_flow> ptr_fabs_tcp_flow;
 
 class fabs_tcp {
 public:

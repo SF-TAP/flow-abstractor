@@ -31,7 +31,7 @@ public:
 
 private:
     struct fragments {
-        boost::shared_ptr<std::map<int, ptr_fabs_bytes> > m_bytes;
+        std::shared_ptr<std::map<int, ptr_fabs_bytes> > m_bytes;
         mutable bool    m_is_last;
         mutable time_t  m_time;
         mutable int     m_size;

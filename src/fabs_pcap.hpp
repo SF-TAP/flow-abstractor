@@ -40,7 +40,7 @@ private:
     int     m_bufsize;
 };
 
-extern boost::shared_ptr<fabs_pcap> pcap_inst;
+extern std::shared_ptr<fabs_pcap> pcap_inst;
 extern bool pcap_is_running;
 
 void stop_pcap();

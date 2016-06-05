@@ -14,9 +14,9 @@ namespace io = boost::iostreams; //<-- good practice
 
 
 int
-read_bytes_ec(const deque<fabs_bytes*> &bytes, char *buf, int len, char c)
+read_bytes_ec(const deque<ptr_fabs_bytes> &bytes, char *buf, int len, char c)
 {
-    deque<fabs_bytes*>::const_iterator it;
+    deque<ptr_fabs_bytes>::const_iterator it;
     int read_len = 0;
 
     for (it = bytes.begin(); it != bytes.end(); ++it) {
@@ -42,9 +42,9 @@ read_bytes_ec(const deque<fabs_bytes*> &bytes, char *buf, int len, char c)
 }
 
 int
-skip_bytes(deque<fabs_bytes*> &bytes, int len)
+skip_bytes(deque<ptr_fabs_bytes> &bytes, int len)
 {
-    deque<fabs_bytes*>::iterator it;
+    deque<ptr_fabs_bytes>::iterator it;
     int skip_len = 0;
 
     for (it = bytes.begin(); it != bytes.end();) {
@@ -62,7 +62,6 @@ skip_bytes(deque<fabs_bytes*> &bytes, int len)
 
         skip_len += (*it)->m_len;
 
-        delete *it;
         bytes.erase(it++);
     }
 

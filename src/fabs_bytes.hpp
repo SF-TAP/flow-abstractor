@@ -13,6 +13,9 @@
 #include <iostream>
 #include <memory>
 
+class fabs_bytes;
+typedef std::unique_ptr<fabs_bytes> ptr_fabs_bytes;
+
 class fabs_bytes {
 public:
     fabs_bytes() : m_ptr(nullptr), m_pos(0), m_len(0) { }
@@ -178,22 +181,20 @@ private:
     fabs_bytes(const fabs_bytes &rhs) { }
     fabs_bytes & operator = (const fabs_bytes &rhs) { return *this; }
 
-    friend int read_bytes_ec(const std::deque<fabs_bytes*> &bytes, char *buf,
+    friend int read_bytes_ec(const std::deque<ptr_fabs_bytes> &bytes, char *buf,
                              int len, char c);
     friend int read_bytes(std::deque<std::unique_ptr<fabs_bytes>> &bytes,
                           char *buf, int len);
-    friend int skip_bytes(std::deque<fabs_bytes*> &bytes, int len);
+    friend int skip_bytes(std::deque<ptr_fabs_bytes> &bytes, int len);
     friend void get_digest(fabs_bytes &md_value, const char *alg,
                            const char *buf, unsigned int len);
 
 };
 
-typedef std::unique_ptr<fabs_bytes> ptr_fabs_bytes;
-
-int read_bytes_ec(const std::deque<fabs_bytes*> &bytes, char *buf, int len,
+int read_bytes_ec(const std::deque<ptr_fabs_bytes> &bytes, char *buf, int len,
                   char c);
 int read_bytes(std::deque<ptr_fabs_bytes> &bytes, char *buf, int len);
-int skip_bytes(std::deque<fabs_bytes*> &bytes, int len);
+int skip_bytes(std::deque<ptr_fabs_bytes> &bytes, int len);
 int find_char(const char *buf, int len, char c);
 void get_digest(fabs_bytes &md_value, const char *alg, const char *buf,
                 unsigned int len);
