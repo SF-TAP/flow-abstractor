@@ -164,14 +164,13 @@ ux_close(int fd, fabs_appif *appif)
     auto it3 = appif->m_lb7_state.find(fd);
     if (it3 != appif->m_lb7_state.end()) {
         fabs_id_dir id_dir;
-        fabs_bytes *bytes = nullptr;
 
         for (auto it4 = it3->second->streams.begin();
              it4 != it3->second->streams.end(); ++it4) {
             id_dir.m_id  = *it4;
             id_dir.m_dir = FROM_NONE;
 
-            appif->in_event(STREAM_DESTROYED, id_dir, bytes);
+            appif->in_event(STREAM_DESTROYED, id_dir, nullptr);
         }
 
         appif->m_lb7_state.erase(it3);
@@ -389,19 +388,15 @@ read_loopback7(int fd, fabs_appif *appif)
             it->second->is_header = false;
             return false;
         } else if (header->event == STREAM_CREATED) {
-            fabs_bytes *bytes = nullptr;
-
             // invoke CREATED event
-            appif->in_event(STREAM_CREATED, id_dir, bytes);
+            appif->in_event(STREAM_CREATED, id_dir, nullptr);
 
             it->second->streams.insert(id_dir.m_id);
 
             return false;
         } else if (header->event == STREAM_DESTROYED) {
-            fabs_bytes *bytes = nullptr;
-
             // invoke DESTROYED event
-            appif->in_event(STREAM_DESTROYED, id_dir, bytes);
+            appif->in_event(STREAM_DESTROYED, id_dir, nullptr);
 
             it->second->streams.erase(id_dir.m_id);
 
@@ -413,7 +408,7 @@ read_loopback7(int fd, fabs_appif *appif)
             return true;
         }
     } else {
-        fabs_bytes *bytes = new fabs_bytes;
+        auto bytes = ptr_fabs_bytes(new fabs_bytes);
 
         bytes->alloc(header->len);
         if (bytes->get_len() == 0)
@@ -436,7 +431,7 @@ read_loopback7(int fd, fabs_appif *appif)
         }
 
         // invoke DATA event
-        appif->in_event(STREAM_DATA, it->second->id_dir, bytes);
+        appif->in_event(STREAM_DATA, it->second->id_dir, std::move(bytes));
 
         it->second->is_header = true;
 
@@ -860,7 +855,7 @@ fabs_appif::in_event(fabs_stream_event st_event,
 
     ev->st_event = st_event;
     ev->id_dir   = id_dir;
-    ev->bytes    = bytes;
+    ev->bytes    = std::move(bytes);
 
     int id = id_dir.m_id.get_hash() % m_num_consumer;
 
@@ -906,11 +901,11 @@ fabs_appif::appif_consumer::in_stream_event(fabs_stream_event st_event,
 
         if (id_dir.m_dir == FROM_ADDR1) {
             it->second->m_dsize1 += bytes->get_len();
-            it->second->m_buf1.push_back(bytes);
+            it->second->m_buf1.push_back(std::move(bytes));
             it->second->m_is_buf1 = true;
         } else if (id_dir.m_dir == FROM_ADDR2) {
             it->second->m_dsize2 += bytes->get_len();
-            it->second->m_buf2.push_back(bytes);
+            it->second->m_buf2.push_back(std::move(bytes));
             it->second->m_is_buf2 = true;
         } else {
             return;
@@ -1637,9 +1632,9 @@ fabs_appif::appif_consumer::consume()
         appif_event *ev;
         while (m_ev_queue.pop(&ev)) {
             if (ev->id_dir.m_id.get_l4_proto() == IPPROTO_TCP) {
-                in_stream_event(ev->st_event, ev->id_dir, ev->bytes);
+                in_stream_event(ev->st_event, ev->id_dir, std::move(ev->bytes));
             } else if (ev->id_dir.m_id.get_l4_proto() == IPPROTO_UDP) {
-                in_datagram(ev->id_dir, ev->bytes);
+                in_datagram(ev->id_dir, std::move(ev->bytes));
             }
             delete ev;
         }

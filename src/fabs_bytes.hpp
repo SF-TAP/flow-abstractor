@@ -2,7 +2,6 @@
 #define FABS_BYTES_HPP
 
 #include "fabs_common.hpp"
-#include "fabs_exclusive_ptr.hpp"
 
 #include <sys/time.h>
 
@@ -12,6 +11,7 @@
 #include <string>
 #include <vector>
 #include <iostream>
+#include <memory>
 
 class fabs_bytes {
 public:
@@ -180,7 +180,7 @@ private:
 
     friend int read_bytes_ec(const std::deque<fabs_bytes*> &bytes, char *buf,
                              int len, char c);
-    friend int read_bytes(std::deque<fabs_exclusive_ptr<fabs_bytes>> &bytes,
+    friend int read_bytes(std::deque<std::unique_ptr<fabs_bytes>> &bytes,
                           char *buf, int len);
     friend int skip_bytes(std::deque<fabs_bytes*> &bytes, int len);
     friend void get_digest(fabs_bytes &md_value, const char *alg,
@@ -188,7 +188,7 @@ private:
 
 };
 
-typedef fabs_exclusive_ptr<fabs_bytes> ptr_fabs_bytes;
+typedef std::unique_ptr<fabs_bytes> ptr_fabs_bytes;
 
 int read_bytes_ec(const std::deque<fabs_bytes*> &bytes, char *buf, int len,
                   char c);

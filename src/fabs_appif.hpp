@@ -15,6 +15,7 @@
 #include <set>
 #include <string>
 #include <deque>
+#include <memory>
 
 #include <re2/re2.h>
 
@@ -125,7 +126,7 @@ private:
         }
     };
 
-    typedef fabs_exclusive_ptr<timeval> ptr_timeval;
+    typedef std::unique_ptr<timeval> ptr_timeval;
 
     struct stream_info {
         ptr_ifrule m_ifrule;
