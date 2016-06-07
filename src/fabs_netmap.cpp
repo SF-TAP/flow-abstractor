@@ -91,7 +91,7 @@ fabs_netmap::run()
 void
 fabs_netmap::print_stat() const
 {
-    std::cout << "received packets: " << m_recv_cnt << std::endl;
+    std::cout << "received packets (" << m_dev << "): " << m_recv_cnt << std::endl;
 }
 
 #endif // USE_NETMAP

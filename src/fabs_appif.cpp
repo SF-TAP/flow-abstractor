@@ -303,7 +303,7 @@ ux_read_pcap(int fd, short events, void *arg)
             
             skip_bytes(it->second->m_bytes, it->second->m_dlen);
             
-            appif->m_ether.ether_input((uint8_t*)&buf[0], it->second->m_dlen);
+            appif->m_ether.ether_input((uint8_t*)&buf[0], it->second->m_dlen, true);
 
             it->second->m_state = fabs_appif::IFPCAP_HEADER;
         }

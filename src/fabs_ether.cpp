@@ -35,6 +35,7 @@ fabs_ether::fabs_ether(std::string conf, const fabs_dlcap *dlcap)
       m_appif(new fabs_appif(*this)),
       m_fragment(*this, m_appif),
       m_is_consuming_frag(false),
+      m_num_pcap(0),
       m_thread_consume_frag(boost::bind(&fabs_ether::consume_fragment, this)),
       m_thread_timer(boost::bind(&fabs_ether::timer, this))
 {
@@ -138,7 +139,10 @@ fabs_ether::timer()
         if (t1 - t0 > 10) {
             t0 = t1;
 
-            m_dlcap->print_stat();
+            std::cout << "received packets (pcap): " << m_num_pcap << std::endl;
+
+            if (m_dlcap)
+                m_dlcap->print_stat();
 
             std::cout << "dropped packets internally: " << m_num_dropped << std::endl;
 
@@ -311,8 +315,10 @@ fabs_ether::consume_fragment()
 }
 
 void
-fabs_ether::ether_input(const uint8_t *bytes, int len)
+fabs_ether::ether_input(const uint8_t *bytes, int len, bool is_pcap)
 {
+    if (is_pcap) m_num_pcap++;
+    
     uint8_t proto;
     const uint8_t *ip_hdr = get_ip_hdr(bytes, len, proto);
     uint32_t hash;
