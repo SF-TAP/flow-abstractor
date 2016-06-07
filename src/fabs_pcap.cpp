@@ -36,7 +36,7 @@ fabs_pcap::callback(const struct pcap_pkthdr *h, const uint8_t *bytes)
         return;
     }
 
-    m_ether.ether_input(bytes, h->caplen);
+    m_ether.ether_input(bytes, h->caplen, false);
 }
 
 void
@@ -60,9 +60,9 @@ fabs_pcap::print_stat() const
     pcap_stat stat;
     pcap_stats(m_handle, &stat);
 
-    std::cout << "received packets: " << stat.ps_recv
-              << "\ndropped packets by pcap: " << stat.ps_drop
-              << "\ndropped packets by IF: " << stat.ps_ifdrop
+    std::cout << "received packets (" << m_dev << "): n" << stat.ps_recv
+              << "\ndropped packets by pcap (" << m_dev << "): " << stat.ps_drop
+              << "\ndropped packets by IF (" << m_dev << "): " << stat.ps_ifdrop
               << std::endl;
 
 }

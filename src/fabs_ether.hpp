@@ -28,7 +28,7 @@ public:
     fabs_ether(std::string conf, const fabs_dlcap *dlcap);
     virtual ~fabs_ether();
 
-    void ether_input(const uint8_t *bytes, int len);
+    void ether_input(const uint8_t *bytes, int len, bool is_pcap);
 
     void consume(int idx);
     void consume_fragment();
@@ -58,6 +58,8 @@ private:
 
     bool *m_is_consuming;
     bool  m_is_consuming_frag;
+    
+    uint64_t m_num_pcap;
 
     boost::mutex *m_mutex;
     boost::mutex  m_mutex_frag;

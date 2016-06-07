@@ -121,6 +121,13 @@ main(int argc, char *argv[])
         perror("pthread_sigmask");
         exit(1);
     }
+    
+    if (dev.empty()) {
+        fabs_ether ether(conf, nullptr);
+        for (;;) {
+            sleep(1000000);
+        }
+    }
 
 #ifdef USE_NETMAP
     if (is_netmap) {
