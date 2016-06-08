@@ -203,11 +203,30 @@ fabs_tcp::input_tcp_event(int idx, fabs_id_dir tcp_event)
 
         bool is_rm = false;
 
+        timeval dtm;
         if ((tcp_event.m_dir == FROM_ADDR1 &&
              it_flow->second->m_flow1.m_is_rm) ||
             (tcp_event.m_dir == FROM_ADDR2 &&
              it_flow->second->m_flow2.m_is_rm)) {
-            m_appif->in_event(STREAM_TIMEOUT, tcp_event, nullptr);
+            auto f1 = it_flow->second->m_flow1.m_packets.rbegin();
+            auto f2 = it_flow->second->m_flow2.m_packets.rbegin();
+
+            if (f1 == it_flow->second->m_flow1.m_packets.rend() && f2 == it_flow->second->m_flow2.m_packets.rend()) {
+                gettimeofday(&dtm, nullptr);
+            } else if (f1 == it_flow->second->m_flow1.m_packets.rend()) {
+                dtm = f2->second.m_bytes->m_tm;
+            } else if (f2 == it_flow->second->m_flow2.m_packets.rend()) {
+                dtm = f1->second.m_bytes->m_tm;
+            } else {
+                if (f1->second.m_bytes->m_tm.tv_sec > f2->second.m_bytes->m_tm.tv_sec)
+                    dtm = f1->second.m_bytes->m_tm;
+                else
+                    dtm = f2->second.m_bytes->m_tm;
+            }
+
+            ptr_fabs_bytes buf(new fabs_bytes);
+            buf->m_tm = dtm;
+            m_appif->in_event(STREAM_TIMEOUT, tcp_event, std::move(buf));
             is_rm = true;
         }
 
@@ -217,7 +236,9 @@ fabs_tcp::input_tcp_event(int idx, fabs_id_dir tcp_event)
 
             fabs_id_dir id_dir = tcp_event;
             id_dir.m_dir = FROM_NONE;
-            m_appif->in_event(STREAM_DESTROYED, id_dir, nullptr);
+            ptr_fabs_bytes buf(new fabs_bytes);
+            buf->m_tm = dtm;
+            m_appif->in_event(STREAM_DESTROYED, id_dir, std::move(buf));
 
             return;
         }
@@ -240,14 +261,18 @@ fabs_tcp::input_tcp_event(int idx, fabs_id_dir tcp_event)
                  << endl;
 #endif // DEBUG
 
-            m_appif->in_event(STREAM_SYN, tcp_event, nullptr);
+            m_appif->in_event(STREAM_SYN, tcp_event, std::move(packet.m_bytes));
         } else if (packet.m_flags & TH_FIN) {
+            timeval tm = packet.m_bytes->m_tm;
+
             if (packet.m_data_len > 0 &&
                 packet.m_bytes->skip(packet.m_data_pos)) {
                 m_appif->in_event(STREAM_DATA, tcp_event, std::move(packet.m_bytes));
             }
 
-            m_appif->in_event(STREAM_FIN, tcp_event, nullptr);
+            ptr_fabs_bytes buf = ptr_fabs_bytes(new fabs_bytes);
+            buf->m_tm = tm;
+            m_appif->in_event(STREAM_FIN, tcp_event, std::move(buf));
 
 #ifdef DEBUG
             cout << "connection closed: addr1 = "
@@ -263,7 +288,9 @@ fabs_tcp::input_tcp_event(int idx, fabs_id_dir tcp_event)
             if (recv_fin(idx, tcp_event.m_id, tcp_event.m_dir)) {
                 fabs_id_dir id_dir = tcp_event;
                 id_dir.m_dir = FROM_NONE;
-                m_appif->in_event(STREAM_DESTROYED, id_dir, nullptr);
+                buf = ptr_fabs_bytes(new fabs_bytes);
+                buf->m_tm = tm;
+                m_appif->in_event(STREAM_DESTROYED, id_dir, std::move(buf));
             }
         } else if (packet.m_flags & TH_RST) {
 #ifdef DEBUG
@@ -276,13 +303,17 @@ fabs_tcp::input_tcp_event(int idx, fabs_id_dir tcp_event)
                  << endl;
 #endif // DEBUG
 
-            m_appif->in_event(STREAM_RST, tcp_event, nullptr);
+            timeval tm = packet.m_bytes->m_tm;
+
+            m_appif->in_event(STREAM_RST, tcp_event, std::move(packet.m_bytes));
 
             rm_flow(idx, tcp_event.m_id, tcp_event.m_dir);
 
             fabs_id_dir id_dir = tcp_event;
             id_dir.m_dir = FROM_NONE;
-            m_appif->in_event(STREAM_DESTROYED, id_dir, nullptr);
+            ptr_fabs_bytes buf = ptr_fabs_bytes(new fabs_bytes);
+            buf->m_tm = tm;
+            m_appif->in_event(STREAM_DESTROYED, id_dir, std::move(buf));
         } else {
 #ifdef DEBUG
             cout << "data in: addr1 = "
