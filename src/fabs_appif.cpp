@@ -24,8 +24,9 @@
 #include <sstream>
 #include <iterator>
 #include <memory>
+#include <functional>
+#include <chrono>
 
-#include <boost/bind.hpp>
 #include <boost/lexical_cast.hpp>
 
 // #include <event2/thread.h>
@@ -78,14 +79,15 @@ fabs_appif::~fabs_appif()
 void
 fabs_appif::run()
 {
-    boost::mutex::scoped_lock lock_init(m_mutex_init);
+    std::unique_lock<std::mutex> lock_init(m_mutex_init);
 
     {
         spin_lock_write lock(m_rw_mutex);
 
         assert(! m_thread_listen);
 
-        m_thread_listen = ptr_thread(new boost::thread(boost::bind(&fabs_appif::ux_listen, this)));
+        m_thread_listen = ptr_thread(new std::thread(std::bind(&fabs_appif::ux_listen, this)));
+        m_thread_listen->detach();
 
         for (int i = 0; i < m_num_consumer; i++) {
             m_consumer.push_back(ptr_consumer(new appif_consumer(i, *this)));
@@ -732,7 +734,7 @@ fabs_appif::ux_listen()
     }
 
     {
-        boost::mutex::scoped_lock lock(m_mutex_init);
+        boost::unique_lock<std::mutex> lock(m_mutex_init);
         m_condition_init.notify_all();
     }
 
@@ -1761,11 +1763,10 @@ fabs_appif::appif_consumer::consume()
     for (;;) {
         {
             // consume event
-            boost::mutex::scoped_lock lock(m_mutex);
+            std::unique_lock<std::mutex> lock(m_mutex);
             while (m_ev_queue.get_len() == 0) {
                 m_is_consuming = false;
-                boost::system_time timeout = boost::get_system_time() + boost::posix_time::milliseconds(50);
-                m_condition.timed_wait(lock, timeout);
+                m_condition.wait_for(lock, std::chrono::milliseconds(50));
 
                 if (m_is_break)
                     return;
@@ -1793,9 +1794,10 @@ fabs_appif::appif_consumer::produce(appif_event *ev)
     }
 
     if (! m_is_consuming && m_ev_queue.get_len() > 1000) {
-        boost::try_mutex::scoped_try_lock lock(m_mutex);
-        if (lock)
+        if (m_mutex.try_lock()) {
             m_condition.notify_one();
+            m_mutex.unlock();
+        }
     }
 }
 
@@ -1804,7 +1806,7 @@ fabs_appif::appif_consumer::appif_consumer(int id, fabs_appif &appif) :
     m_is_break(false),
     m_is_consuming(false),
     m_appif(appif),
-    m_thread(boost::bind(&fabs_appif::appif_consumer::consume, this))
+    m_thread(std::bind(&fabs_appif::appif_consumer::consume, this))
 {
     for (auto it_tcp = appif.m_ifrule_tcp.begin();
          it_tcp != appif.m_ifrule_tcp.end(); ++it_tcp) {
@@ -1832,7 +1834,7 @@ fabs_appif::appif_consumer::~appif_consumer()
     m_is_break = true;
 
     {
-        boost::mutex::scoped_lock lock(m_mutex);
+        std::unique_lock<std::mutex> lock(m_mutex);
         m_condition.notify_one();
     }
 

@@ -11,9 +11,9 @@
 #include <netinet/ip.h>
 
 #include <map>
+#include <thread>
+#include <condition_variable>
 
-#include <boost/thread.hpp>
-#include <boost/thread/condition.hpp>
 #include <boost/multi_index_container.hpp>
 #include <boost/multi_index/sequenced_index.hpp>
 #include <boost/multi_index/ordered_index.hpp>
@@ -60,15 +60,15 @@ private:
 
     frag_cont m_fragments;
 
-    boost::mutex     m_mutex;
-    boost::mutex     m_mutex_gc;
-    boost::condition m_condition_gc;
-    bool             m_is_del;
+    std::mutex  m_mutex;
+    std::mutex  m_mutex_gc;
+    std::condition_variable m_condition_gc;
+    bool        m_is_del;
 
-    boost::thread    m_thread_gc;
+    std::thread m_thread_gc;
 
-    fabs_ether      &m_ether;
-    ptr_fabs_appif   m_appif;
+    fabs_ether    &m_ether;
+    ptr_fabs_appif m_appif;
 };
 
 #endif // FABS_FRAGMENT_HPP

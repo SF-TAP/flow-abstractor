@@ -12,9 +12,6 @@
 #include <string>
 #include <list>
 
-#include <boost/shared_array.hpp>
-
-
 class fabs_pcap : public fabs_dlcap {
 public:
     fabs_pcap(std::string conf);

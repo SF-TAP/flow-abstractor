@@ -6,12 +6,6 @@
 #include "fabs_id.hpp"
 #include "fabs_appif.hpp"
 
-#include <boost/thread.hpp>
-#include <boost/thread/condition.hpp>
-
-#include <queue>
-
-
 class fabs_udp {
 public:
     fabs_udp();
