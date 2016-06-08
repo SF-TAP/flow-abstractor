@@ -36,7 +36,7 @@ fabs_pcap::callback(const struct pcap_pkthdr *h, const uint8_t *bytes)
         return;
     }
 
-    m_ether.ether_input(bytes, h->caplen, false);
+    m_ether.ether_input(bytes, h->caplen, h->ts, false);
 }
 
 void

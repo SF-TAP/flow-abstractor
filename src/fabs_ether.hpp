@@ -28,14 +28,14 @@ public:
     fabs_ether(std::string conf, const fabs_dlcap *dlcap);
     virtual ~fabs_ether();
 
-    void ether_input(const uint8_t *bytes, int len, bool is_pcap);
+    void ether_input(const uint8_t *bytes, int len, const timeval &tm, bool is_pcap);
 
     void consume(int idx);
     void consume_fragment();
     void timer();
 
     void produce(int idx, ptr_fabs_bytes buf);
-    inline void produce(int idx, const char *buf, int len);
+    inline void produce(int idx, const char *buf, int len, const timeval &tm);
 
 private:
     boost::mutex     m_mutex_init;

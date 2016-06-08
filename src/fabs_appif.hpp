@@ -159,7 +159,7 @@ private:
 
         void clear_buf();
 
-        stream_info(const fabs_id &id);
+        stream_info(const fabs_id &id, const timeval &tm);
         virtual ~stream_info();
     };
     
@@ -173,6 +173,7 @@ private:
         ifpcap_state               m_state;
         std::deque<ptr_fabs_bytes> m_bytes;
         uint32_t                   m_dlen;
+        timeval                    m_tm;
         bool                       m_is_native;
         bool                       m_is_fail;
         

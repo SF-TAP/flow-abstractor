@@ -188,7 +188,9 @@ ux_close(int fd, fabs_appif *appif)
             id_dir.m_id  = *it4;
             id_dir.m_dir = FROM_NONE;
 
-            appif->in_event(STREAM_DESTROYED, id_dir, nullptr);
+            ptr_fabs_bytes buf(new fabs_bytes);
+            gettimeofday(&buf->m_tm, nullptr);
+            appif->in_event(STREAM_DESTROYED, id_dir, std::move(buf));
         }
 
         appif->m_lb7_state.erase(it3);
@@ -282,10 +284,15 @@ ux_read_pcap(int fd, short events, void *arg)
             
             skip_bytes(it->second->m_bytes, sizeof(hdr));
 
-            if (it->second->m_is_native)
-                it->second->m_dlen = hdr.incl_len;
-            else
+            if (it->second->m_is_native) {
+                it->second->m_dlen       = hdr.incl_len;
+                it->second->m_tm.tv_sec  = hdr.ts_sec;
+                it->second->m_tm.tv_usec = hdr.ts_usec;
+            } else {
                 it->second->m_dlen = SWAP_ENDIAN4(hdr.incl_len);
+                it->second->m_tm.tv_sec  = SWAP_ENDIAN4(hdr.ts_sec);
+                it->second->m_tm.tv_usec = SWAP_ENDIAN4(hdr.ts_usec);
+            }
             
             it->second->m_state = fabs_appif::IFPCAP_DATA;
         } else if (it->second->m_state == fabs_appif::IFPCAP_DATA) {
@@ -303,7 +310,7 @@ ux_read_pcap(int fd, short events, void *arg)
             
             skip_bytes(it->second->m_bytes, it->second->m_dlen);
             
-            appif->m_ether.ether_input((uint8_t*)&buf[0], it->second->m_dlen, true);
+            appif->m_ether.ether_input((uint8_t*)&buf[0], it->second->m_dlen, it->second->m_tm, true);
 
             it->second->m_state = fabs_appif::IFPCAP_HEADER;
         }
@@ -469,6 +476,16 @@ read_loopback7(int fd, fabs_appif *appif)
                 header->from = FROM_NONE;
             }
 
+            auto t = h.find("time");
+            if (t == h.end()) {
+                gettimeofday(&header->tm, nullptr);
+            } else {
+                double integer, fraction;
+                fraction = modf(std::stod(t->second), &integer);
+                header->tm.tv_sec = integer;
+                header->tm.tv_usec = fraction * 1e6;
+            }
+
             fabs_peer peer1, peer2;
 
             peer1.padding = 0;
@@ -513,14 +530,18 @@ read_loopback7(int fd, fabs_appif *appif)
             return false;
         } else if (header->event == STREAM_CREATED) {
             // invoke CREATED event
-            appif->in_event(STREAM_CREATED, id_dir, nullptr);
+            ptr_fabs_bytes buf(new fabs_bytes);
+            buf->m_tm = header->tm;
+            appif->in_event(STREAM_CREATED, id_dir, std::move(buf));
 
             it->second->streams.insert(id_dir.m_id);
 
             return false;
         } else if (header->event == STREAM_DESTROYED) {
             // invoke DESTROYED event
-            appif->in_event(STREAM_DESTROYED, id_dir, nullptr);
+            ptr_fabs_bytes buf(new fabs_bytes);
+            buf->m_tm = header->tm;
+            appif->in_event(STREAM_DESTROYED, id_dir, std::move(buf));
 
             it->second->streams.erase(id_dir.m_id);
 
@@ -537,6 +558,8 @@ read_loopback7(int fd, fabs_appif *appif)
         bytes->alloc(header->len);
         if (bytes->get_len() == 0)
             return false;
+        
+        bytes->m_tm = header->tm;
 
         ssize_t len = read(fd, bytes->get_head(), header->len);
 
@@ -979,9 +1002,6 @@ fabs_appif::in_event(fabs_stream_event st_event,
 {
     appif_event *ev = new appif_event;
 
-    if (bytes.get() != nullptr)
-        gettimeofday(&bytes->m_tm, nullptr);
-
     ev->st_event = st_event;
     ev->id_dir   = id_dir;
     ev->bytes    = std::move(bytes);
@@ -1003,7 +1023,7 @@ fabs_appif::appif_consumer::in_stream_event(fabs_stream_event st_event,
         auto it = m_info.find(id_dir.m_id);
 
         if (it == m_info.end()) {
-            ptr_info info = ptr_info(new stream_info(id_dir.m_id));
+            ptr_info info = ptr_info(new stream_info(id_dir.m_id, bytes->m_tm));
 
             m_info[id_dir.m_id] = std::move(info);
 
@@ -1072,9 +1092,6 @@ fabs_appif::appif_consumer::in_stream_event(fabs_stream_event st_event,
             // invoke DESTROYED event
             int idx = it->second->m_hash % it->second->m_ifrule->m_balance;
             std::string &name = it->second->m_ifrule->m_balance_name[idx];
-            timeval tm;
-
-            gettimeofday(&tm, nullptr);
 
             spin_lock_read lock(m_appif.m_rw_mutex);
 
@@ -1085,7 +1102,7 @@ fabs_appif::appif_consumer::in_stream_event(fabs_stream_event st_event,
                     m_appif.write_event(*it3, id_dir, it->second->m_ifrule,
                                         STREAM_DESTROYED, MATCH_NONE,
                                         &it->second->m_header, NULL, 0,
-                                        &tm);
+                                        &bytes->m_tm);
                 }
             }
         }
@@ -1567,14 +1584,12 @@ fabs_appif::write_event(int fd, const fabs_id_dir &id_dir, ptr_ifrule ifrule,
     return true;
 }
 
-fabs_appif::stream_info::stream_info(const fabs_id &id) :
-    m_dsize1(0), m_dsize2(0), m_is_created(false), m_is_giveup(false),
+fabs_appif::stream_info::stream_info(const fabs_id &id, const timeval &tm) :
+    m_create_time(tm), m_dsize1(0), m_dsize2(0), m_is_created(false), m_is_giveup(false),
     m_is_buf1(false), m_is_buf2(false)
 {
     m_match_dir[0] = MATCH_NONE;
     m_match_dir[1] = MATCH_NONE;
-
-    gettimeofday(&m_create_time, NULL);
 
     memset(&m_header, 0, sizeof(m_header));
 

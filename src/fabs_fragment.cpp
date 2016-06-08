@@ -154,6 +154,7 @@ fabs_fragment::input_ip(ptr_fabs_bytes buf)
                 ptr_fabs_bytes buf(new fabs_bytes);
                 if (defragment(*it, buf)) {
                     // packets are defragmented
+                    buf->m_tm = it->m_bytes->begin()->second->m_tm;
                     m_fragments.erase(it);
                     lock.unlock();
 

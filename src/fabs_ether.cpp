@@ -116,11 +116,12 @@ fabs_ether::produce(int idx, ptr_fabs_bytes buf)
 }
 
 inline void
-fabs_ether::produce(int idx, const char *buf, int len)
+fabs_ether::produce(int idx, const char *buf, int len, const timeval &tm)
 {
     ptr_fabs_bytes bytes(new fabs_bytes);
 
     bytes->set_buf(buf, len);
+    bytes->m_tm = tm;
 
     produce(idx, std::move(bytes));
 }
@@ -315,7 +316,7 @@ fabs_ether::consume_fragment()
 }
 
 void
-fabs_ether::ether_input(const uint8_t *bytes, int len, bool is_pcap)
+fabs_ether::ether_input(const uint8_t *bytes, int len, const timeval &tm, bool is_pcap)
 {
     if (is_pcap) m_num_pcap++;
     
@@ -342,7 +343,7 @@ fabs_ether::ether_input(const uint8_t *bytes, int len, bool is_pcap)
         return;
     }
 
-    produce(hash % m_appif->get_num_tcp_threads(), (char*)bytes, len);
+    produce(hash % m_appif->get_num_tcp_threads(), (char*)bytes, len, tm);
 }
 
 inline const uint8_t *
