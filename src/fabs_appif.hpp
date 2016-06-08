@@ -17,10 +17,10 @@
 #include <string>
 #include <deque>
 #include <memory>
+#include <thread>
+#include <condition_variable>
 
-//#include <boost/regex.hpp>
-#include <boost/thread.hpp>
-#include <boost/thread/condition.hpp>
+//#include <std/regex.hpp>
 #include <boost/filesystem/path.hpp>
 #include <boost/filesystem/operations.hpp>
 
@@ -186,7 +186,7 @@ private:
     };
 
     typedef std::unique_ptr<uxpeer>         ptr_uxpeer;
-    typedef std::unique_ptr<boost::thread>  ptr_thread;
+    typedef std::unique_ptr<std::thread>    ptr_thread;
     typedef std::unique_ptr<loopback_state> ptr_loopback_state;
     typedef std::unique_ptr<stream_info>    ptr_info;
     typedef std::unique_ptr<ifrule_storage> ptr_ifrule_storage;
@@ -218,13 +218,13 @@ public:
         void run();
 
     private:
-        int              m_id;
-        bool             m_is_break;
-        bool             m_is_consuming;
-        fabs_appif      &m_appif;
-        boost::mutex     m_mutex;
-        boost::condition m_condition;
-        boost::thread    m_thread;
+        int         m_id;
+        bool        m_is_break;
+        bool        m_is_consuming;
+        fabs_appif &m_appif;
+        std::mutex  m_mutex;
+        std::condition_variable m_condition;
+        std::thread  m_thread;
         fabs_cb<appif_event*> m_ev_queue;
         std::map<fabs_id, ptr_info> m_info;
         std::map<int, ptr_ifrule_storage2> m_ifrule_tcp;
@@ -239,8 +239,8 @@ public:
     };
 private:
 
-    boost::mutex     m_mutex_init;
-    boost::condition m_condition_init;
+    std::mutex m_mutex_init;
+    std::condition_variable m_condition_init;
 
     typedef std::unique_ptr<appif_consumer> ptr_consumer;
 

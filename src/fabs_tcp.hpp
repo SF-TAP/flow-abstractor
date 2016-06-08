@@ -76,12 +76,12 @@ private:
 
     uint64_t m_total_session;
 
-    boost::mutex     m_mutex_flow[NUM_TCPTREE];
-    boost::mutex     m_mutex_gc;
-    boost::condition m_condition_gc;
-    volatile bool    m_is_del;
+    std::mutex    m_mutex_flow[NUM_TCPTREE];
+    std::mutex    m_mutex_gc;
+    std::condition_variable m_condition_gc;
+    volatile bool m_is_del;
 
-    boost::thread    m_thread_gc;
+    std::thread   m_thread_gc;
 };
 
 #endif // FABS_TCP_HPP

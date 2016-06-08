@@ -16,10 +16,10 @@
 #include <string>
 #include <list>
 #include <atomic>
+#include <thread>
+#include <condition_variable>
 
 #include <boost/shared_array.hpp>
-#include <boost/thread.hpp>
-#include <boost/thread/condition.hpp>
 
 class fabs_fragment;
 
@@ -38,8 +38,8 @@ public:
     inline void produce(int idx, const char *buf, int len, const timeval &tm);
 
 private:
-    boost::mutex     m_mutex_init;
-    boost::condition m_condition_init;
+    std::mutex m_mutex_init;
+    std::condition_variable m_condition_init;
 
     volatile bool m_is_break;
     uint64_t m_num_dropped;
@@ -61,13 +61,13 @@ private:
     
     uint64_t m_num_pcap;
 
-    boost::mutex *m_mutex;
-    boost::mutex  m_mutex_frag;
-    boost::condition *m_condition;
-    boost::condition  m_condition_frag;
-    boost::thread **m_thread_consume;
-    boost::thread   m_thread_consume_frag;
-    boost::thread   m_thread_timer;
+    std::mutex *m_mutex;
+    std::mutex  m_mutex_frag;
+    std::condition_variable *m_condition;
+    std::condition_variable  m_condition_frag;
+    std::thread **m_thread_consume;
+    std::thread m_thread_consume_frag;
+    std::thread m_thread_timer;
 };
 
 #endif // FABS_ETHER_HPP

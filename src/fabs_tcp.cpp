@@ -15,8 +15,9 @@
 
 #include <arpa/inet.h>
 
-#include <boost/bind.hpp>
 #include <boost/random.hpp>
+
+#include <functional>
 
 using namespace std;
 
@@ -28,7 +29,7 @@ fabs_tcp::fabs_tcp() :
     m_timeout(600),
     m_total_session(0),
     m_is_del(false),
-    m_thread_gc(boost::bind(&fabs_tcp::garbage_collector, this))
+    m_thread_gc(std::bind(&fabs_tcp::garbage_collector, this))
 {
 
 }
@@ -38,7 +39,7 @@ fabs_tcp::~fabs_tcp()
     m_is_del = true;
 
     {
-        boost::mutex::scoped_lock lock(m_mutex_gc);
+        std::unique_lock<std::mutex> lock(m_mutex_gc);
         m_condition_gc.notify_one();
     }
     m_thread_gc.join();
@@ -74,7 +75,7 @@ fabs_tcp::garbage_collector2(int idx, time_t now)
 {
     list<fabs_id_dir> garbages;
     {
-        boost::mutex::scoped_lock lock(m_mutex_flow[idx]);
+        std::unique_lock<std::mutex> lock(m_mutex_flow[idx]);
 
         for (auto it = m_flow[idx].begin(); it != m_flow[idx].end(); ++it) {
             if (m_is_del)
@@ -159,8 +160,8 @@ fabs_tcp::garbage_collector()
         > rand( gen, dst );
 
     for (;;) {
-        boost::mutex::scoped_lock lock_gc(m_mutex_gc);
-        m_condition_gc.timed_wait(lock_gc, boost::posix_time::milliseconds(TCP_GC_TIMER * 1000 + TCP_GC_TIMER * rand() * 1000));
+        std::unique_lock<std::mutex> lock_gc(m_mutex_gc);
+        m_condition_gc.wait_for(lock_gc, std::chrono::milliseconds((int)(TCP_GC_TIMER * 1000 + TCP_GC_TIMER * rand() * 1000)));
 
         if (m_is_del) {
             return;
@@ -181,7 +182,7 @@ fabs_tcp::input_tcp_event(int idx, fabs_id_dir tcp_event)
 #endif // DEBUG
 
     {
-        boost::mutex::scoped_lock lock(m_mutex_flow[idx]);
+        std::unique_lock<std::mutex> lock(m_mutex_flow[idx]);
 
 
 #ifdef DEBUG
@@ -336,7 +337,7 @@ fabs_tcp::input_tcp_event(int idx, fabs_id_dir tcp_event)
 bool
 fabs_tcp::recv_fin(int idx, const fabs_id &id, fabs_direction dir)
 {
-    boost::mutex::scoped_lock lock(m_mutex_flow[idx]);
+    std::unique_lock<std::mutex> lock(m_mutex_flow[idx]);
 
     fabs_tcp_uniflow *peer;
     auto it_flow = m_flow[idx].find(id);
@@ -360,7 +361,7 @@ fabs_tcp::recv_fin(int idx, const fabs_id &id, fabs_direction dir)
 void
 fabs_tcp::rm_flow(int idx, const fabs_id &id, fabs_direction dir)
 {
-    boost::mutex::scoped_lock lock(m_mutex_flow[idx]);
+    std::unique_lock<std::mutex> lock(m_mutex_flow[idx]);
 
     auto it_flow = m_flow[idx].find(id);
     if (it_flow == m_flow[idx].end())
@@ -373,7 +374,7 @@ bool
 fabs_tcp::get_packet(int idx, const fabs_id &id, fabs_direction dir,
                      fabs_tcp_packet &packet)
 {
-    boost::mutex::scoped_lock lock(m_mutex_flow[idx]);
+    std::unique_lock<std::mutex> lock(m_mutex_flow[idx]);
 
     fabs_tcp_uniflow *p_uniflow;
     auto it_flow = m_flow[idx].find(id);
@@ -439,7 +440,7 @@ fabs_tcp::input_tcp(fabs_id &id, fabs_direction dir, ptr_fabs_bytes buf)
 
     // TODO: checksum
     {
-        boost::mutex::scoped_lock lock(m_mutex_flow[idx]);
+        std::unique_lock<std::mutex> lock(m_mutex_flow[idx]);
 
         it_flow = m_flow[idx].find(id);
 

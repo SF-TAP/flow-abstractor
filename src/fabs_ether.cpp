@@ -8,8 +8,7 @@
 
 #include <iostream>
 #include <string>
-
-#include <boost/bind.hpp>
+#include <functional>
 
 #ifndef ETHERTYPE_VLAN
 #define ETHERTYPE_VLAN 0x8100 /* IEEE 802.1Q VLAN tagging */
@@ -36,8 +35,8 @@ fabs_ether::fabs_ether(std::string conf, const fabs_dlcap *dlcap)
       m_fragment(*this, m_appif),
       m_is_consuming_frag(false),
       m_num_pcap(0),
-      m_thread_consume_frag(boost::bind(&fabs_ether::consume_fragment, this)),
-      m_thread_timer(boost::bind(&fabs_ether::timer, this))
+      m_thread_consume_frag(std::bind(&fabs_ether::consume_fragment, this)),
+      m_thread_timer(std::bind(&fabs_ether::timer, this))
 {
     m_appif->read_conf(conf);
     m_callback.set_appif(m_appif);
@@ -52,16 +51,16 @@ fabs_ether::fabs_ether(std::string conf, const fabs_dlcap *dlcap)
         m_is_consuming[i] = false;
     }
 
-    m_mutex = new boost::mutex[numtcp];
-    m_condition = new boost::condition[numtcp];
-    m_thread_consume = new boost::thread*[numtcp];
+    m_mutex = new std::mutex[numtcp];
+    m_condition = new std::condition_variable[numtcp];
+    m_thread_consume = new std::thread*[numtcp];
 
     for (int i = 0; i < numtcp; i++) {
-        m_thread_consume[i] = new boost::thread(boost::bind(&fabs_ether::consume, this, i));
+        m_thread_consume[i] = new std::thread(std::bind(&fabs_ether::consume, this, i));
     }
 
 
-    boost::mutex::scoped_lock lock(m_mutex_init);
+    std::unique_lock<std::mutex> lock(m_mutex_init);
     m_condition_init.notify_all();
 }
 
@@ -72,7 +71,7 @@ fabs_ether::~fabs_ether()
     m_is_break = true;
 
     {
-        boost::mutex::scoped_lock lock(m_mutex_frag);
+        std::unique_lock<std::mutex> lock(m_mutex_frag);
         m_condition_frag.notify_one();
     }
 
@@ -80,7 +79,7 @@ fabs_ether::~fabs_ether()
 
     for (int i = 0; i < m_appif->get_num_tcp_threads(); i++) {
         {
-            boost::mutex::scoped_lock lock(m_mutex[i]);
+            std::unique_lock<std::mutex> lock(m_mutex[i]);
             m_condition[i].notify_one();
         }
 
@@ -108,9 +107,10 @@ fabs_ether::produce(int idx, ptr_fabs_bytes buf)
 
     if (m_queue[idx].get_len() >= NOTIFY_NUM) {
         if (! m_is_consuming[idx]) {
-            boost::try_mutex::scoped_try_lock lock(m_mutex[idx]);
-            if (lock)
+            if (m_mutex[idx].try_lock()) {
                 m_condition[idx].notify_one();
+                m_mutex[idx].unlock();
+            }
         }
     }
 }
@@ -130,7 +130,7 @@ void
 fabs_ether::timer()
 {
     {
-        boost::mutex::scoped_lock lock_init(m_mutex_init);
+        std::unique_lock<std::mutex> lock_init(m_mutex_init);
         m_condition_init.wait(lock_init);
     }
 
@@ -158,7 +158,7 @@ fabs_ether::timer()
             std::cout << std::endl;
         }
 
-        boost::this_thread::sleep(boost::posix_time::milliseconds(100));
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
         if (m_is_break)
             return;
     }
@@ -169,12 +169,11 @@ fabs_ether::consume(int idx)
 {
     for (;;) {
         {
-            boost::mutex::scoped_lock lock(m_mutex[idx]);
+            std::unique_lock<std::mutex> lock(m_mutex[idx]);
             while (m_queue[idx].get_len() == 0) {
                 m_is_consuming[idx] = false;
 
-                boost::system_time timeout = boost::get_system_time() + boost::posix_time::milliseconds(50);
-                m_condition[idx].timed_wait(lock, timeout);
+                m_condition[idx].wait_for(lock, std::chrono::milliseconds(50));
 
                 if (m_is_break)
                     return;
@@ -219,7 +218,7 @@ fabs_ether::consume(int idx)
 
                         if (! m_is_consuming_frag &&
                             m_queue_frag.get_len() > NOTIFY_NUM) {
-                            boost::mutex::scoped_lock lock(m_mutex_frag);
+                            std::unique_lock<std::mutex> lock(m_mutex_frag);
                             m_condition_frag.notify_one();
                         }
                     } else {
@@ -286,17 +285,16 @@ void
 fabs_ether::consume_fragment()
 {
     {
-        boost::mutex::scoped_lock lock_init(m_mutex_init);
+        std::unique_lock<std::mutex> lock_init(m_mutex_init);
         m_condition_init.wait(lock_init);
     }
 
     for (;;) {
         {
-            boost::mutex::scoped_lock lock(m_mutex_frag);
+            std::unique_lock<std::mutex> lock(m_mutex_frag);
             while (m_queue_frag.get_len() == 0) {
                 m_is_consuming_frag = false;
-                boost::system_time timeout = boost::get_system_time() + boost::posix_time::milliseconds(100);
-                m_condition_frag.timed_wait(lock, timeout);
+                m_condition_frag.wait_for(lock, std::chrono::milliseconds(100));
 
                 if (m_is_break) {
                     return;

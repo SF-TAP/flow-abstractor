@@ -1,7 +1,7 @@
 #include "fabs_fragment.hpp"
 #include "fabs_ether.hpp"
 
-#include <boost/bind.hpp>
+#include <functional>
 
 #define FRAGMENT_GC_TIMER 30
 
@@ -60,7 +60,7 @@ fabs_fragment::fragments::operator== (const fragments &rhs) const {
 
 fabs_fragment::fabs_fragment(fabs_ether &fether, ptr_fabs_appif appif) :
     m_is_del(false),
-    m_thread_gc(boost::bind(&fabs_fragment::gc_timer, this)),
+    m_thread_gc(std::bind(&fabs_fragment::gc_timer, this)),
     m_ether(fether),
     m_appif(appif)
 {
@@ -72,7 +72,7 @@ fabs_fragment::~fabs_fragment()
     m_is_del = true;
 
     {
-        boost::mutex::scoped_lock lock(m_mutex_gc);
+        std::unique_lock<std::mutex> lock(m_mutex_gc);
         m_condition_gc.notify_one();
     }
 
@@ -83,14 +83,14 @@ void
 fabs_fragment::gc_timer()
 {
     for (;;) {
-        boost::mutex::scoped_lock lock_gc(m_mutex_gc);
-        m_condition_gc.timed_wait(lock_gc, boost::posix_time::milliseconds(FRAGMENT_GC_TIMER * 1000));
+        std::unique_lock<std::mutex> lock_gc(m_mutex_gc);
+        m_condition_gc.wait_for(lock_gc, std::chrono::milliseconds(FRAGMENT_GC_TIMER * 1000));
 
         if (m_is_del) {
             return;
         }
 
-        boost::mutex::scoped_lock lock(m_mutex);
+        std::unique_lock<std::mutex> lock(m_mutex);
 
         auto &seq = m_fragments.get<1>();
         time_t t  = time(NULL);
@@ -131,7 +131,7 @@ fabs_fragment::input_ip(ptr_fabs_bytes buf)
         frag.m_ip_dst = ntohl(iph4->ip_dst.s_addr);
         frag.m_id     = ntohs(iph4->ip_id);
 
-        boost::mutex::scoped_lock lock(m_mutex);
+        std::unique_lock<std::mutex> lock(m_mutex);
         auto it = m_fragments.find(frag);
         if (it == m_fragments.end()) {
             m_fragments.insert(fragments(iph4, std::move(buf)));
