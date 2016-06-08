@@ -12,10 +12,12 @@ IF(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
   set(CMAKE_CXX_FLAGS "-Wall -fPIC -std=c++11 -framework CoreFoundation")
   set(CMAKE_CXX_FLAGS_DEBUG "-g -O0")
   set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+  set(CMAKE_CXX_FLAGS_COZ "-O3 -g")
 ELSE(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
   set(CMAKE_CXX_FLAGS "-Wall -fPIC -std=c++11")
   set(CMAKE_CXX_FLAGS_DEBUG "-g -O0")
   set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+  set(CMAKE_CXX_FLAGS_COZ "-O3 -g")
 ENDIF(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 
 option(COMPILE_STATIC_LIB "Compile Static Library" 0)
@@ -36,6 +38,11 @@ include_directories(BEFORE ${RE2_INCLUDE_DIR} ${Boost_INCLUDE_DIR} ${EVENT_INCLU
 
 add_library(fabs SHARED ${CPPSources})
 add_executable(sftap_fabs ${CPPMain})
+
+IF(${CMAKE_BUILD_TYPE} MATCHES "Coz")
+  add_definitions(-DUSE_COZ)
+  SET(LIBS ${LIBS} dl)
+ENDIF()
 
 set(LIBS pthread ${Boost_THREAD_LIBRARY} ${Boost_SYSTEM_LIBRARY} ${Boost_IOSTREAMS_LIBRARY} ${Boost_FILESYSTEM_LIBRARY} ${PCAP_LIBRARY} ${EVENT_LIBRARY} ${RE2_LIBRARY} ${YAMLCPP_LIBRARY})
 

@@ -1583,6 +1583,8 @@ fabs_appif::write_event(int fd, const fabs_id_dir &id_dir, ptr_ifrule ifrule,
         }
     }
 
+    COZ_PROGRESS;
+
     return true;
 }
 
@@ -1774,6 +1776,8 @@ fabs_appif::appif_consumer::consume()
             m_is_consuming = true;
         }
 
+        COZ_PROGRESS;
+
         appif_event *ev;
         while (m_ev_queue.pop(&ev)) {
             if (ev->id_dir.m_id.get_l4_proto() == IPPROTO_TCP) {
@@ -1799,6 +1803,8 @@ fabs_appif::appif_consumer::produce(appif_event *ev)
             m_mutex.unlock();
         }
     }
+
+    COZ_PROGRESS;
 }
 
 fabs_appif::appif_consumer::appif_consumer(int id, fabs_appif &appif) :

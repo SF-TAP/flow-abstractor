@@ -113,6 +113,8 @@ fabs_ether::produce(int idx, ptr_fabs_bytes buf)
             }
         }
     }
+
+    COZ_PROGRESS;
 }
 
 inline void
@@ -181,6 +183,8 @@ fabs_ether::consume(int idx)
 
             m_is_consuming[idx] = true;
         }
+
+        COZ_PROGRESS;
 
         ptr_fabs_bytes buf;
         for (int i = 0; i < NOTIFY_NUM; i++) {
@@ -316,6 +320,8 @@ fabs_ether::consume_fragment()
 void
 fabs_ether::ether_input(const uint8_t *bytes, int len, const timeval &tm, bool is_pcap)
 {
+    COZ_PROGRESS;
+
     if (is_pcap) m_num_pcap++;
     
     uint8_t proto;

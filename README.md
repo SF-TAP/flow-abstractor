@@ -103,7 +103,6 @@ Other documents are available on the following link.
 
 Next release.
 
-* read pcap file
 * open multiple interfaces
 * calculate checksum
 * daemon mode
