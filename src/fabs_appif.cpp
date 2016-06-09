@@ -307,7 +307,7 @@ ux_read_pcap(int fd, short events, void *arg)
             buf.resize(it->second->m_dlen);
             
             auto len = read_bytes(it->second->m_bytes, &buf[0], it->second->m_dlen);
-            if (len != it->second->m_dlen)
+            if ((uint32_t)len != it->second->m_dlen)
                 break;
             
             skip_bytes(it->second->m_bytes, it->second->m_dlen);
