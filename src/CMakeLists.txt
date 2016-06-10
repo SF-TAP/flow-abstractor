@@ -57,7 +57,7 @@ IF(USE_NETMAP)
   INSTALL(FILES ${NETMAPHeaders} DESTINATION include/fabs/netmap)
 ENDIF(USE_NETMAP)
 
-target_link_libraries(sftap_fabs ${LIBS} fabs)
+target_link_libraries(sftap_fabs ${LIBS} fabs profiler)
 target_link_libraries(fabs ${LIBS})
 
 INSTALL(TARGETS fabs sftap_fabs RUNTIME DESTINATION bin
