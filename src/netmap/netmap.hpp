@@ -79,6 +79,8 @@ public:
     inline size_t get_ethlen(struct netmap_ring* ring);
     inline void set_ethlen(struct netmap_ring* ring, size_t size);
     inline struct ether_header* get_eth(struct netmap_ring* ring);
+    inline struct timeval get_timeval(struct netmap_ring* ring);
+    inline void set_timestamp(struct netmap_ring* ring);
 
     inline uint32_t get_cursor(struct netmap_ring* ring);
     inline struct netmap_slot* get_slot(struct netmap_ring* ring);
@@ -380,6 +382,19 @@ netmap::get_eth(struct netmap_ring* ring)
 {
     struct netmap_slot* slot = get_slot(ring);
     return (struct ether_header*)NETMAP_BUF(ring, slot->buf_idx);
+}
+
+inline struct timeval
+netmap::get_timeval(struct netmap_ring* ring)
+{
+    return ring->ts;
+}
+
+inline struct void
+netmap::set_timestamp(struct netmap_ring* ring)
+{
+    ring->flags = NR_TIMESTAMP;
+    return;
 }
 
 inline size_t
