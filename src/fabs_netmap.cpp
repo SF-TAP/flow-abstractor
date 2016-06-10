@@ -41,6 +41,7 @@ fabs_netmap::run()
     for (int i = 0; i < mq; i++) {
         pfd[i].fd = m_netmap->get_fd(i);
         pfd[i].events = POLLIN;
+        //m_netmap->set_timestamp(m_netmap->get_rx_ring(i));
     }
 
     int retval;
