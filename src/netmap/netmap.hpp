@@ -390,7 +390,7 @@ netmap::get_timeval(struct netmap_ring* ring)
     return ring->ts;
 }
 
-inline struct void
+inline void
 netmap::set_timestamp(struct netmap_ring* ring)
 {
     ring->flags = NR_TIMESTAMP;

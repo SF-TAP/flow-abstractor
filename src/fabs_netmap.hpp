@@ -38,11 +38,9 @@ fabs_netmap::rx_in(struct netmap_ring* rxring)
     size_t len = m_netmap->get_ethlen(rxring);
     struct ether_header* rx_eth = m_netmap->get_eth(rxring);
 
-    timeval tm;
-    gettimeofday(&tm, nullptr);
-    //timeval tm = m_netmap->get_timeval(rxring);
+    timeval tm = m_netmap->get_timeval(rxring);
 
-    m_ether.ether_input((const uint8_t*)rx_eth, len, tm);
+    m_ether.ether_input((const uint8_t*)rx_eth, len, tm, false);
 
     m_recv_cnt++;
 }
