@@ -237,21 +237,17 @@ fabs_ether::consume(int idx)
                         switch(nxt) {
                         case IPPROTO_HOPOPTS:
                         case IPPROTO_ROUTING:
-                        case IPPROTO_ESP:
                         case IPPROTO_AH:
                         case IPPROTO_DSTOPTS:
                         {
                             ip6_ext *ext = (ip6_ext*)p;
 
                             nxt = ext->ip6e_nxt;
-
-                            if (ext->ip6e_len == 0)
-                                p += 8;
-                            else
-                                p += ext->ip6e_len * 8;
+                            p  += ext->ip6e_len * 8 + 8;
 
                             break;
                         }
+                        case IPPROTO_ESP:
                         case IPPROTO_NONE:
                         case IPPROTO_FRAGMENT:
                         case IPPROTO_ICMPV6:
