@@ -113,8 +113,6 @@ fabs_ether::produce(int idx, ptr_fabs_bytes buf)
             }
         }
     }
-    
-    COZ_END("ether");
 }
 
 inline void
@@ -189,8 +187,6 @@ fabs_ether::consume(int idx)
             while (m_queue[idx].pop(&buf)) {
                 if (m_is_break)
                     return;
-
-                COZ_BEGIN("TCP");
 
                 uint8_t proto;
                 const uint8_t *ip_hdr = get_ip_hdr((uint8_t*)buf->get_head(),
@@ -320,8 +316,6 @@ fabs_ether::consume_fragment()
 void
 fabs_ether::ether_input(const uint8_t *bytes, int len, const timeval &tm, bool is_pcap)
 {
-    COZ_BEGIN("ether");
-
     if (is_pcap) m_num_pcap++;
     
     uint8_t proto;

@@ -1414,10 +1414,6 @@ fabs_appif::write_event(int fd, const fabs_id_dir &id_dir, ptr_ifrule ifrule,
                         fabs_appif_header *header, char *body, int bodylen,
                         timeval *tm)
 {
-    COZ_END("regex");
-
-    COZ_BEGIN("appif");
-
     auto peer  = m_fd2uxpeer[fd].get();
     auto &ebuf = peer->m_event_buf;
 
@@ -1586,8 +1582,6 @@ fabs_appif::write_event(int fd, const fabs_id_dir &id_dir, ptr_ifrule ifrule,
             }
         }
     }
-
-    COZ_END("appif");
 
     return true;
 }
@@ -1782,8 +1776,6 @@ fabs_appif::appif_consumer::consume()
 
         appif_event *ev;
         while (m_ev_queue.pop(&ev)) {
-            COZ_BEGIN("regex");
-
             if (ev->id_dir.m_id.get_l4_proto() == IPPROTO_TCP) {
                 in_stream_event(ev->st_event, ev->id_dir, std::move(ev->bytes));
             } else if (ev->id_dir.m_id.get_l4_proto() == IPPROTO_UDP) {
@@ -1807,8 +1799,6 @@ fabs_appif::appif_consumer::produce(appif_event *ev)
             m_mutex.unlock();
         }
     }
-
-    COZ_END("TCP");
 }
 
 fabs_appif::appif_consumer::appif_consumer(int id, fabs_appif &appif) :
