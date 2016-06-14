@@ -14,13 +14,4 @@
     perror(s);                                                  \
 } while (false)
 
-#ifdef USE_COZ
-    #include "coz.h"
-#else
-    #define COZ_PROGRESS
-    #define COZ_PROGRESS_NAMED(X)
-    #define COZ_BEGIN(X)
-    #define COZ_END(X)
-#endif // USE_COZ
-
 #endif // FABS_COMMON_HPP

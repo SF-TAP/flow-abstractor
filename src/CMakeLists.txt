@@ -41,11 +41,6 @@ add_executable(sftap_fabs ${CPPMain})
 
 set(LIBS pthread ${Boost_THREAD_LIBRARY} ${Boost_SYSTEM_LIBRARY} ${Boost_IOSTREAMS_LIBRARY} ${Boost_FILESYSTEM_LIBRARY} ${PCAP_LIBRARY} ${EVENT_LIBRARY} ${RE2_LIBRARY} ${YAMLCPP_LIBRARY})
 
-IF(${CMAKE_BUILD_TYPE} MATCHES "Coz")
-  add_definitions(-DUSE_COZ)
-  SET(LIBS ${LIBS} dl)
-ENDIF()
-
 IF(USE_JEMALLOC)
   add_definitions(-DUSE_JEMALLOC)
   SET(LIBS ${LIBS} jemalloc)
@@ -57,7 +52,7 @@ IF(USE_NETMAP)
   INSTALL(FILES ${NETMAPHeaders} DESTINATION include/fabs/netmap)
 ENDIF(USE_NETMAP)
 
-target_link_libraries(sftap_fabs ${LIBS} fabs profiler)
+target_link_libraries(sftap_fabs ${LIBS} fabs)
 target_link_libraries(fabs ${LIBS})
 
 INSTALL(TARGETS fabs sftap_fabs RUNTIME DESTINATION bin
