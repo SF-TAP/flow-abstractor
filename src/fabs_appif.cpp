@@ -272,6 +272,8 @@ ux_read_pcap(int fd, short events, void *arg)
                 }
             }
 
+            memcpy(it->second->m_global_header, &ghdr, sizeof(it->second->m_global_header));
+
             it->second->m_state = fabs_appif::IFPCAP_HEADER;
         } else if (it->second->m_state == fabs_appif::IFPCAP_HEADER) {
             if (it->second->m_is_fail) {
@@ -283,6 +285,11 @@ ux_read_pcap(int fd, short events, void *arg)
             int len = read_bytes(it->second->m_bytes, (char*)&hdr, sizeof(hdr));
             if (len != sizeof(hdr)) 
                 break;
+
+            if (memcmp(it->second->m_global_header, &hdr, sizeof(it->second->m_global_header)) == 0) {
+                it->second->m_state = fabs_appif::IFPCAP_GLOBAL;
+                continue;
+            }
             
             skip_bytes(it->second->m_bytes, sizeof(hdr));
 
