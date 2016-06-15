@@ -176,6 +176,7 @@ private:
         timeval                    m_tm;
         bool                       m_is_native;
         bool                       m_is_fail;
+        char                       m_global_header[12];
         
         ifpcap_info() : m_state(IFPCAP_GLOBAL), m_is_fail(false) { }
     };
