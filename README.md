@@ -104,6 +104,5 @@ Other documents are available on the following link.
 * open multiple interfaces
 * calculate checksum
 * daemon mode
-* handling fast TCP open
 * handling web socket
 * handling QUIC
