@@ -47,22 +47,22 @@ skip_bytes(deque<ptr_fabs_bytes> &bytes, int len)
     deque<ptr_fabs_bytes>::iterator it;
     int skip_len = 0;
 
-    for (it = bytes.begin(); it != bytes.end();) {
-        int remain = len - skip_len;
+    while (! bytes.empty()) {
+        auto &front = bytes.front();
 
-        if (! (*it)->m_ptr)
-            continue;
-
-        if (remain < (*it)->m_len) {
-            (*it)->m_len -= remain;
-            (*it)->m_pos += remain;
-            skip_len  += remain;
+        if (len >= front->m_len) {
+            len -= front->m_len;
+            skip_len += front->m_len;
+            bytes.pop_front();
+            
+            if (len == 0)
+                break;
+        } else {
+            front->m_len -= len;
+            front->m_pos += len;
+            skip_len += len; 
             break;
         }
-
-        skip_len += (*it)->m_len;
-
-        bytes.erase(it++);
     }
 
     return skip_len;
