@@ -101,14 +101,9 @@ Other documents are available on the following link.
 
 ### TODO
 
-Next release.
-
 * open multiple interfaces
 * calculate checksum
 * daemon mode
-
-Future work.
-
 * handling fast TCP open
 * handling web socket
 * handling QUIC
