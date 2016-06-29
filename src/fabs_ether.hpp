@@ -33,7 +33,7 @@ public:
     void consume(int idx);
     void consume_fragment();
     void timer();
-    void stop() { m_is_break = true; }
+    void stop() { m_is_break = true; m_callback.stop(); }
 
     void produce(int idx, ptr_fabs_bytes buf);
     inline void produce(int idx, const char *buf, int len, const timeval &tm);

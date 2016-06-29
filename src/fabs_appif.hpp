@@ -76,6 +76,13 @@ public:
     int  get_tcp_timeout() const { return m_tcp_timeout; }
     int  get_num_tcp_threads() const { return m_num_tcp_threads; }
 
+    void stop()
+    {
+        for (auto &c: m_consumer) {
+            c->stop();
+        }
+    }
+
 private:
     typedef std::unique_ptr<RE2> ptr_regex;
     typedef std::unique_ptr<boost::filesystem::path> ptr_path;
@@ -217,6 +224,7 @@ public:
         void produce(appif_event *ev);
         void consume();
         void run();
+        void stop() { m_is_break = true; }
 
     private:
         int         m_id;

@@ -181,6 +181,9 @@ fabs_tcp::input_tcp_event(int idx, fabs_id_dir tcp_event)
     char addr1[32], addr2[32];
 #endif // DEBUG
 
+    if (m_is_del)
+        return;
+
     {
         std::unique_lock<std::mutex> lock(m_mutex_flow[idx]);
 

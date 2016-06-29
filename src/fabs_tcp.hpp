@@ -60,6 +60,7 @@ public:
     void set_appif(ptr_fabs_appif appif) { m_appif = appif; }
     int  get_active_num();
     uint64_t get_total_num() { return m_total_session; }
+    void stop() { m_is_del = true; } 
 
 private:
     std::map<fabs_id, ptr_fabs_tcp_flow> m_flow[NUM_TCPTREE];

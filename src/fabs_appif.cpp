@@ -1793,6 +1793,9 @@ fabs_appif::appif_consumer::consume()
                 in_datagram(ev->id_dir, std::move(ev->bytes));
             }
             delete ev;
+
+            if (m_is_break)
+                return;
         }
     }
 }

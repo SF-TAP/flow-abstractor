@@ -21,6 +21,7 @@ fabs_pcap::fabs_pcap(std::string conf) : m_ether(conf, this),
 fabs_pcap::~fabs_pcap()
 {
     std::cout << "cleaning up pcap... " << std::flush;
+    m_ether.stop();
 
     if (m_handle != NULL)
         pcap_close(m_handle);

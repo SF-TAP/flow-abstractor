@@ -41,6 +41,14 @@ public:
         }
     }
 
+    void stop() {
+        for (int i = 0; i < m_appif->get_num_tcp_threads(); i++) {
+            m_tcp[i].stop();
+        }
+
+        m_appif->stop();
+    }
+
 private:
     ptr_fabs_appif m_appif;
     fabs_tcp *m_tcp;
