@@ -16,6 +16,7 @@ fabs_netmap::fabs_netmap(std::string conf) : m_ether(conf, this),
 fabs_netmap::~fabs_netmap()
 {
     std::cout << "cleaning up netmap... " << std::flush;
+    m_ether.stop();
 
     if (m_netmap != NULL)
         delete m_netmap;
