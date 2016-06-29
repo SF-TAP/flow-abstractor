@@ -1421,7 +1421,11 @@ fabs_appif::write_event(int fd, const fabs_id_dir &id_dir, ptr_ifrule ifrule,
                         fabs_appif_header *header, char *body, int bodylen,
                         timeval *tm)
 {
-    auto peer  = m_fd2uxpeer[fd].get();
+    auto it = m_fd2uxpeer.find(fd);
+    if (it == m_fd2uxpeer.end())
+        return false;
+
+    auto peer  = it->second.get();
     auto &ebuf = peer->m_event_buf;
 
     if (ebuf.size() > 0) {
