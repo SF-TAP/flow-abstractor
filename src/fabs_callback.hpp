@@ -18,8 +18,8 @@ public:
 
     void operator() (int idx, ptr_fabs_bytes buf);
     void print_stat() {
-        int n = 0;
-        int t = 0;
+        uint64_t n = 0;
+        uint64_t t = 0;
         for (int i = 0; i < m_appif->get_num_tcp_threads(); i++) {
             n += m_tcp[i].get_active_num();
             t += m_tcp[i].get_total_num();
