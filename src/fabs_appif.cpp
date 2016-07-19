@@ -1837,7 +1837,7 @@ fabs_appif::appif_consumer::appif_consumer(int id, fabs_appif &appif) :
 #elif defined(__linux__)
     pthread_setname_np(m_thread.native_handle(), os.str().c_str());
 #elif defined(BSD)
-    pthread_setname_np(m_thread.native_handle(), os.str().c_str(), "");
+    pthread_set_name_np(m_thread.native_handle(), os.str().c_str());
 #endif // __APPLE__
 
     for (auto it_tcp = appif.m_ifrule_tcp.begin();
