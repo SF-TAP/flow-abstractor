@@ -101,7 +101,7 @@ void
 fabs_ether::produce(int idx, ptr_fabs_bytes buf)
 {
     if (! m_queue[idx].push(buf)) {
-        m_num_dropped++;
+        __sync_fetch_and_add(&m_num_dropped, 1);
         return;
     }
 

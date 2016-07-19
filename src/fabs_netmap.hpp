@@ -22,13 +22,17 @@ public:
 
 private:
     void rx_in(struct netmap_ring* rxring);
+    void run_netmap(int fd);
 
     fabs_ether m_ether;
     netmap    *m_netmap;
     time_t     m_t;
 
-    std::string m_dev;
-    uint64_t    m_recv_cnt;
+    std::thread **m_thread;
+    int           m_num_thread;
+
+    std::string   m_dev;
+    uint64_t      m_recv_cnt;
     volatile bool m_is_break;
 };
 

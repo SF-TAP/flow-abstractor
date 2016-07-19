@@ -158,7 +158,6 @@ fabs_fragment::input_ip(ptr_fabs_bytes buf)
                     m_fragments.erase(it);
                     lock.unlock();
 
-
                     uint32_t hash = ntohl(iph4->ip_src.s_addr ^ iph4->ip_dst.s_addr);
 
                     m_ether.produce(hash % m_appif->get_num_tcp_threads(), std::move(buf));

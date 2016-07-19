@@ -7,6 +7,7 @@
 fabs_netmap::fabs_netmap(std::string conf) : m_ether(conf, this),
                                              m_netmap(NULL),
                                              m_t(time(NULL)),
+                                             m_num_thread(0),
                                              m_recv_cnt(0),
                                              m_is_break(false)
 {
@@ -17,6 +18,13 @@ fabs_netmap::~fabs_netmap()
 {
     std::cout << "cleaning up netmap... " << std::flush;
     m_ether.stop();
+
+    for (int i = 0; i < m_num_thread; i++) {
+        m_thread[i]->join();
+        delete m_thread[i];
+    }
+
+    delete m_thread;
 
     if (m_netmap != NULL)
         delete m_netmap;
@@ -39,21 +47,40 @@ fabs_netmap::run()
     struct pollfd pfd[mq];
     memset(pfd, 0, sizeof(pfd));
 
-    for (int i = 0; i < mq; i++) {
-        pfd[i].fd = m_netmap->get_fd(i);
-        pfd[i].events = POLLIN;
-        m_netmap->set_timestamp(m_netmap->get_rx_ring(i));
+    std::cout << "start capturing " << m_dev << " (netmap)" << std::endl;
+
+    if (mq >= 2) {
+        m_num_thread = mq - 1;
+        m_thread = new std::thread*[m_num_thread];
+        for (int i = 0; i < m_num_thread; i++) {
+            int fd = m_netmap->get_fd(i);
+            m_netmap->set_timestamp(m_netmap->get_rx_ring(i));
+            m_thread[i] = new std::thread(std::bind(&fabs_netmap::run_netmap, this, fd));
+
+            std::ostringstream os;
+            os << "netmap[" << i << "]";
+            SET_THREAD_NAME(m_thread[i]->native_handle(), os.str().c_str());
+        }
     }
 
+    std::ostringstream os;
+    os << "netmap[0]";
+    SET_THREAD_NAME(m_thread[i]->native_handle(), os.str().c_str());
+    run_netmap(m_netmap->get_fd(0));
+}
+
+void
+fabs_netmap::run_netmap(int fd)
+{
+    struct pollfd pfd;
     int retval;
     int rx_avail = 0;
     struct netmap_ring* rx = NULL;
 
-    std::cout << "start capturing " << m_dev << " (netmap)" << std::endl;
+    memset(pfd, 0, sizeof(pfd));
 
     for (;;) {
-
-        retval = poll(pfd, mq, 500);
+        retval = poll(&pfd, 1, 500);
 
         if (m_is_break)
             return;
@@ -66,25 +93,19 @@ fabs_netmap::run()
             return;
         }
 
-        for (int i = 0; i < mq; i++) {
+        if (pfd.revents & POLLERR) {
+            MESG("rx_hard poll error");
+        } else if (pfd.revents & POLLIN) {
+            rx = m_netmap->get_rx_ring(i);
 
-            if (pfd[i].revents & POLLERR) {
+            rx_avail = m_netmap->get_avail(rx);
 
-                MESG("rx_hard poll error");
+            while (rx_avail--) {
+                rx_in(rx);
+                m_netmap->next(rx);
 
-            } else if (pfd[i].revents & POLLIN) {
-
-                rx = m_netmap->get_rx_ring(i);
-
-                rx_avail = m_netmap->get_avail(rx);
-
-                while (rx_avail--) {
-                    rx_in(rx);
-                    m_netmap->next(rx);
-
-                    if (m_is_break)
-                        return;
-                }
+                if (m_is_break)
+                    return;
             }
         }
     }
