@@ -22,7 +22,7 @@ public:
 
 private:
     void rx_in(struct netmap_ring* rxring);
-    void run_netmap(int fd);
+    void run_netmap(int idx, int fd);
 
     fabs_ether m_ether;
     netmap    *m_netmap;

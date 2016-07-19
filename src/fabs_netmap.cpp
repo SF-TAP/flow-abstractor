@@ -55,7 +55,7 @@ fabs_netmap::run()
         for (int i = 0; i < m_num_thread; i++) {
             int fd = m_netmap->get_fd(i);
             m_netmap->set_timestamp(m_netmap->get_rx_ring(i));
-            m_thread[i] = new std::thread(std::bind(&fabs_netmap::run_netmap, this, fd));
+            m_thread[i] = new std::thread(std::bind(&fabs_netmap::run_netmap, this, i, fd));
 
             std::ostringstream os;
             os << "netmap[" << i << "]";
@@ -65,19 +65,19 @@ fabs_netmap::run()
 
     std::ostringstream os;
     os << "netmap[0]";
-    SET_THREAD_NAME(m_thread[i]->native_handle(), os.str().c_str());
+    SET_THREAD_NAME(pthread_self(), os.str().c_str());
     run_netmap(m_netmap->get_fd(0));
 }
 
 void
-fabs_netmap::run_netmap(int fd)
+fabs_netmap::run_netmap(int idx, int fd)
 {
     struct pollfd pfd;
     int retval;
     int rx_avail = 0;
     struct netmap_ring* rx = NULL;
 
-    memset(pfd, 0, sizeof(pfd));
+    memset(&pfd, 0, sizeof(pfd));
 
     for (;;) {
         retval = poll(&pfd, 1, 500);
@@ -96,7 +96,7 @@ fabs_netmap::run_netmap(int fd)
         if (pfd.revents & POLLERR) {
             MESG("rx_hard poll error");
         } else if (pfd.revents & POLLIN) {
-            rx = m_netmap->get_rx_ring(i);
+            rx = m_netmap->get_rx_ring(idx);
 
             rx_avail = m_netmap->get_avail(rx);
 

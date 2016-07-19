@@ -129,8 +129,6 @@ main(int argc, char *argv[])
         }
     }
 
-    SET_THREAD_NAME(pthread_self(), "capture");
-
 #ifdef USE_NETMAP
     if (is_netmap) {
         nm = new fabs_netmap(conf);
@@ -144,6 +142,8 @@ main(int argc, char *argv[])
         return 0;
     }
 #endif // USE_NETMAP
+
+    SET_THREAD_NAME(pthread_self(), "capture");
 
     pc = new fabs_pcap(conf);
 
