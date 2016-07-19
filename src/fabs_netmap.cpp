@@ -79,6 +79,9 @@ fabs_netmap::run_netmap(int idx, int fd)
 
     memset(&pfd, 0, sizeof(pfd));
 
+    pfd.fd = fd;
+    pfd.events = POLLIN;
+
     for (;;) {
         retval = poll(&pfd, 1, 500);
 
