@@ -66,7 +66,7 @@ fabs_netmap::run()
     std::ostringstream os;
     os << "netmap[0]";
     SET_THREAD_NAME(pthread_self(), os.str().c_str());
-    run_netmap(m_netmap->get_fd(0));
+    run_netmap(0, m_netmap->get_fd(0));
 }
 
 void
