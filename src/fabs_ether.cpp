@@ -167,6 +167,16 @@ fabs_ether::timer()
 void
 fabs_ether::consume(int idx)
 {
+    std::ostringstream os;
+    os << "TCP[" << idx << "]";
+#ifdef __APPLE__
+    pthread_setname_np(os.str().c_str());
+#elif defined(__linux__)
+    pthread_setname_np(m_thread_consume[idx]->native_handle(), os.str().c_str());
+#elif defined(BSD)
+    pthread_setname_np(m_thread_consume[idx]->native_handle(), os.str().c_str());
+#endif // __APPLE__
+
     for (;;) {
         {
             std::unique_lock<std::mutex> lock(m_mutex[idx]);
@@ -232,7 +242,7 @@ fabs_ether::consume(int idx)
                     ip6_hdr *ip6h = (ip6_hdr*)ip_hdr;
                     uint8_t  nxt  = ip6h->ip6_nxt;
                     char    *p    = (char*)ip6h + sizeof(ip6_hdr);
-        
+
                     for (;;) {
                         switch(nxt) {
                         case IPPROTO_HOPOPTS:
@@ -313,7 +323,7 @@ void
 fabs_ether::ether_input(const uint8_t *bytes, int len, const timeval &tm, bool is_pcap)
 {
     if (is_pcap) m_num_pcap++;
-    
+
     uint8_t proto;
     const uint8_t *ip_hdr = get_ip_hdr(bytes, len, proto);
     uint32_t hash;
