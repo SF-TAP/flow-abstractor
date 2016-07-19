@@ -53,9 +53,9 @@ fabs_netmap::run()
         m_num_thread = mq - 1;
         m_thread = new std::thread*[m_num_thread];
         for (int i = 0; i < m_num_thread; i++) {
-            int fd = m_netmap->get_fd(i);
-            m_netmap->set_timestamp(m_netmap->get_rx_ring(i));
-            m_thread[i] = new std::thread(std::bind(&fabs_netmap::run_netmap, this, i, fd));
+            int fd = m_netmap->get_fd(i + 1);
+            m_netmap->set_timestamp(m_netmap->get_rx_ring(i + 1));
+            m_thread[i] = new std::thread(std::bind(&fabs_netmap::run_netmap, this, i + 1, fd));
 
             std::ostringstream os;
             os << "netmap[" << i << "]";
