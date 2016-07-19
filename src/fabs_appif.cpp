@@ -1824,7 +1824,7 @@ fabs_appif::appif_consumer::appif_consumer(int id, fabs_appif &appif) :
 {
     std::ostringstream os;
     os << "regex[" << id << "]";
-    SET_THREAD_NAME(m_handle.native_handle(), os.str().c_str());
+    SET_THREAD_NAME(m_thread.native_handle(), os.str().c_str());
 
     for (auto it_tcp = appif.m_ifrule_tcp.begin();
          it_tcp != appif.m_ifrule_tcp.end(); ++it_tcp) {
