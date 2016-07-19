@@ -46,7 +46,7 @@ fabs_netmap::rx_in(struct netmap_ring* rxring)
 
     m_ether.ether_input((const uint8_t*)rx_eth, len, tm, false);
 
-    m_recv_cnt++;
+    __sync_fetch_and_add(&m_recv_cnt, 1);
 }
 
 #endif // USE_NETMAP
