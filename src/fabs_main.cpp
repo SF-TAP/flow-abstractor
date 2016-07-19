@@ -121,13 +121,15 @@ main(int argc, char *argv[])
         perror("pthread_sigmask");
         exit(1);
     }
-    
+
     if (dev.empty()) {
         fabs_ether ether(conf, nullptr);
         for (;;) {
             sleep(1000000);
         }
     }
+
+    SET_THREAD_NAME(pthread_self(), "capture");
 
 #ifdef USE_NETMAP
     if (is_netmap) {
@@ -146,7 +148,7 @@ main(int argc, char *argv[])
     pc = new fabs_pcap(conf);
 
     set_sig_handler();
-    
+
     pc->set_dev(dev);
     pc->set_bufsize(bufsize);
     pc->run();

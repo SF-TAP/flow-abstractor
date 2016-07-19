@@ -1,13 +1,5 @@
 #include "fabs_ether.hpp"
 
-#ifndef __linux__
-#include <sys/param.h>
-#endif // __linux__
-
-#if !defined(__APPLE__) and defined(BSD)
-#include <pthread_np.h>
-#endif // !defined(__APPLE__) and defined(BSD)
-
 #include <unistd.h>
 
 #include <net/ethernet.h>
@@ -177,13 +169,7 @@ fabs_ether::consume(int idx)
 {
     std::ostringstream os;
     os << "TCP[" << idx << "]";
-#ifdef __APPLE__
-    pthread_setname_np(os.str().c_str());
-#elif defined(__linux__)
-    pthread_setname_np(m_thread_consume[idx]->native_handle(), os.str().c_str());
-#elif defined(BSD)
-    pthread_set_name_np(m_thread_consume[idx]->native_handle(), os.str().c_str());
-#endif // __APPLE__
+    SET_THREAD_NAME(m_thread_consume[idx]->native_handle(), os.str().c_str());
 
     for (;;) {
         {

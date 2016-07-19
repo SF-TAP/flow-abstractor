@@ -3,14 +3,6 @@
 #include "fabs_callback.hpp"
 #include "fabs_ether.hpp"
 
-#ifndef __linux__
-#include <sys/param.h>
-#endif // __linux__
-
-#if !defined(__APPLE__) and defined(BSD)
-#include <pthread_np.h>
-#endif // !defined(__APPLE__) and defined(BSD)
-
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
@@ -1832,13 +1824,7 @@ fabs_appif::appif_consumer::appif_consumer(int id, fabs_appif &appif) :
 {
     std::ostringstream os;
     os << "regex[" << id << "]";
-#ifdef __APPLE__
-    pthread_setname_np(os.str().c_str());
-#elif defined(__linux__)
-    pthread_setname_np(m_thread.native_handle(), os.str().c_str());
-#elif defined(BSD)
-    pthread_set_name_np(m_thread.native_handle(), os.str().c_str());
-#endif // __APPLE__
+    SET_THREAD_NAME(m_handle.native_handle(), os.str().c_str());
 
     for (auto it_tcp = appif.m_ifrule_tcp.begin();
          it_tcp != appif.m_ifrule_tcp.end(); ++it_tcp) {
