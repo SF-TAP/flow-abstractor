@@ -3,6 +3,14 @@
 #include "fabs_callback.hpp"
 #include "fabs_ether.hpp"
 
+#ifndef __linux__
+#include <sys/param.h>
+#endif // __linux__
+
+#if !defined(__APPLE__) and defined(BSD)
+#include <pthread_np.h>
+#endif // !defined(__APPLE__) and defined(BSD)
+
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>

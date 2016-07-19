@@ -59,7 +59,7 @@ private:
 
     bool *m_is_consuming;
     bool  m_is_consuming_frag;
-    
+
     uint64_t m_num_pcap;
 
     std::mutex *m_mutex;
