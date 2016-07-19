@@ -101,10 +101,10 @@ void
 ux_accept(int fd, short events, void *arg)
 {
     int sock = accept(fd, NULL, NULL);
-    
+
     int sendbuff = 1024 * 1024;
     setsockopt(sock, SOL_SOCKET, SO_SNDBUF, &sendbuff, sizeof(sendbuff));
-    
+
     fabs_appif *appif = static_cast<fabs_appif*>(arg);
 
     spin_lock_write lock(appif->m_rw_mutex);
@@ -220,9 +220,9 @@ ux_read_pcap(int fd, short events, void *arg)
     ioctl(fd, FIONREAD, &count);
 
     ptr_fabs_bytes bytes = std::unique_ptr<fabs_bytes>(new fabs_bytes);
-    
+
     bytes->alloc(count);
-    
+
     int recv_size = read(fd, bytes->get_head(), count);
 
     if (recv_size <= 0) {
@@ -232,20 +232,20 @@ ux_read_pcap(int fd, short events, void *arg)
         ux_close(fd, appif);
         return;
     }
-    
+
     auto it = appif->m_ifpcap_info.find(fd);
-    
+
     it->second->m_bytes.push_back(std::move(bytes));
-    
+
     for (;;) {
         if (it->second->m_state == fabs_appif::IFPCAP_GLOBAL) {
             pcap_hdr_t ghdr;
             int len = read_bytes(it->second->m_bytes, (char*)&ghdr, sizeof(ghdr));
-            if (len != sizeof(ghdr)) 
+            if (len != sizeof(ghdr))
                 break;
-            
+
             skip_bytes(it->second->m_bytes, sizeof(ghdr));
-            
+
             if (ghdr.magic_number == 0xa1b2c3d4) {
                 it->second->m_is_native = true;
             } else if (ghdr.magic_number == 0xd4c3b2a1) {
@@ -255,7 +255,7 @@ ux_read_pcap(int fd, short events, void *arg)
                 it->second->m_bytes.clear();
                 break;
             }
-            
+
             if (it->second->m_is_native) {
                 if (ghdr.network != DLT_EN10MB) {
                     it->second->m_is_fail = true;
@@ -280,17 +280,17 @@ ux_read_pcap(int fd, short events, void *arg)
                 it->second->m_bytes.clear();
                 break;
             }
-            
+
             pcaprec_hdr_t hdr;
             int len = read_bytes(it->second->m_bytes, (char*)&hdr, sizeof(hdr));
-            if (len != sizeof(hdr)) 
+            if (len != sizeof(hdr))
                 break;
 
             if (memcmp(it->second->m_global_header, &hdr, sizeof(it->second->m_global_header)) == 0) {
                 it->second->m_state = fabs_appif::IFPCAP_GLOBAL;
                 continue;
             }
-            
+
             skip_bytes(it->second->m_bytes, sizeof(hdr));
 
             if (it->second->m_is_native) {
@@ -302,7 +302,7 @@ ux_read_pcap(int fd, short events, void *arg)
                 it->second->m_tm.tv_sec  = SWAP_ENDIAN4(hdr.ts_sec);
                 it->second->m_tm.tv_usec = SWAP_ENDIAN4(hdr.ts_usec);
             }
-            
+
             it->second->m_state = fabs_appif::IFPCAP_DATA;
         } else if (it->second->m_state == fabs_appif::IFPCAP_DATA) {
             if (it->second->m_is_fail) {
@@ -312,13 +312,13 @@ ux_read_pcap(int fd, short events, void *arg)
 
             std::vector<char> buf;
             buf.resize(it->second->m_dlen);
-            
+
             auto len = read_bytes(it->second->m_bytes, &buf[0], it->second->m_dlen);
             if ((uint32_t)len != it->second->m_dlen)
                 break;
-            
+
             skip_bytes(it->second->m_bytes, it->second->m_dlen);
-            
+
             appif->m_ether.ether_input((uint8_t*)&buf[0], it->second->m_dlen, it->second->m_tm, true);
 
             it->second->m_state = fabs_appif::IFPCAP_HEADER;
@@ -567,7 +567,7 @@ read_loopback7(int fd, fabs_appif *appif)
         bytes->alloc(header->len);
         if (bytes->get_len() == 0)
             return false;
-        
+
         bytes->m_tm = header->tm;
 
         ssize_t len = read(fd, bytes->get_head(), header->len);
@@ -1339,20 +1339,20 @@ fabs_appif::appif_consumer::send_tcp_data(stream_info *p_info, fabs_id_dir id_di
 
     // invoke DATA event and send data to I/F
     std::deque<ptr_fabs_bytes> *buf1, *buf2;
-    
+
     buf1 = &p_info->m_buf1;
     buf2 = &p_info->m_buf2;
-    
+
     match_dir mdir1, mdir2;
-    
+
     mdir1 = p_info->m_match_dir[FROM_ADDR1];
     mdir2 = p_info->m_match_dir[FROM_ADDR2];
-    
+
     fabs_id_dir id_dir1, id_dir2;
-    
+
     id_dir1.m_id = id_dir.m_id;
     id_dir2.m_id = id_dir.m_id;
-    
+
     id_dir1.m_dir = FROM_ADDR1;
     id_dir2.m_dir = FROM_ADDR2;
 
@@ -1384,7 +1384,7 @@ fabs_appif::appif_consumer::send_tcp_data(stream_info *p_info, fabs_id_dir id_di
 
         auto pkt1 = buf1->front().get();
         auto pkt2 = buf2->front().get();
-        
+
         double t1 = pkt1->m_tm.tv_sec + pkt1->m_tm.tv_usec * 0.000001;
         double t2 = pkt2->m_tm.tv_sec + pkt2->m_tm.tv_usec * 0.000001;
 
@@ -1434,7 +1434,7 @@ fabs_appif::write_event(int fd, const fabs_id_dir &id_dir, ptr_ifrule ifrule,
         if (ebuf.size() > 0) {
             while (! ebuf.empty()) {
                 auto &p = ebuf.front();
-            
+
                 if (ifrule->m_format == IF_TEXT) {
                     if (write(fd, p->m_header_str.c_str(), p->m_header_str.size()) < 0) {
                         break;
@@ -1444,7 +1444,7 @@ fabs_appif::write_event(int fd, const fabs_id_dir &id_dir, ptr_ifrule ifrule,
                         break;
                     }
                 }
-                
+
                 ebuf.pop_front();
             }
         }
@@ -1539,16 +1539,16 @@ fabs_appif::write_event(int fd, const fabs_id_dir &id_dir, ptr_ifrule ifrule,
         } else {
             if (write(fd, s.c_str(), s.size()) < 0) {
                 print_write_err(fd, peer->m_path);
-                
+
                 if (event == STREAM_CREATED || event == STREAM_DESTROYED) {
                     std::unique_ptr<event_buf> evbuf(new event_buf);
 
                     evbuf->m_header_str = s;
-                    
+
                     fabs_spin_lock_ac lock(peer->m_lock);
                     ebuf.push_back(std::move(evbuf));
                 }
-                
+
                 return false;
             }
         }
@@ -1579,12 +1579,12 @@ fabs_appif::write_event(int fd, const fabs_id_dir &id_dir, ptr_ifrule ifrule,
         } else {
             if (write(fd, header, sizeof(*header)) < 0) {
                 print_write_err(fd, peer->m_path);
-                
+
                 if (event == STREAM_CREATED || event == STREAM_DESTROYED) {
                     std::unique_ptr<event_buf> evbuf(new event_buf);
 
                     evbuf->m_header = *header;
-                    
+
                     fabs_spin_lock_ac lock(peer->m_lock);
                     ebuf.push_back(std::move(evbuf));
                 }
@@ -1822,6 +1822,16 @@ fabs_appif::appif_consumer::appif_consumer(int id, fabs_appif &appif) :
     m_appif(appif),
     m_thread(std::bind(&fabs_appif::appif_consumer::consume, this))
 {
+    std::ostringstream os;
+    os << "regex[" << id << "]";
+#ifdef __APPLE__
+    pthread_setname_np(os.str().c_str());
+#elif defined(__linux__)
+    pthread_setname_np(m_thread.native_handle(), os.str().c_str());
+#elif defined(BSD)
+    pthread_setname_np(m_thread.native_handle(), os.str().c_str(), "");
+#endif // __APPLE__
+
     for (auto it_tcp = appif.m_ifrule_tcp.begin();
          it_tcp != appif.m_ifrule_tcp.end(); ++it_tcp) {
         ptr_ifrule_storage2 p = ptr_ifrule_storage2(new ifrule_storage2);

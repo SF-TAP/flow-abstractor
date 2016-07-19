@@ -174,7 +174,7 @@ fabs_ether::consume(int idx)
 #elif defined(__linux__)
     pthread_setname_np(m_thread_consume[idx]->native_handle(), os.str().c_str());
 #elif defined(BSD)
-    pthread_setname_np(m_thread_consume[idx]->native_handle(), os.str().c_str());
+    pthread_setname_np(m_thread_consume[idx]->native_handle(), os.str().c_str(), "");
 #endif // __APPLE__
 
     for (;;) {
