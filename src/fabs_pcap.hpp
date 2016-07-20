@@ -21,7 +21,7 @@ public:
     void set_bufsize(int size);
 
     void callback(const struct pcap_pkthdr *h, const uint8_t *bytes);
-    
+
     void run();
     void stop() { m_is_break = true; }
 
@@ -35,6 +35,8 @@ private:
     volatile bool m_is_break;
     int     m_dl_type;
     int     m_bufsize;
+    mutable uint64_t m_recv_cnt_prev;
+    mutable timeval  m_tv;
 };
 
 extern std::shared_ptr<fabs_pcap> pcap_inst;

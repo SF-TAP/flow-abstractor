@@ -13,9 +13,10 @@ pcap_callback(uint8_t *user, const struct pcap_pkthdr *h, const uint8_t *bytes)
 
 fabs_pcap::fabs_pcap(std::string conf) : m_ether(conf, this),
                                          m_handle(NULL),
-                                         m_is_break(false)
+                                         m_is_break(false),
+                                         m_recv_cnt_prev(0)
 {
-
+    gettimeofday(&m_tv, nullptr);
 }
 
 fabs_pcap::~fabs_pcap()
@@ -61,7 +62,16 @@ fabs_pcap::print_stat() const
     pcap_stat stat;
     pcap_stats(m_handle, &stat);
 
-    std::cout << "received packets (" << m_dev << "): " << stat.ps_recv
+    timeval tv;
+    gettimeofday(&tv, nullptr);
+
+    uint64_t pktnum = stat.ps_recv - m_recv_cnt_prev;
+    double diff = (tv.tv_sec + tv.tv_usec * 1e-6) - (m_tv.tv_sec + m_tv.tv_usec * 1e-6);
+
+    m_recv_cnt_prev = stat.ps_recv;
+    m_tv = tv;
+
+    std::cout << "received packets (" << m_dev << "): " << stat.ps_recv << ", " << pktnum / diff << " [pps]"
               << "\ndropped packets by pcap (" << m_dev << "): " << stat.ps_drop
               << "\ndropped packets by IF (" << m_dev << "): " << stat.ps_ifdrop
               << std::endl;
