@@ -7,6 +7,7 @@
 fabs_netmap::fabs_netmap(std::string conf) : m_ether(conf, this),
                                              m_netmap(NULL),
                                              m_t(time(NULL)),
+                                             m_thread(NULL),
                                              m_num_thread(0),
                                              m_recv_cnt(0),
                                              m_is_break(false)
@@ -17,7 +18,6 @@ fabs_netmap::fabs_netmap(std::string conf) : m_ether(conf, this),
 fabs_netmap::~fabs_netmap()
 {
     std::cout << "cleaning up netmap... " << std::flush;
-    m_ether.stop();
 
     for (int i = 0; i < m_num_thread; i++) {
         m_thread[i]->join();
@@ -28,6 +28,8 @@ fabs_netmap::~fabs_netmap()
 
     if (m_netmap != NULL)
         delete m_netmap;
+
+    m_ether.stop();
 
     std::cout << "done" << std::endl;
 }
