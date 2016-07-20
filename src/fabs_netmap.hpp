@@ -31,11 +31,11 @@ private:
     std::thread **m_thread;
     int           m_num_thread;
 
-    std::string   m_dev;
-    uint64_t      m_recv_cnt;
-    uint64_t      m_recv_cnt_prev;
-    timeval       m_tv;
-    volatile bool m_is_break;
+    std::string      m_dev;
+    uint64_t         m_recv_cnt;
+    mutable uint64_t m_recv_cnt_prev;
+    mutable timeval  m_tv;
+    volatile bool    m_is_break;
 };
 
 inline void
