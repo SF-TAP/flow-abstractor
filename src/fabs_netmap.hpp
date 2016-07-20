@@ -33,6 +33,8 @@ private:
 
     std::string   m_dev;
     uint64_t      m_recv_cnt;
+    uint64_t      m_recv_cnt_prev;
+    timeval       m_tv;
     volatile bool m_is_break;
 };
 

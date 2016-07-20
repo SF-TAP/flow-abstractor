@@ -10,9 +10,10 @@ fabs_netmap::fabs_netmap(std::string conf) : m_ether(conf, this),
                                              m_thread(NULL),
                                              m_num_thread(0),
                                              m_recv_cnt(0),
+                                             m_recv_cnt_prev(0),
                                              m_is_break(false)
 {
-
+    gettimeofday(&m_tv, nullptr);
 }
 
 fabs_netmap::~fabs_netmap()
@@ -119,7 +120,16 @@ fabs_netmap::run_netmap(int idx, int fd)
 void
 fabs_netmap::print_stat() const
 {
-    std::cout << "received packets (" << m_dev << "): " << m_recv_cnt << std::endl;
+    timeval tv;
+    gettimeofday(&tv, nullptr);
+
+    uint64_t pktnum = m_recv_cnt - m_recv_cnt_prev;
+    double diff = (tv.tv_sec + tv.tv_usec * 1e-6) - (m_tv.tv_sec + m_tv.tv_usec * 1e-6);
+
+    m_recv_cnt_prev = m_recv_cnt;
+    m_tv = tv;
+
+    std::cout << "received packets (" << m_dev << "): " << m_recv_cnt << ", " << pktnum / diff << " [pps]" << std::endl;
 }
 
 #endif // USE_NETMAP
