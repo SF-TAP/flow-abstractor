@@ -143,7 +143,7 @@ main(int argc, char *argv[])
     }
 #endif // USE_NETMAP
 
-    SET_THREAD_NAME(pthread_self(), "capture");
+    SET_THREAD_NAME(pthread_self(), "SF-TAP main");
 
     pc = new fabs_pcap(conf);
 

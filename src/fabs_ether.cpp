@@ -168,7 +168,7 @@ void
 fabs_ether::consume(int idx)
 {
     std::ostringstream os;
-    os << "TCP[" << idx << "]";
+    os << "SF-TAP TCP[" << idx << "]";
     SET_THREAD_NAME(m_thread_consume[idx]->native_handle(), os.str().c_str());
 
     for (;;) {

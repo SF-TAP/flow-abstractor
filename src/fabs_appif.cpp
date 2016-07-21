@@ -1823,7 +1823,7 @@ fabs_appif::appif_consumer::appif_consumer(int id, fabs_appif &appif) :
     m_thread(std::bind(&fabs_appif::appif_consumer::consume, this))
 {
     std::ostringstream os;
-    os << "regex[" << id << "]";
+    os << "SF-TAP regex[" << id << "]";
     SET_THREAD_NAME(m_thread.native_handle(), os.str().c_str());
 
     for (auto it_tcp = appif.m_ifrule_tcp.begin();

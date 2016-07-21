@@ -61,13 +61,13 @@ fabs_netmap::run()
             m_thread[i] = new std::thread(std::bind(&fabs_netmap::run_netmap, this, i + 1, fd));
 
             std::ostringstream os;
-            os << "netmap[" << i << "]";
+            os << "SF-TAP netmap[" << i << "]";
             SET_THREAD_NAME(m_thread[i]->native_handle(), os.str().c_str());
         }
     }
 
     std::ostringstream os;
-    os << "netmap[0]";
+    os << "SF-TAP netmap[0]";
     SET_THREAD_NAME(pthread_self(), os.str().c_str());
     run_netmap(0, m_netmap->get_fd(0));
 }
