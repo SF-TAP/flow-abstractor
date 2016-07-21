@@ -74,7 +74,7 @@ fabs_netmap::run_netmap(int idx, int fd)
     struct netmap_ring* rx = NULL;
 
     std::ostringstream os;
-    os << "SF-TAP netmap[" << idx << "]";
+    os << "SF-TAP nm[" << idx << "]";
     SET_THREAD_NAME(pthread_self(), os.str().c_str());
 
     memset(&pfd, 0, sizeof(pfd));
