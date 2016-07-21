@@ -61,6 +61,8 @@ fabs_netmap::run()
             m_thread[i] = new std::thread(std::bind(&fabs_netmap::run_netmap, this, i + 1, fd));
         }
     }
+
+    run_netmap(0, m_netmap->get_fd(0));
 }
 
 void
