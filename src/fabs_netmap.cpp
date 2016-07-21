@@ -59,17 +59,8 @@ fabs_netmap::run()
             int fd = m_netmap->get_fd(i + 1);
             m_netmap->set_timestamp(m_netmap->get_rx_ring(i + 1));
             m_thread[i] = new std::thread(std::bind(&fabs_netmap::run_netmap, this, i + 1, fd));
-
-            std::ostringstream os;
-            os << "SF-TAP netmap[" << i << "]";
-            SET_THREAD_NAME(m_thread[i]->native_handle(), os.str().c_str());
         }
     }
-
-    std::ostringstream os;
-    os << "SF-TAP netmap[0]";
-    SET_THREAD_NAME(pthread_self(), os.str().c_str());
-    run_netmap(0, m_netmap->get_fd(0));
 }
 
 void
@@ -79,6 +70,10 @@ fabs_netmap::run_netmap(int idx, int fd)
     int retval;
     int rx_avail = 0;
     struct netmap_ring* rx = NULL;
+
+    std::ostringstream os;
+    os << "SF-TAP netmap[" << idx << "]";
+    SET_THREAD_NAME(pthread_self(), os.str().c_str());
 
     memset(&pfd, 0, sizeof(pfd));
 
