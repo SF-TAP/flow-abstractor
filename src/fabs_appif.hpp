@@ -3,7 +3,7 @@
 
 #include "fabs_common.hpp"
 #include "fabs_id.hpp"
-#include "fabs_spin_rwlock.hpp"
+#include "fabs_rwlock.hpp"
 #include "fabs_cb.hpp"
 
 #include <event.h>
@@ -271,8 +271,7 @@ private:
     std::map<int, ptr_uxpeer> m_fd2uxpeer; // accepted socket
     std::map<std::string, std::set<int> > m_name2uxpeer;
 
-    // spin_rwlock m_rw_mutex;
-    std::mutex  m_rw_mutex;
+    fabs_rwlock m_rw_mutex;
 
     int m_num_tcp_threads;
     int m_num_consumer;

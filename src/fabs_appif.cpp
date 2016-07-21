@@ -63,8 +63,7 @@ fabs_appif::~fabs_appif()
     std::cout << "removing flow abstraction interfaces... " << std::flush;
 
     {
-        //spin_lock_write lock(m_rw_mutex);
-        std::lock_guard<std::mutex> lock(m_rw_mutex);
+        fabs_rwlock_write lock(m_rw_mutex);
 
         for (auto p0: m_fd2ifrule) {
             close(p0.first);
@@ -83,8 +82,7 @@ fabs_appif::run()
     std::unique_lock<std::mutex> lock_init(m_mutex_init);
 
     {
-        //spin_lock_write lock(m_rw_mutex);
-        std::lock_guard<std::mutex> lock(m_rw_mutex);
+        fabs_rwlock_write lock(m_rw_mutex);
 
         assert(! m_thread_listen);
 
@@ -109,8 +107,7 @@ ux_accept(int fd, short events, void *arg)
 
     fabs_appif *appif = static_cast<fabs_appif*>(arg);
 
-    //spin_lock_write lock(appif->m_rw_mutex);
-    std::lock_guard<std::mutex> lock(appif->m_rw_mutex);
+    fabs_rwlock_write lock(appif->m_rw_mutex);
 
     auto it = appif->m_fd2ifrule.find(fd);
     if (it == appif->m_fd2ifrule.end()) {
@@ -208,8 +205,7 @@ ux_read_loopback7(int fd, short events, void *arg)
     fabs_appif *appif = static_cast<fabs_appif*>(arg);
 
     if (read_loopback7(fd, appif)) {
-        //spin_lock_write lock(appif->m_rw_mutex);
-        std::lock_guard<std::mutex> lock(appif->m_rw_mutex);
+        fabs_rwlock_write lock(appif->m_rw_mutex);
 
         ux_close(fd, appif);
     }
@@ -231,8 +227,7 @@ ux_read_pcap(int fd, short events, void *arg)
 
     if (recv_size <= 0) {
         appif->m_ifpcap_info.erase(fd);
-        //spin_lock_write lock(appif->m_rw_mutex);
-        std::lock_guard<std::mutex> lock(appif->m_rw_mutex);
+        fabs_rwlock_write lock(appif->m_rw_mutex);
 
         ux_close(fd, appif);
         return;
@@ -347,8 +342,7 @@ ux_read(int fd, short events, void *arg)
         int  recv_size = read(fd, buf, sizeof(buf) - 1);
 
         if (recv_size <= 0) {
-            //spin_lock_write lock(appif->m_rw_mutex);
-            std::lock_guard<std::mutex> lock(appif->m_rw_mutex);
+            fabs_rwlock_write lock(appif->m_rw_mutex);
 
             ux_close(fd, appif);
             return;
@@ -701,8 +695,7 @@ fabs_appif::ux_listen()
     umask(0007);
 
     {
-        //spin_lock_write lock(m_rw_mutex);
-        std::lock_guard<std::mutex> lock(m_rw_mutex);
+        fabs_rwlock_write lock(m_rw_mutex);
 
         makedir(*m_home);
         makedir(*m_home / fs::path("tcp"));
@@ -1109,8 +1102,7 @@ fabs_appif::appif_consumer::in_stream_event(fabs_stream_event st_event,
             int idx = it->second->m_hash % it->second->m_ifrule->m_balance;
             std::string &name = it->second->m_ifrule->m_balance_name[idx];
 
-            //spin_lock_read lock(m_appif.m_rw_mutex);
-            std::lock_guard<std::mutex> lock(m_appif.m_rw_mutex);
+            fabs_rwlock_read lock(m_appif.m_rw_mutex);
 
             auto it2 = m_appif.m_name2uxpeer.find(name);
             if (it2 != m_appif.m_name2uxpeer.end()) {
@@ -1325,8 +1317,7 @@ fabs_appif::appif_consumer::send_tcp_data(stream_info *p_info, fabs_id_dir id_di
 
     std::vector<int> fdvec;
 
-    //spin_lock_read(m_appif.m_rw_mutex);
-    std::lock_guard<std::mutex> lock(m_appif.m_rw_mutex);
+    fabs_rwlock_read(m_appif.m_rw_mutex);
 
     auto it = m_appif.m_name2uxpeer.find(name);
 
@@ -1761,8 +1752,7 @@ brk:
     int idx2 = id_dir.m_id.get_hash() % ifrule->m_balance;
     std::string &name = ifrule->m_balance_name[idx2];
 
-    //spin_lock_read lock(m_appif.m_rw_mutex);
-    std::lock_guard<std::mutex> lock(m_appif.m_rw_mutex);
+    fabs_rwlock_read lock(m_appif.m_rw_mutex);
 
     auto it3 = m_appif.m_name2uxpeer.find(name);
 
@@ -1872,8 +1862,7 @@ fabs_appif::appif_consumer::~appif_consumer()
 void
 fabs_appif::print_info()
 {
-    //spin_lock_read lock(m_rw_mutex);
-    std::lock_guard<std::mutex> lock(m_rw_mutex);
+    fabs_rwlock_read lock(m_rw_mutex);
 
     for (int i = 0; i < m_num_consumer; i++) {
         std::cout << "thread = " << m_consumer[i]->m_id << std::endl;
