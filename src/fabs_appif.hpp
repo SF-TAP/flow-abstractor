@@ -169,13 +169,13 @@ private:
         stream_info(const fabs_id &id, const timeval &tm);
         virtual ~stream_info();
     };
-    
+
     enum ifpcap_state {
         IFPCAP_GLOBAL,
         IFPCAP_HEADER,
         IFPCAP_DATA,
     };
-    
+
     struct ifpcap_info {
         ifpcap_state               m_state;
         std::deque<ptr_fabs_bytes> m_bytes;
@@ -184,7 +184,7 @@ private:
         bool                       m_is_native;
         bool                       m_is_fail;
         char                       m_global_header[12];
-        
+
         ifpcap_info() : m_state(IFPCAP_GLOBAL), m_is_fail(false) { }
     };
 
@@ -271,7 +271,8 @@ private:
     std::map<int, ptr_uxpeer> m_fd2uxpeer; // accepted socket
     std::map<std::string, std::set<int> > m_name2uxpeer;
 
-    spin_rwlock m_rw_mutex;
+    // spin_rwlock m_rw_mutex;
+    std::mutex  m_rw_mutex;
 
     int m_num_tcp_threads;
     int m_num_consumer;
@@ -286,7 +287,7 @@ private:
     bool        m_is_cache;
 
     int         m_tcp_timeout;
-    
+
     fabs_ether &m_ether;
 
     void makedir(boost::filesystem::path path);
