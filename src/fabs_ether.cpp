@@ -174,6 +174,9 @@ fabs_ether::consume(int idx)
     for (;;) {
         {
             std::unique_lock<std::mutex> lock(m_mutex[idx]);
+            if (m_is_break)
+                return;
+
             while (m_queue[idx].get_len() == 0) {
                 m_is_consuming[idx] = false;
 
