@@ -120,7 +120,7 @@ fabs_ether::timer()
             std::cout << "dropped packets internally: " << m_num_dropped << std::endl;
 
             if (m_num_dropped > 0) {
-                std::cout << "    (Warning. increase the number of threads of TCP or regex,\n"
+                std::cout << "    (warning: increase the number of threads of TCP or regex,\n"
                           << "     or use the SF-TAP cell incubator)"
                           << std::endl;
             }
