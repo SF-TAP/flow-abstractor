@@ -5,7 +5,7 @@
 
 #include <iostream>
 
-#define QNUM (1024 * 1024 * 10)
+#define QNUM (1024 * 10)
 
 // multiple writers and single reader
 template <typename T>
