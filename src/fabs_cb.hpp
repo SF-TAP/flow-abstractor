@@ -42,13 +42,11 @@ inline bool fabs_cb<T>::pop(T *p)
         return false;
     }
 
+    fabs_spin_lock_ac lock(m_lock);
+
     *p = *m_head;
 
-    {
-        fabs_spin_lock_ac lock(m_lock);
-        m_len--;
-    }
-
+    m_len--;
     m_head++;
 
     if (m_head == m_buf_end) {
@@ -86,12 +84,10 @@ inline bool fabs_cb<ptr_fabs_bytes>::pop(ptr_fabs_bytes *p)
         return false;
     }
 
+    fabs_spin_lock_ac lock(m_lock);
     *p = std::move(*m_head);
 
-    {
-        fabs_spin_lock_ac lock(m_lock);
-        m_len--;
-    }
+    m_len--;
 
     m_head++;
 
