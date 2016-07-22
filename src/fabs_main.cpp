@@ -12,6 +12,8 @@
 #include <signal.h>
 
 #include <arpa/inet.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 
 #include <netinet/in.h>
 
@@ -171,7 +173,7 @@ main(int argc, char *argv[])
 
         int status;
         waitpid(result_pid, &status, 0);
-        std::cout << "wait!" << std::endl;
+        std::cout << std::endl;
 
         remove_uxfile(conf);
         return 0;
@@ -188,8 +190,6 @@ main(int argc, char *argv[])
 #ifdef USE_NETMAP
     if (is_netmap) {
         nm = new fabs_netmap(conf);
-
-        set_sig_handler();
 
         nm->set_dev(dev);
         nm->run();
