@@ -7,11 +7,12 @@
 
 #include "fabs_dlcap.hpp"
 #include "fabs_ether.hpp"
+#include "fabs_conf.hpp"
 #include "netmap/netmap.hpp"
 
 class fabs_netmap : public fabs_dlcap {
 public:
-    fabs_netmap(std::string conf);
+    fabs_netmap(fabs_conf &conf);
     virtual ~fabs_netmap();
 
     void set_dev(std::string dev) { m_dev = dev; }

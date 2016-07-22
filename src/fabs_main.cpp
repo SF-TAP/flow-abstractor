@@ -2,6 +2,7 @@
 #include "fabs.hpp"
 #include "fabs_appif.hpp"
 #include "fabs_pcap.hpp"
+#include "fabs_conf.hpp"
 
 #ifdef USE_NETMAP
     #include "fabs_netmap.hpp"
@@ -16,6 +17,8 @@
 
 #include <iostream>
 #include <string>
+
+#include <boost/lexical_cast.hpp>
 
 using namespace std;
 
@@ -32,38 +35,6 @@ fabs_netmap *nm;
 volatile bool is_break = false;
 
 void
-sig_handler(int s)
-{
-    if (is_break) return;
-
-    std::cout << "\nshutting down..." << std::endl;
-#ifdef USE_NETMAP
-    if (is_netmap) {
-        nm->stop();
-        is_break = true;
-        return;
-    }
-#endif // USE_NETMAP
-
-    pc->stop();
-
-    is_break = true;
-}
-
-void
-set_sig_handler()
-{
-    struct sigaction sigact;
-
-    sigact.sa_handler = sig_handler;
-    sigemptyset(&sigact.sa_mask);
-    sigact.sa_flags = 0;
-
-    sigaction(SIGINT, &sigact, NULL);
-    sigaction(SIGTERM, &sigact, NULL);
-}
-
-void
 print_usage(char *cmd)
 {
 #ifdef USE_NETMAP
@@ -74,13 +45,69 @@ print_usage(char *cmd)
 #endif // USE_NETMAP
 }
 
+namespace fs = boost::filesystem;
+
+void
+remove_uxfile(fabs_conf &conf)
+{
+    fs::path home;
+    {
+        auto it = conf.m_conf.find("global");
+        if (it != conf.m_conf.end()) {
+            auto it2 = it->second.find("home");
+            home = it2->second;
+        }
+    }
+
+    for (auto &pair: conf.m_conf) {
+        if (pair.first == "global")
+            continue;
+
+        auto interface = pair.second.find("if");
+        if (interface == pair.second.end())
+            continue;
+
+        if (pair.first == "loopback7" || pair.first == "pcap") {
+            fs::path uxfile = home / interface->second;
+            std::cout << "unlink " << uxfile.string() << std::endl;
+            remove(uxfile.string().c_str());
+        } else {
+            auto proto = pair.second.find("proto");
+            if (proto == pair.second.end())
+                continue;
+
+            std::string protostr;
+            if (proto->second == "TCP")
+                protostr = "tcp";
+            else if (proto->second == "UDP")
+                protostr = "udp";
+            else
+                continue;
+
+            auto balance = pair.second.find("balance");
+            if (balance == pair.second.end()) {
+                fs::path uxfile = home / protostr / interface->second;
+                std::cout << "unlink " << uxfile.string() << std::endl;
+                remove(uxfile.string().c_str());
+            } else {
+                int num = atoi(balance->second.c_str());
+                for (int i = 0; i < num; i++) {
+                    fs::path uxfile = home / protostr / (interface->second + boost::lexical_cast<std::string>(i));
+                    std::cout << "unlink " << uxfile.string() << std::endl;
+                    remove(uxfile.string().c_str());
+                }
+            }
+        }
+    }
+}
+
 int
 main(int argc, char *argv[])
 {
     int opt;
     int bufsize = 10000;
     string dev;
-    string conf;
+    string confpath;
 
 #ifdef USE_NETMAP
     const char *optstr = "i:hc:sb:n";
@@ -94,7 +121,7 @@ main(int argc, char *argv[])
             dev = optarg;
             break;
         case 'c':
-            conf = optarg;
+            confpath = optarg;
             break;
         case 's':
             is_stats = true;
@@ -114,6 +141,12 @@ main(int argc, char *argv[])
         }
     }
 
+    fabs_conf conf;
+    if (! conf.read_conf(confpath)) {
+        std::cerr << "error: could not read config file" << std::endl;
+        exit(1);
+    }
+
     sigset_t sigpipe_mask;
     sigemptyset(&sigpipe_mask);
     sigaddset(&sigpipe_mask, SIGPIPE);
@@ -121,6 +154,29 @@ main(int argc, char *argv[])
         perror("pthread_sigmask");
         exit(1);
     }
+
+    pid_t result_pid;
+
+    result_pid = fork();
+    if (result_pid < 0) {
+        perror("fork");
+        exit(1);
+    } else if (result_pid > 0) {
+        sigemptyset(&sigpipe_mask);
+        sigaddset(&sigpipe_mask, SIGINT);
+        if (pthread_sigmask(SIG_BLOCK, &sigpipe_mask, NULL) == -1) {
+            perror("pthread_sigmask");
+            exit(1);
+        }
+
+        int status;
+        waitpid(result_pid, &status, 0);
+        std::cout << "wait!" << std::endl;
+
+        remove_uxfile(conf);
+        return 0;
+    }
+
 
     if (dev.empty()) {
         fabs_ether ether(conf, nullptr);
@@ -146,8 +202,6 @@ main(int argc, char *argv[])
     SET_THREAD_NAME(pthread_self(), "SF-TAP main");
 
     pc = new fabs_pcap(conf);
-
-    set_sig_handler();
 
     pc->set_dev(dev);
     pc->set_bufsize(bufsize);

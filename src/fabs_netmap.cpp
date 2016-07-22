@@ -4,35 +4,21 @@
 
 #include <iostream>
 
-fabs_netmap::fabs_netmap(std::string conf) : m_ether(conf, this),
-                                             m_netmap(NULL),
-                                             m_t(time(NULL)),
-                                             m_thread(NULL),
-                                             m_num_thread(0),
-                                             m_recv_cnt(0),
-                                             m_recv_cnt_prev(0),
-                                             m_is_break(false)
+fabs_netmap::fabs_netmap(fabs_conf &conf) : m_ether(conf, this),
+                                            m_netmap(NULL),
+                                            m_t(time(NULL)),
+                                            m_thread(NULL),
+                                            m_num_thread(0),
+                                            m_recv_cnt(0),
+                                            m_recv_cnt_prev(0),
+                                            m_is_break(false)
 {
     gettimeofday(&m_tv, nullptr);
 }
 
 fabs_netmap::~fabs_netmap()
 {
-    std::cout << "cleaning up netmap... " << std::flush;
 
-    for (int i = 0; i < m_num_thread; i++) {
-        m_thread[i]->join();
-        delete m_thread[i];
-    }
-
-    delete m_thread;
-
-    if (m_netmap != NULL)
-        delete m_netmap;
-
-    m_ether.stop();
-
-    std::cout << "done" << std::endl;
 }
 
 void

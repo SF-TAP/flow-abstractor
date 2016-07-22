@@ -5,6 +5,7 @@
 #include "fabs_id.hpp"
 #include "fabs_rwlock.hpp"
 #include "fabs_cb.hpp"
+#include "fabs_conf.hpp"
 
 #include <event.h>
 #include <re2/re2.h>
@@ -65,7 +66,7 @@ public:
     fabs_appif(fabs_ether &ether);
     virtual ~fabs_appif();
 
-    void read_conf(std::string conf);
+    void read_conf(fabs_conf &conf);
     void run();
 
     void in_event(fabs_stream_event st_event,

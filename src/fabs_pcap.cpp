@@ -11,23 +11,17 @@ pcap_callback(uint8_t *user, const struct pcap_pkthdr *h, const uint8_t *bytes)
     pcap->callback(h, bytes);
 }
 
-fabs_pcap::fabs_pcap(std::string conf) : m_ether(conf, this),
-                                         m_handle(NULL),
-                                         m_is_break(false),
-                                         m_recv_cnt_prev(0)
+fabs_pcap::fabs_pcap(fabs_conf &conf) : m_ether(conf, this),
+                                        m_handle(NULL),
+                                        m_is_break(false),
+                                        m_recv_cnt_prev(0)
 {
     gettimeofday(&m_tv, nullptr);
 }
 
 fabs_pcap::~fabs_pcap()
 {
-    std::cout << "cleaning up pcap... " << std::flush;
-    m_ether.stop();
 
-    if (m_handle != NULL)
-        pcap_close(m_handle);
-
-    std::cout << "done" << std::endl;
 }
 
 void

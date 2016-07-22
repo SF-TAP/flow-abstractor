@@ -27,7 +27,7 @@ struct vlanhdr {
     uint16_t m_type;
 };
 
-fabs_ether::fabs_ether(std::string conf, const fabs_dlcap *dlcap)
+fabs_ether::fabs_ether(fabs_conf &conf, const fabs_dlcap *dlcap)
     : m_is_break(false),
       m_num_dropped(0),
       m_dlcap(dlcap),
@@ -66,35 +66,7 @@ fabs_ether::fabs_ether(std::string conf, const fabs_dlcap *dlcap)
 
 fabs_ether::~fabs_ether()
 {
-    std::cout << "deleting Ethernet threads... " << std::flush;
 
-    m_is_break = true;
-
-    {
-        std::unique_lock<std::mutex> lock(m_mutex_frag);
-        m_condition_frag.notify_one();
-    }
-
-    m_thread_consume_frag.join();
-
-    for (int i = 0; i < m_appif->get_num_tcp_threads(); i++) {
-        {
-            std::unique_lock<std::mutex> lock(m_mutex[i]);
-            m_condition[i].notify_one();
-        }
-
-        m_thread_consume[i]->join();
-        delete m_thread_consume[i];
-    }
-
-    m_thread_timer.join();
-
-    delete[] m_thread_consume;
-    delete[] m_condition;
-    delete[] m_mutex;
-    delete[] m_queue;
-
-    std::cout << "done" << std::endl;
 }
 
 void

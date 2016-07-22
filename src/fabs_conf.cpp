@@ -36,7 +36,7 @@ fabs_conf::read_conf(string conf)
             }
         }
     } catch (YAML::BadFile e) {
-        std::cerr << "warning: could not read config file" << std::endl;
+        return false;
     }
 
     return true;

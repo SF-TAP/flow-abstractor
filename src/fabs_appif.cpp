@@ -60,20 +60,7 @@ fabs_appif::fabs_appif(fabs_ether &ether) :
 
 fabs_appif::~fabs_appif()
 {
-    std::cout << "removing flow abstraction interfaces... " << std::flush;
 
-    {
-        fabs_rwlock_write lock(m_rw_mutex);
-
-        for (auto p0: m_fd2ifrule) {
-            close(p0.first);
-            remove(fs::path(p0.second->m_fd2path[p0.first]));
-        }
-    }
-
-    m_consumer.clear();
-
-    std::cout << "done" << std::endl;
 }
 
 void
@@ -749,14 +736,9 @@ fabs_appif::ux_listen()
 }
 
 void
-fabs_appif::read_conf(std::string conf)
+fabs_appif::read_conf(fabs_conf &conf)
 {
-    fabs_conf c;
-
-    if (! c.read_conf(conf))
-        exit(-1);
-
-    for (auto it1 = c.m_conf.begin(); it1 != c.m_conf.end(); ++it1) {
+    for (auto it1 = conf.m_conf.begin(); it1 != conf.m_conf.end(); ++it1) {
         if (it1->first == "global") {
             auto it2 = it1->second.find("home");
             if (it2 != it1->second.end()) {

@@ -4,6 +4,7 @@
 #include "fabs_common.hpp"
 #include "fabs_ether.hpp"
 #include "fabs_dlcap.hpp"
+#include "fabs_conf.hpp"
 
 #include <pcap/pcap.h>
 
@@ -14,7 +15,7 @@
 
 class fabs_pcap : public fabs_dlcap {
 public:
-    fabs_pcap(std::string conf);
+    fabs_pcap(fabs_conf &conf);
     virtual ~fabs_pcap();
 
     void set_dev(std::string dev);

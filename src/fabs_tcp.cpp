@@ -36,13 +36,7 @@ fabs_tcp::fabs_tcp() :
 
 fabs_tcp::~fabs_tcp()
 {
-    m_is_del = true;
 
-    {
-        std::unique_lock<std::mutex> lock(m_mutex_gc);
-        m_condition_gc.notify_one();
-    }
-    m_thread_gc.join();
 }
 
 int
@@ -397,7 +391,7 @@ fabs_tcp::get_packet(int idx, const fabs_id &id, fabs_direction dir,
     if (it_pkt == p_uniflow->m_packets.end()) {
         return false;
     }
-    
+
     packet.m_bytes    = std::move(it_pkt->second.m_bytes);
     packet.m_seq      = it_pkt->second.m_seq;
     packet.m_nxt_seq  = it_pkt->second.m_nxt_seq;
@@ -467,7 +461,7 @@ fabs_tcp::input_tcp(fabs_id &id, fabs_direction dir, ptr_fabs_bytes buf)
         packet.m_bytes    = std::move(buf);
 
         fabs_tcp_uniflow *p_uniflow;
-        
+
         if (dir == FROM_ADDR1) {
             p_uniflow = &p_tcp_flow->m_flow1;
         } else if (dir == FROM_ADDR2) {

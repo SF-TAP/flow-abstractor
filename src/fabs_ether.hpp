@@ -25,7 +25,7 @@ class fabs_fragment;
 
 class fabs_ether {
 public:
-    fabs_ether(std::string conf, const fabs_dlcap *dlcap);
+    fabs_ether(fabs_conf &conf, const fabs_dlcap *dlcap);
     virtual ~fabs_ether();
 
     void ether_input(const uint8_t *bytes, int len, const timeval &tm, bool is_pcap);
