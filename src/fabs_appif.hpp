@@ -227,17 +227,19 @@ public:
         void stop() { m_is_break = true; }
 
     private:
-        int         m_id;
-        bool        m_is_break;
-        bool        m_is_consuming;
+        int  m_id;
+        bool m_is_break;
+        bool m_is_consuming;
         fabs_appif &m_appif;
-        std::mutex  m_mutex;
-        std::condition_variable m_condition;
-        std::thread  m_thread;
-        fabs_cb<appif_event*> m_ev_queue;
         std::map<fabs_id, ptr_info> m_info;
         std::map<int, ptr_ifrule_storage2> m_ifrule_tcp;
         std::map<int, ptr_ifrule_storage2> m_ifrule_udp;
+        fabs_cb<appif_event*> m_ev_queue;
+
+        // for threads
+        std::mutex              m_mutex;
+        std::condition_variable m_condition;
+        std::thread             m_thread;
 
         void in_stream_event(fabs_stream_event st_event,
                              const fabs_id_dir &id_dir, ptr_fabs_bytes bytes);
