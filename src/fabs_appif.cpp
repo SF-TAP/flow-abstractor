@@ -1043,7 +1043,7 @@ fabs_appif::appif_consumer::in_stream_event(fabs_stream_event st_event,
     }
     case STREAM_DATA:
     {
-        if (bytes->get_len() <= 0) {
+        if (! bytes || bytes->get_len() <= 0) {
             return;
         }
 
