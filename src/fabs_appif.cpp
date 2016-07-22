@@ -1775,6 +1775,10 @@ fabs_appif::appif_consumer::consume()
         {
             // consume event
             std::unique_lock<std::mutex> lock(m_mutex);
+
+            if (m_is_break)
+                return;
+
             while (m_ev_queue.get_len() == 0) {
                 m_is_consuming = false;
                 m_condition.wait_for(lock, std::chrono::milliseconds(50));
