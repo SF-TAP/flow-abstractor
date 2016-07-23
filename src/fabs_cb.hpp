@@ -42,11 +42,13 @@ inline bool fabs_cb<T>::pop(T *p)
         return false;
     }
 
-    fabs_spin_lock_ac lock(m_lock);
-
     *p = *m_head;
 
-    m_len--;
+    {
+        fabs_spin_lock_ac lock(m_lock);
+        m_len--;
+    }
+
     m_head++;
 
     if (m_head == m_buf_end) {
@@ -59,6 +61,10 @@ inline bool fabs_cb<T>::pop(T *p)
 template <typename T>
 inline bool fabs_cb<T>::push(T &val)
 {
+    if (m_len == m_max_len) {
+        return false;
+    }
+
     fabs_spin_lock_ac lock(m_lock);
 
     if (m_len == m_max_len) {
@@ -76,7 +82,6 @@ inline bool fabs_cb<T>::push(T &val)
     return true;
 }
 
-
 template <>
 inline bool fabs_cb<ptr_fabs_bytes>::pop(ptr_fabs_bytes *p)
 {
@@ -84,10 +89,12 @@ inline bool fabs_cb<ptr_fabs_bytes>::pop(ptr_fabs_bytes *p)
         return false;
     }
 
-    fabs_spin_lock_ac lock(m_lock);
     *p = std::move(*m_head);
 
-    m_len--;
+    {
+        fabs_spin_lock_ac lock(m_lock);
+        m_len--;
+    }
 
     m_head++;
 
@@ -101,6 +108,10 @@ inline bool fabs_cb<ptr_fabs_bytes>::pop(ptr_fabs_bytes *p)
 template <>
 inline bool fabs_cb<ptr_fabs_bytes>::push(ptr_fabs_bytes &val)
 {
+    if (m_len == m_max_len) {
+        return false;
+    }
+
     fabs_spin_lock_ac lock(m_lock);
 
     if (m_len == m_max_len) {
