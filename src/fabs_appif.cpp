@@ -1091,7 +1091,7 @@ fabs_appif::appif_consumer::in_stream_event(fabs_stream_event st_event,
                 for (auto it3 = it2->second.begin(); it3 != it2->second.end();
                      ++it3) {
                     m_appif.write_event(*it3, id_dir, it->second->m_ifrule,
-                                        STREAM_DESTROYED, MATCH_NONE,
+                                        STREAM_DESTROYED, MATCH_NONE, it->second->m_reason,
                                         &it->second->m_header, NULL, 0,
                                         &bytes->m_tm);
                 }
@@ -1102,9 +1102,40 @@ fabs_appif::appif_consumer::in_stream_event(fabs_stream_event st_event,
 
         break;
     }
-    case STREAM_FIN:
     case STREAM_TIMEOUT:
+    {
+        auto it = m_info.find(id_dir.m_id);
+
+        if (it == m_info.end())
+            return;
+
+        it->second->m_reason = CLOSED_TIMEOUT;
+
+        break;
+    }
     case STREAM_RST:
+    {
+        auto it = m_info.find(id_dir.m_id);
+
+        if (it == m_info.end())
+            return;
+
+        it->second->m_reason = CLOSED_RST;
+
+        break;
+    }
+    case STREAM_COMPROMISED:
+    {
+        auto it = m_info.find(id_dir.m_id);
+
+        if (it == m_info.end())
+            return;
+
+        it->second->m_reason = CLOSED_COMPROMISED;
+
+        break;
+    }
+    case STREAM_FIN:
         // nothing to do
         break;
     default:
@@ -1313,7 +1344,7 @@ fabs_appif::appif_consumer::send_tcp_data(stream_info *p_info, fabs_id_dir id_di
         // invoke CREATED event
         for (auto fd: fdvec) {
             m_appif.write_event(fd, id_dir, p_info->m_ifrule,
-                                STREAM_CREATED, MATCH_NONE,
+                                STREAM_CREATED, MATCH_NONE, CLOSED_NORMAL,
                                 &p_info->m_header, NULL, 0,
                                 &p_info->m_create_time);
         }
@@ -1341,7 +1372,7 @@ fabs_appif::appif_consumer::send_tcp_data(stream_info *p_info, fabs_id_dir id_di
     auto func = [&](fabs_id_dir id_dir, match_dir mdir, fabs_bytes *pkt) {
         for (auto fd: fdvec) {
             m_appif.write_event(fd, id_dir, p_info->m_ifrule,
-                                STREAM_DATA, mdir,
+                                STREAM_DATA, mdir, CLOSED_NORMAL,
                                 &p_info->m_header,
                                 pkt->get_head(),
                                 pkt->get_len(),
@@ -1399,7 +1430,7 @@ print_write_err(int fd, std::string path)
 
 bool
 fabs_appif::write_event(int fd, const fabs_id_dir &id_dir, ptr_ifrule ifrule,
-                        fabs_stream_event event, match_dir match,
+                        fabs_stream_event event, match_dir match, CLOSED_REASON reason,
                         fabs_appif_header *header, char *body, int bodylen,
                         timeval *tm)
 {
@@ -1471,6 +1502,14 @@ fabs_appif::write_event(int fd, const fabs_id_dir &id_dir, ptr_ifrule ifrule,
             break;
         case STREAM_DESTROYED:
             s += ",event=DESTROYED";
+            if (reason == CLOSED_NORMAL)
+                s += ",reason=NORMAL";
+            else if (reason == CLOSED_RST)
+                s += ",reason=RESET";
+            else if (reason == CLOSED_TIMEOUT)
+                s += ",reason=TIMEOUT";
+            else if (reason == CLOSED_COMPROMISED)
+                s += ",reason=COMPROMISED";
             break;
         case STREAM_DATA:
             s += ",event=DATA,from=";
@@ -1542,6 +1581,7 @@ fabs_appif::write_event(int fd, const fabs_id_dir &id_dir, ptr_ifrule ifrule,
         header->l4_proto = id_dir.m_id.get_l4_proto();
         header->len      = bodylen;
         header->match    = match;
+        header->reason   = reason;
 
         memcpy(&header->tm, tm, sizeof(*tm));
 
@@ -1581,7 +1621,7 @@ fabs_appif::write_event(int fd, const fabs_id_dir &id_dir, ptr_ifrule ifrule,
 
 fabs_appif::stream_info::stream_info(const fabs_id &id, const timeval &tm) :
     m_create_time(tm), m_dsize1(0), m_dsize2(0), m_is_created(false), m_is_giveup(false),
-    m_is_buf1(false), m_is_buf2(false)
+    m_is_buf1(false), m_is_buf2(false), m_reason(CLOSED_NORMAL)
 {
     m_match_dir[0] = MATCH_NONE;
     m_match_dir[1] = MATCH_NONE;
@@ -1742,7 +1782,7 @@ brk:
         for (auto it4 = it3->second.begin();
              it4 != it3->second.end(); ++it4) {
             if (! m_appif.write_event(*it4, id_dir, ifrule, STREAM_DATA,
-                                      match, &header, bytes->get_head(),
+                                      match, CLOSED_NORMAL, &header, bytes->get_head(),
                                       bytes->get_len(), &bytes->m_tm)) {
                 continue;
             }

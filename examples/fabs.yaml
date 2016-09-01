@@ -35,7 +35,7 @@ http:
   body:   yes  # if specified 'no', only header is output
   nice:   100  # the smaller a value is, the higher a priority is
   utf8:   no   # treat data as UTF8 or latin1 (binary). used for regex
-  balance: 4   # flows are balanced by 4 interfaces
+#  balance: 4   # flows are balanced by 4 interfaces
 
 http_proxy:
   up:     '^(CONNECT|connect) .+ HTTP/1\.(0\r?\n|1\r?\n([-a-zA-Z]+: .+\r?\n)+)'

@@ -36,6 +36,7 @@ enum fabs_stream_event {
     STREAM_FIN,
     STREAM_TIMEOUT,
     STREAM_RST,
+    STREAM_COMPROMISED,
 };
 
 static const int DATAGRAM_DATA = STREAM_DATA; // SYNONYM
@@ -152,6 +153,13 @@ private:
 
     typedef std::unique_ptr<timeval> ptr_timeval;
 
+    enum CLOSED_REASON {
+        CLOSED_NORMAL      = 0,
+        CLOSED_RST         = 1,
+        CLOSED_TIMEOUT     = 2,
+        CLOSED_COMPROMISED = 3,
+    };
+
     struct stream_info {
         ptr_ifrule m_ifrule;
         timeval    m_create_time;
@@ -164,6 +172,7 @@ private:
         match_dir  m_match_dir[2];
         fabs_appif_header m_header;
         ptr_timeval m_tm;
+        CLOSED_REASON m_reason;
 
         void clear_buf();
 
@@ -294,7 +303,7 @@ private:
 
     void makedir(boost::filesystem::path path);
     bool write_event(int fd, const fabs_id_dir &id_dir, ptr_ifrule ifrule,
-                     fabs_stream_event event, match_dir match,
+                     fabs_stream_event event, match_dir match, CLOSED_REASON reason,
                      fabs_appif_header *header, char *body, int bodylen,
                      timeval *tm);
     void ux_listen();

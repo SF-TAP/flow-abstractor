@@ -43,8 +43,9 @@ struct fabs_appif_header {
     uint8_t  l3_proto; // IPPROTO_IP or IPPROTO_IPV6
     uint8_t  l4_proto; // IPPROTO_TCP or IPPROTO_UDP
     uint8_t  match; // 0: matched up's regex, 1: matched down's regex, 2: none
-    
-    uint8_t  unused[4]; // safety packing for 32 bytes boundary
+
+    uint8_t  reason; // 0: normal, 1: reset, 2: timeout, 3: compromised
+    uint8_t  unused[3]; // safety packing for 32 bytes boundary
 } __attribute__((packed, aligned(32)));
 
 typedef std::shared_ptr<fabs_appif_header> ptr_appif_header;

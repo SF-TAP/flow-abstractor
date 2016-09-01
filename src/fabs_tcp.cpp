@@ -67,7 +67,9 @@ fabs_tcp::print_stat()
 void
 fabs_tcp::garbage_collector2(int idx, time_t now)
 {
-    list<fabs_id_dir> garbages;
+    vector<fabs_id_dir> garbages_timeout;
+    vector<fabs_id_dir> garbages_compromised;
+
     {
         std::unique_lock<std::mutex> lock(m_mutex_flow[idx]);
 
@@ -88,7 +90,7 @@ fabs_tcp::garbage_collector2(int idx, time_t now)
                 id_dir.m_id  = it->first;
                 id_dir.m_dir = FROM_ADDR1;
 
-                garbages.push_back(id_dir);
+                garbages_timeout.push_back(id_dir);
                 continue;
             } if (((! it->second->m_flow1.m_is_syn &&
                          it->second->m_flow2.m_is_syn) ||
@@ -103,7 +105,7 @@ fabs_tcp::garbage_collector2(int idx, time_t now)
                 id_dir.m_id  = it->first;
                 id_dir.m_dir = FROM_ADDR2;
 
-                garbages.push_back(id_dir);
+                garbages_timeout.push_back(id_dir);
                 continue;
             }
 
@@ -118,7 +120,7 @@ fabs_tcp::garbage_collector2(int idx, time_t now)
                 id_dir.m_id  = it->first;
                 id_dir.m_dir = FROM_ADDR1;
 
-                garbages.push_back(id_dir);
+                garbages_timeout.push_back(id_dir);
                 continue;
             }
 
@@ -127,19 +129,24 @@ fabs_tcp::garbage_collector2(int idx, time_t now)
                 it->second->m_flow2.m_packets.size() > 4096) {
 
                 it->second->m_flow1.m_is_rm = true;
+                it->second->m_flow1.m_is_compromised = true;
 
                 fabs_id_dir id_dir;
 
                 id_dir.m_id  = it->first;
                 id_dir.m_dir = FROM_ADDR1;
 
-                garbages.push_back(id_dir);
+                garbages_compromised.push_back(id_dir);
                 continue;
             }
         }
     }
 
-    for (auto it2 = garbages.begin(); it2 != garbages.end(); it2++) {
+    for (auto it2 = garbages_timeout.begin(); it2 != garbages_timeout.end(); it2++) {
+        input_tcp_event(idx, *it2);
+    }
+
+    for (auto it2 = garbages_compromised.begin(); it2 != garbages_compromised.end(); it2++) {
         input_tcp_event(idx, *it2);
     }
 }
@@ -224,7 +231,13 @@ fabs_tcp::input_tcp_event(int idx, fabs_id_dir tcp_event)
 
             ptr_fabs_bytes buf(new fabs_bytes);
             buf->m_tm = dtm;
-            m_appif->in_event(STREAM_TIMEOUT, tcp_event, std::move(buf));
+
+            if (it_flow->second->m_flow1.m_is_compromised || it_flow->second->m_flow2.m_is_compromised) {
+                m_appif->in_event(STREAM_COMPROMISED, tcp_event, std::move(buf));
+            } else {
+                m_appif->in_event(STREAM_TIMEOUT, tcp_event, std::move(buf));
+            }
+
             is_rm = true;
         }
 
