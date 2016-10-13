@@ -78,6 +78,8 @@ fabs_netmap::run_netmap(int idx, int fd)
             continue;
 
         if (retval < 0) {
+            if (errno == EINTR)
+                continue;
             PERROR();
             return;
         }
