@@ -106,6 +106,7 @@ fabs_ether::timer()
         m_condition_init.wait(lock_init);
     }
 
+    uint64_t num_dropped = m_num_dropped;
     for (;;) {
         time_t t1 = time(NULL);
 
@@ -119,7 +120,8 @@ fabs_ether::timer()
 
             std::cout << "dropped packets internally: " << m_num_dropped << std::endl;
 
-            if (m_num_dropped > 0) {
+            if (m_num_dropped > num_dropped) {
+                num_dropped = m_num_dropped;
                 std::cout << "    (warning: increase the number of threads of TCP or regex,\n"
                           << "     or use the SF-TAP cell incubator)"
                           << std::endl;
