@@ -1791,8 +1791,12 @@ brk:
 }
 
 void
-fabs_appif::appif_consumer::consume()
+fabs_appif::appif_consumer::consume(int id)
 {
+    std::ostringstream os;
+    os << "SF-TAP regex[" << id << "]";
+    SET_THREAD_NAME(pthread_self(), os.str().c_str());
+
     for (;;) {
         {
             // consume event
@@ -1846,12 +1850,8 @@ fabs_appif::appif_consumer::appif_consumer(int id, fabs_appif &appif) :
     m_is_break(false),
     m_is_consuming(false),
     m_appif(appif),
-    m_thread(std::bind(&fabs_appif::appif_consumer::consume, this))
+    m_thread(std::bind(&fabs_appif::appif_consumer::consume, this, id))
 {
-    std::ostringstream os;
-    os << "SF-TAP regex[" << id << "]";
-    SET_THREAD_NAME(m_thread.native_handle(), os.str().c_str());
-
     for (auto it_tcp = appif.m_ifrule_tcp.begin();
          it_tcp != appif.m_ifrule_tcp.end(); ++it_tcp) {
         ptr_ifrule_storage2 p = ptr_ifrule_storage2(new ifrule_storage2);

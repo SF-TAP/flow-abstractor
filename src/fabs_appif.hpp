@@ -232,7 +232,7 @@ public:
         virtual ~appif_consumer();
 
         void produce(appif_event *ev);
-        void consume();
+        void consume(int id);
         void run();
         void stop() { m_is_break = true; }
 
