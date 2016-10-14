@@ -1794,7 +1794,7 @@ void
 fabs_appif::appif_consumer::consume(int id)
 {
     std::ostringstream os;
-    os << "SF-TAP regex[" << id << "]";
+    os << "SF-TAP rgx[" << id << "]";
     SET_THREAD_NAME(pthread_self(), os.str().c_str());
 
     for (;;) {

@@ -162,7 +162,7 @@ fabs_tcp::garbage_collector()
         > rand( gen, dst );
 
     std::ostringstream os;
-    os << "SF-TAP TCP GC[" << m_idx << "]";
+    os << "SF-TAP GC[" << m_idx << "]";
     SET_THREAD_NAME(pthread_self(), os.str().c_str());
 
     for (;;) {
