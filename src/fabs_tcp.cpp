@@ -25,10 +25,11 @@ using namespace std;
 
 // #define DEBUG
 
-fabs_tcp::fabs_tcp() :
+fabs_tcp::fabs_tcp(int idx) :
     m_timeout(600),
     m_total_session(0),
     m_is_del(false),
+    m_idx(idx),
     m_thread_gc(std::bind(&fabs_tcp::garbage_collector, this))
 {
 
@@ -159,6 +160,10 @@ fabs_tcp::garbage_collector()
     boost::variate_generator<
         boost::minstd_rand&, boost::uniform_real<>
         > rand( gen, dst );
+
+    std::ostringstream os;
+    os << "SF-TAP TCP GC[" << m_idx << "]";
+    SET_THREAD_NAME(pthread_self(), os.str().c_str());
 
     for (;;) {
         std::unique_lock<std::mutex> lock_gc(m_mutex_gc);

@@ -51,7 +51,7 @@ typedef std::unique_ptr<fabs_tcp_flow> ptr_fabs_tcp_flow;
 
 class fabs_tcp {
 public:
-    fabs_tcp();
+    fabs_tcp(int idx);
     virtual ~fabs_tcp();
 
     void input_tcp(fabs_id &id, fabs_direction dir, ptr_fabs_bytes buf);
@@ -82,6 +82,7 @@ private:
     std::mutex    m_mutex_gc;
     std::condition_variable m_condition_gc;
     volatile bool m_is_del;
+    int m_idx;
 
     std::thread   m_thread_gc;
 };
