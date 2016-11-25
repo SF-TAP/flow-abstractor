@@ -9,7 +9,7 @@
 #endif // USE_NETMAP
 
 #ifdef USE_PERF
-    #include <gperftools/profiler.h>
+    #include <google/profiler.h>
 #endif // USE_PERF
 
 #include <unistd.h>
