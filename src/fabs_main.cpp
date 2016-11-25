@@ -220,7 +220,6 @@ main(int argc, char *argv[])
         nm->set_dev(dev);
         nm->run();
 
-        delete nm;
         return 0;
     }
 #endif // USE_NETMAP
