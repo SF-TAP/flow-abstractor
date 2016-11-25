@@ -15,6 +15,10 @@
 
 class fabs_pcap : public fabs_dlcap {
 public:
+#ifdef USE_PERF
+    fabs_pcap(fabs_conf &conf, time_t t);
+#endif // USE_PERF
+
     fabs_pcap(fabs_conf &conf);
     virtual ~fabs_pcap();
 

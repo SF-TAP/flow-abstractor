@@ -8,10 +8,6 @@
     #include "fabs_netmap.hpp"
 #endif // USE_NETMAP
 
-#ifdef USE_PERF
-    #include <gperftools/profiler.h>
-#endif // USE_PERF
-
 #include <unistd.h>
 #include <signal.h>
 
@@ -43,12 +39,21 @@ volatile bool is_break = false;
 void
 print_usage(char *cmd)
 {
+#ifdef USE_PERF
+#ifdef USE_NETMAP
+    cout << "netmap: " << cmd << " -i dev -c conf -n -t second\n"
+         << "pcap:   " << cmd << " -i dev -c conf [-b bufsize] -t second\n" << endl;
+#else
+    cout << cmd << " -i dev -c conf [-b bufsize] -t second\n" << endl;
+#endif // USE_NETMAP
+#else
 #ifdef USE_NETMAP
     cout << "netmap: " << cmd << " -i dev -c conf -n\n"
          << "pcap:   " << cmd << " -i dev -c conf [-b bufsize]\n" << endl;
 #else
     cout << cmd << " -i dev -c conf [-b bufsize]\n" << endl;
 #endif // USE_NETMAP
+#endif // USE_PERF
 }
 
 namespace fs = boost::filesystem;
@@ -115,11 +120,20 @@ main(int argc, char *argv[])
     string dev;
     string confpath;
 
+#ifdef USE_PERF
+    time_t t = 300;
+#ifdef USE_NETMAP
+    const char *optstr = "i:hc:sb:nt:";
+#else
+    const char *optstr = "i:hc:sb:t:";
+#endif // USE_NETMAP
+#else // USE_PERF
 #ifdef USE_NETMAP
     const char *optstr = "i:hc:sb:n";
 #else
     const char *optstr = "i:hc:sb:";
 #endif // USE_NETMAP
+#endif // USE_PERF
 
     while ((opt = getopt(argc, argv, optstr)) != -1) {
         switch (opt) {
@@ -135,6 +149,11 @@ main(int argc, char *argv[])
         case 'b':
             bufsize = atoi(optarg);
             break;
+#ifdef USE_PERF
+        case 't':
+            t = atoi(optarg);
+            break;
+#endif // USE_PERF
 #ifdef USE_NETMAP
         case 'n':
             is_netmap = true;
@@ -183,10 +202,6 @@ main(int argc, char *argv[])
         return 0;
     }
 
-#ifdef USE_PERF
-    ProfilerStart("sftap_fabs.prof");
-#endif // USE_PERF
-
     if (dev.empty()) {
         fabs_ether ether(conf, nullptr);
         for (;;) {
@@ -202,28 +217,22 @@ main(int argc, char *argv[])
         nm->run();
 
         delete nm;
-
-#ifdef USE_PERF
-        ProfilerStop();
-#endif // USE_PERF
-
         return 0;
     }
 #endif // USE_NETMAP
 
     SET_THREAD_NAME(pthread_self(), "SF-TAP main");
 
+#ifdef USE_PERF
+    pc = new fabs_pcap(conf, t);
+#else
     pc = new fabs_pcap(conf);
+#endif // USE_PERF
 
     pc->set_dev(dev);
     pc->set_bufsize(bufsize);
     pc->run();
 
     delete pc;
-
-#ifdef USE_PERF
-        ProfilerStop();
-#endif // USE_PERF
-
     return 0;
 }

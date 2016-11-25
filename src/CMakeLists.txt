@@ -47,7 +47,6 @@ ENDIF(USE_JEMALLOC)
 
 if (USE_PERF)
   add_definitions(-DUSE_PERF)
-  SET(LIBS ${LIBS} profiler)
 endif (USE_PERF)
 
 IF(USE_NETMAP)

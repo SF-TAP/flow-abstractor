@@ -12,6 +12,10 @@
 
 class fabs_netmap : public fabs_dlcap {
 public:
+#ifdef USE_PERF
+    fabs_netmap(fabs_conf &conf, time_t t);
+#endif // USE_PERF
+
     fabs_netmap(fabs_conf &conf);
     virtual ~fabs_netmap();
 

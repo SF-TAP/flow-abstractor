@@ -11,6 +11,17 @@ pcap_callback(uint8_t *user, const struct pcap_pkthdr *h, const uint8_t *bytes)
     pcap->callback(h, bytes);
 }
 
+#ifdef USE_PERF
+fabs_pcap::fabs_pcap(fabs_conf &conf, time_t t) : fabs_dlcap(t),
+                                                  m_ether(conf, this),
+                                                  m_handle(NULL),
+                                                  m_is_break(false),
+                                                  m_recv_cnt_prev(0)
+{
+    gettimeofday(&m_tv, nullptr);
+}
+#endif // USE_PERF
+
 fabs_pcap::fabs_pcap(fabs_conf &conf) : m_ether(conf, this),
                                         m_handle(NULL),
                                         m_is_break(false),
@@ -31,6 +42,14 @@ fabs_pcap::callback(const struct pcap_pkthdr *h, const uint8_t *bytes)
         pcap_breakloop(m_handle);
         return;
     }
+
+#ifdef USE_PERF
+    if (is_time_to_end()) {
+        pcap_breakloop(m_handle);
+        return;
+    }
+
+#endif // USE_PERF
 
     m_ether.ether_input(bytes, h->caplen, h->ts, false);
 }

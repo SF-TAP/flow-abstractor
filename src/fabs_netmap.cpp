@@ -4,6 +4,21 @@
 
 #include <iostream>
 
+#ifdef USE_PERF
+fabs_netmap::fabs_netmap(fabs_conf &conf, time_t t) : fabs_dlcap(t),
+                                                      m_ether(conf, this),
+                                                      m_netmap(NULL),
+                                                      m_t(time(NULL)),
+                                                      m_thread(NULL),
+                                                      m_num_thread(0),
+                                                      m_recv_cnt(0),
+                                                      m_recv_cnt_prev(0),
+                                                      m_is_break(false)
+{
+    gettimeofday(&m_tv, nullptr);
+}
+#endif // USE_PERF
+
 fabs_netmap::fabs_netmap(fabs_conf &conf) : m_ether(conf, this),
                                             m_netmap(NULL),
                                             m_t(time(NULL)),
@@ -74,6 +89,11 @@ fabs_netmap::run_netmap(int idx, int fd)
         if (m_is_break)
             return;
 
+#ifdef USE_PERF
+        if (is_time_to_end())
+            return;
+#endif // USE_PERF
+
         if (retval == 0)
             continue;
 
@@ -97,6 +117,11 @@ fabs_netmap::run_netmap(int idx, int fd)
 
                 if (m_is_break)
                     return;
+
+#ifdef USE_PERF
+                if (is_time_to_end())
+                    return;
+#endif // USE_PERF
             }
         }
     }
