@@ -211,7 +211,11 @@ main(int argc, char *argv[])
 
 #ifdef USE_NETMAP
     if (is_netmap) {
+#ifdef USE_PERF
+        nm = new fabs_netmap(conf, t);
+#else
         nm = new fabs_netmap(conf);
+#endif // USE_PERF
 
         nm->set_dev(dev);
         nm->run();
