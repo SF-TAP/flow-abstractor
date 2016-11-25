@@ -3,6 +3,7 @@ if(POLICY CMP0026)
 endif()
 
 option(USE_JEMALLOC "Use jemalloc" 0)
+option(USE_PERF "Use google-perftools" 0)
 
 IF(POLICY CMP0042)
   cmake_policy(SET CMP0042 NEW)
@@ -43,6 +44,11 @@ IF(USE_JEMALLOC)
   add_definitions(-DUSE_JEMALLOC)
   SET(LIBS ${LIBS} jemalloc)
 ENDIF(USE_JEMALLOC)
+
+if (USE_PERF)
+  add_definitions(-DUSE_PERF)
+  SET(LIBS ${LIBS} profiler)
+endif (USE_PERF)
 
 IF(USE_NETMAP)
   add_definitions(-DUSE_NETMAP)

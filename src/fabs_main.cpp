@@ -8,6 +8,10 @@
     #include "fabs_netmap.hpp"
 #endif // USE_NETMAP
 
+#ifdef USE_PERF
+    #include <gperftools/profiler.h>
+#endif // USE_PERF
+
 #include <unistd.h>
 #include <signal.h>
 
@@ -179,6 +183,9 @@ main(int argc, char *argv[])
         return 0;
     }
 
+#ifdef USE_PERF
+    ProfilerStart("sftap_fabs.prof");
+#endif // USE_PERF
 
     if (dev.empty()) {
         fabs_ether ether(conf, nullptr);
@@ -195,6 +202,11 @@ main(int argc, char *argv[])
         nm->run();
 
         delete nm;
+
+#ifdef USE_PERF
+        ProfilerStop();
+#endif // USE_PERF
+
         return 0;
     }
 #endif // USE_NETMAP
@@ -208,5 +220,10 @@ main(int argc, char *argv[])
     pc->run();
 
     delete pc;
+
+#ifdef USE_PERF
+        ProfilerStop();
+#endif // USE_PERF
+
     return 0;
 }
