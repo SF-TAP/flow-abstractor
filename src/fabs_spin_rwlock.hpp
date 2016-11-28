@@ -36,14 +36,21 @@ private:
 class fabs_spin_rwlock_read {
 public:
     fabs_spin_rwlock_read(fabs_spin_rwlock &lock) : m_lock(lock) {
-        while (lock.m_write_count) {
-            pthread_mutex_lock(&lock.m_read_mutex);
-            timespec tspec = {0, 1000};
-            pthread_cond_timedwait(&lock.m_read_cond, &lock.m_read_mutex, &tspec);
-            pthread_mutex_unlock(&lock.m_read_mutex);
-        }
+        for (;;) {
+            while (lock.m_write_count) {
+                pthread_mutex_lock(&lock.m_read_mutex);
+                timespec tspec = {0, 1000};
+                pthread_cond_timedwait(&lock.m_read_cond, &lock.m_read_mutex, &tspec);
+                pthread_mutex_unlock(&lock.m_read_mutex);
+            }
 
-        __sync_fetch_and_add(&lock.m_read_count, 1);
+            __sync_fetch_and_add(&lock.m_read_count, 1);
+
+            if (lock.m_write_count == 0)
+                break;
+
+            __sync_fetch_and_sub(&m_lock.m_read_count, 1);
+        }
     }
 
     ~fabs_spin_rwlock_read() {
