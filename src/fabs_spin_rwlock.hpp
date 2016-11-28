@@ -79,6 +79,7 @@ public:
         if (m_lock.m_write_count == 0) {
             pthread_mutex_lock(&m_lock.m_read_mutex);
             pthread_cond_broadcast(&m_lock.m_read_cond);
+            pthread_mutex_unlock(&m_lock.m_read_mutex);
         }
     }
 
