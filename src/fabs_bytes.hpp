@@ -2,6 +2,7 @@
 #define FABS_BYTES_HPP
 
 #include "fabs_common.hpp"
+#include "fabs_slab_allocator_mt.hpp"
 
 #include <sys/time.h>
 
@@ -19,7 +20,7 @@ typedef std::unique_ptr<fabs_bytes> ptr_fabs_bytes;
 class fabs_bytes {
 public:
     fabs_bytes() : m_ptr(nullptr), m_pos(0), m_len(0) { }
-    fabs_bytes(const char *str) { *this = str; }
+//    fabs_bytes(const char *str) { *this = str; }
 
     virtual ~fabs_bytes() { delete[] m_ptr; }
 
@@ -76,7 +77,7 @@ public:
         } else {
             return m_len < rhs.m_len;
         }
-        
+
         return false;
     }
 
@@ -171,6 +172,16 @@ public:
         return true;
     }
 
+    static void *operator new(size_t size)
+    {
+        return bytes_allocator.allocate(1);
+    }
+
+    void operator delete(void* ptr)
+    {
+        bytes_allocator.deallocate((fabs_bytes*)ptr, 0);
+    }
+
     timeval m_tm;
 
 private:
@@ -188,6 +199,8 @@ private:
     friend int skip_bytes(std::deque<ptr_fabs_bytes> &bytes, int len);
     friend void get_digest(fabs_bytes &md_value, const char *alg,
                            const char *buf, unsigned int len);
+
+    static fabs_slab_allocator_mt<fabs_bytes> bytes_allocator;
 
 };
 

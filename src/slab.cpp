@@ -29,7 +29,7 @@
 #define LIKELY(exp) __builtin_expect(exp, 1)
 #define UNLIKELY(exp) __builtin_expect(exp, 0)
 
-static size_t slab_pagesize = (size_t) sysconf(_SC_PAGESIZE);
+static size_t slab_pagesize;
 
 #ifndef NDEBUG
 static int slab_is_valid(const struct slab_chain *const sch)
@@ -102,6 +102,7 @@ static int slab_is_valid(const struct slab_chain *const sch)
 
 void slab_init(struct slab_chain *const sch, const size_t itemsize)
 {
+    slab_pagesize = (size_t) sysconf(_SC_PAGESIZE);
     assert(sch != NULL);
     assert(itemsize >= 1 && itemsize <= SIZE_MAX);
     assert(POWEROF2(slab_pagesize));

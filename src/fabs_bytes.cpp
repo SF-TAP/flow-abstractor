@@ -12,6 +12,7 @@
 using namespace std;
 namespace io = boost::iostreams; //<-- good practice
 
+fabs_slab_allocator_mt<fabs_bytes> fabs_bytes::bytes_allocator;
 
 int
 read_bytes_ec(const deque<ptr_fabs_bytes> &bytes, char *buf, int len, char c)
@@ -54,13 +55,13 @@ skip_bytes(deque<ptr_fabs_bytes> &bytes, int len)
             len -= front->m_len;
             skip_len += front->m_len;
             bytes.pop_front();
-            
+
             if (len == 0)
                 break;
         } else {
             front->m_len -= len;
             front->m_pos += len;
-            skip_len += len; 
+            skip_len += len;
             break;
         }
     }
@@ -115,7 +116,7 @@ find_char(const char *buf, int len, char c)
 void
 print_binary(const char *buf, int len)
 {
-    const char *hex[] = {"0", "1", "2", "3", 
+    const char *hex[] = {"0", "1", "2", "3",
                          "4", "5", "6", "7",
                          "8", "9", "a", "b",
                          "c", "d", "e", "f"};
@@ -142,7 +143,7 @@ bin2str(const char *buf, int len)
 {
     ostringstream os;
 
-    const char *hex[] = {"0", "1", "2", "3", 
+    const char *hex[] = {"0", "1", "2", "3",
                          "4", "5", "6", "7",
                          "8", "9", "a", "b",
                          "c", "d", "e", "f"};

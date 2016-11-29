@@ -27,7 +27,7 @@ public:
     template <typename U> struct rebind { typedef fabs_slab_allocator_mt<U> other; };
     fabs_slab_allocator_mt() throw()
     {
-        rtm_transaction lock(rtm_lock);
+        fabs_rtm_transaction lock(m_rtm_lock);
 
         if (fabs_slab_allocator_mt<T>::m_refcnt == 0)
             slab_init(&m_slab, sizeof(T));
@@ -36,7 +36,7 @@ public:
     }
     fabs_slab_allocator_mt(const fabs_slab_allocator_mt&) throw()
     {
-        rtm_transaction lock(rtm_lock);
+        fabs_rtm_transaction lock(m_rtm_lock);
 
         if (fabs_slab_allocator_mt<T>::m_refcnt == 0)
             slab_init(&m_slab, sizeof(T));
@@ -46,7 +46,7 @@ public:
 
     template <typename U> fabs_slab_allocator_mt(const fabs_slab_allocator_mt<U>&) throw()
     {
-        rtm_transaction lock(fabs_slab_allocator_mt<U>::rtm_lock);
+        fabs_rtm_transaction lock(m_rtm_lock);
 
         if (fabs_slab_allocator_mt<U>::m_refcnt == 0)
             slab_init(&fabs_slab_allocator_mt<U>::m_slab, sizeof(U));
@@ -55,7 +55,7 @@ public:
     }
 
     ~fabs_slab_allocator_mt() throw() {
-        rtm_transaction lock(rtm_lock);
+        fabs_rtm_transaction lock(m_rtm_lock);
 
         m_refcnt--;
 
@@ -68,7 +68,7 @@ public:
 
     pointer allocate(size_type s, void const * = 0) {
         if (s == 1) {
-            rtm_transaction lock(rtm_lock);
+            fabs_rtm_transaction lock(m_rtm_lock);
             return (pointer)slab_alloc(&m_slab);
         } else if (s >= 1) {
             pointer temp = (pointer)malloc(sizeof(void*) + s * sizeof(T));
@@ -90,7 +90,7 @@ public:
         if (*vp == (void*)~(uint64_t)0) {
             free(vp);
         } else {
-            rtm_transaction lock(rtm_lock);
+            fabs_rtm_transaction lock(m_rtm_lock);
             slab_free(&m_slab, p);
         }
     }
@@ -107,13 +107,13 @@ public:
         p->~T();
     }
 
-    static rtm_lock   m_rtm_lock;
-    static uint64_t   m_refcnt;
-    static slab_chain m_slab;
+    static fabs_rtm_lock   m_rtm_lock;
+    static uint64_t        m_refcnt;
+    static slab_chain      m_slab;
 };
 
-template <typename T> rtm_lock   fabs_slab_allocator_mt<T>::m_rtm_lock;
-template <typename T> uint64_t   fabs_slab_allocator_mt<T>::m_refcnt = 0;
-template <typename T> slab_chain fabs_slab_allocator_mt<T>::m_slab;
+template <typename T> fabs_rtm_lock   fabs_slab_allocator_mt<T>::m_rtm_lock;
+template <typename T> uint64_t        fabs_slab_allocator_mt<T>::m_refcnt = 0;
+template <typename T> slab_chain      fabs_slab_allocator_mt<T>::m_slab;
 
 #endif // FABS_SLAB_ALLOCATOR_MT
