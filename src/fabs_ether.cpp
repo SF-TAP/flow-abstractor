@@ -106,11 +106,21 @@ fabs_ether::timer()
         m_condition_init.wait(lock_init);
     }
 
+    timeval tv;
+    gettimeofday(&tv, nullptr);
+
+    double tv0 = tv.tv_sec + tv.tv_usec * 1.0e-6;
+
     uint64_t num_dropped = m_num_dropped;
     for (;;) {
         time_t t1 = time(NULL);
 
         if (t1 - t0 > 10) {
+            gettimeofday(&tv, nullptr);
+            double tv1 = tv.tv_sec + tv.tv_usec * 1.0e-6;
+
+            std::cout << "uptime: " << tv1 - tv0 << " [s]" << std::endl;
+
             t0 = t1;
 
             std::cout << "received packets (pcap): " << m_num_pcap << std::endl;

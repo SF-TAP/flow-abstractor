@@ -14,15 +14,19 @@
 #include <pthread_np.h>
 #endif // !defined(__APPLE__) and defined(BSD)
 
-#ifdef __APPLE__
-    #define SET_THREAD_NAME(HDL, STR) pthread_setname_np((STR))
-#elif defined(__linux__)
-    #define SET_THREAD_NAME(HDL, STR) pthread_setname_np((HDL), (STR))
-#elif defined(BSD)
-    #define SET_THREAD_NAME(HDL, STR) pthread_set_name_np((HDL), (STR));
-#else
+#ifdef USE_PERF
     #define SET_THREAD_NAME(HDL, STR)
-#endif // __APPLE__
+#else
+    #ifdef __APPLE__
+        #define SET_THREAD_NAME(HDL, STR) pthread_setname_np((STR))
+    #elif defined(__linux__)
+        #define SET_THREAD_NAME(HDL, STR) pthread_setname_np((HDL), (STR))
+    #elif defined(BSD)
+        #define SET_THREAD_NAME(HDL, STR) pthread_set_name_np((HDL), (STR));
+    #else
+        #define SET_THREAD_NAME(HDL, STR)
+    #endif // __APPLE__
+#endif // USE_PERF
 
 #include <stdio.h>
 

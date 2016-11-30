@@ -180,6 +180,7 @@ main(int argc, char *argv[])
         exit(1);
     }
 
+#ifndef USE_PERF
     pid_t result_pid;
 
     result_pid = fork();
@@ -201,6 +202,7 @@ main(int argc, char *argv[])
         remove_uxfile(conf);
         return 0;
     }
+#endif // USE_PERF
 
     if (dev.empty()) {
         fabs_ether ether(conf, nullptr);
