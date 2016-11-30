@@ -19,7 +19,6 @@ typedef std::unique_ptr<fabs_bytes> ptr_fabs_bytes;
 class fabs_bytes {
 public:
     fabs_bytes() : m_ptr(nullptr), m_pos(0), m_len(0) { }
-    fabs_bytes(const char *str) { *this = str; }
 
     virtual ~fabs_bytes() { delete[] m_ptr; }
 
@@ -41,16 +40,6 @@ public:
 
         return *this;
     }
-
-    /*
-    fabs_bytes & operator = (const fabs_bytes &rhs) {
-        m_ptr = rhs.m_ptr;
-        m_len = rhs.m_len;
-        m_pos = rhs.m_pos;
-
-        return *this;
-    }
-    */
 
     bool operator == (const fabs_bytes &rhs) const {
         if (m_len != rhs.m_len)
@@ -76,7 +65,7 @@ public:
         } else {
             return m_len < rhs.m_len;
         }
-        
+
         return false;
     }
 

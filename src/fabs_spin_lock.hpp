@@ -19,6 +19,7 @@ private:
     volatile int m_lock;
 
     friend class fabs_spin_lock_ac;
+    friend class fabs_spin_lock_ac_unsafe;
 };
 
 class fabs_spin_lock_ac {
@@ -37,6 +38,25 @@ public:
 
 private:
     fabs_spin_lock &m_lock;
+};
+
+class fabs_spin_lock_ac_unsafe {
+public:
+    fabs_spin_lock_ac_unsafe(fabs_spin_lock &lock) : m_spin_lock(lock)
+    {
+        while (__sync_lock_test_and_set(&lock.m_lock, 1)) {
+            while (lock.m_lock)
+                _MM_PAUSE; // busy-wait
+        }
+    }
+
+    void unlock()
+    {
+        __sync_lock_release(&m_spin_lock.m_lock);
+    }
+
+private:
+    fabs_spin_lock &m_spin_lock;
 };
 
 #endif // FABS_SPIN_LOCK_HPP
