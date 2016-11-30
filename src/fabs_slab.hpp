@@ -95,11 +95,7 @@ class fabs_slab {
             static uint64_t mask1 = 64 * sizeof(T) - 1;
             static uint64_t mask2 = sizeof(T) - 1;
 
-            printf("deallocate: ptr = %p\n", ptr);
             if (m_ptr <= ptr && ptr < m_ptr + 64 * 64 * 4) {
-                printf("m_ptr = %p\n", m_ptr);
-                printf("ptr = %p\n", ptr);
-                printf("m_ptr+ = %p\n", m_ptr + 64 * 64 * 4);
                 auto diff = ptr - m_ptr;
 
                 uint64_t idx1 = diff >> shift1;
@@ -165,13 +161,13 @@ public:
 
     T* allocate()
     {
-        fabs_spin_lock_ac lock(m_lock);
+        //fabs_spin_lock_ac lock(m_lock);
         return m_slab.allocate();
     }
 
     void deallocate(T *ptr)
     {
-        fabs_spin_lock_ac lock(m_lock);
+        //fabs_spin_lock_ac lock(m_lock);
         m_slab.deallocate(ptr);
     }
 
