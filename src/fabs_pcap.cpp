@@ -16,6 +16,7 @@ fabs_pcap::fabs_pcap(fabs_conf &conf, time_t t) : fabs_dlcap(t),
                                                   m_ether(conf, this),
                                                   m_handle(NULL),
                                                   m_is_break(false),
+                                                  m_recv_cnt(0),
                                                   m_recv_cnt_prev(0)
 {
     gettimeofday(&m_tv, nullptr);
@@ -42,6 +43,8 @@ fabs_pcap::callback(const struct pcap_pkthdr *h, const uint8_t *bytes)
         pcap_breakloop(m_handle);
         return;
     }
+
+    m_recv_cnt++;
 
 #ifdef USE_PERF
     if (is_time_to_end()) {
@@ -78,10 +81,10 @@ fabs_pcap::print_stat() const
     timeval tv;
     gettimeofday(&tv, nullptr);
 
-    uint64_t pktnum = stat.ps_recv - m_recv_cnt_prev;
+    uint64_t pktnum = m_recv_cnt - m_recv_cnt_prev;
     double diff = (tv.tv_sec + tv.tv_usec * 1e-6) - (m_tv.tv_sec + m_tv.tv_usec * 1e-6);
 
-    m_recv_cnt_prev = stat.ps_recv;
+    m_recv_cnt_prev = m_recv_cnt;
     m_tv = tv;
 
     std::cout << "received packets (" << m_dev << "): " << stat.ps_recv << ", " << pktnum / diff << " [pps]"

@@ -40,6 +40,7 @@ private:
     volatile bool m_is_break;
     int     m_dl_type;
     int     m_bufsize;
+    uint64_t         m_recv_cnt;
     mutable uint64_t m_recv_cnt_prev;
     mutable timeval  m_tv;
 };
