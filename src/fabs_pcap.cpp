@@ -87,7 +87,7 @@ fabs_pcap::print_stat() const
     m_recv_cnt_prev = m_recv_cnt;
     m_tv = tv;
 
-    std::cout << "received packets (" << m_dev << "): " << stat.ps_recv << ", " << pktnum / diff << " [pps]"
+    std::cout << "received packets (" << m_dev << "): " << m_recv_cnt << ", " << pktnum / diff << " [pps]"
               << "\ndropped packets by pcap (" << m_dev << "): " << stat.ps_drop
               << "\ndropped packets by IF (" << m_dev << "): " << stat.ps_ifdrop
               << std::endl;
