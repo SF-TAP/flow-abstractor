@@ -29,8 +29,8 @@ private:
     T *m_buf;
     T *m_buf_end;
 
-    T *m_head;
-    T *m_tail;
+    T * volatile m_head;
+    T * volatile m_tail;
 
     fabs_spin_lock m_lock;
 };
