@@ -1091,7 +1091,7 @@ fabs_appif::appif_consumer::in_stream_event(fabs_stream_event st_event,
             // invoke DESTROYED event
             int idx;
             if (it->second->m_ifrule->m_balance == 1) {
-                idx = it->second->m_hash;
+                idx = 1;
             } else {
                 idx = it->second->m_hash & (it->second->m_ifrule->m_balance - 1);
             }
@@ -1340,7 +1340,7 @@ fabs_appif::appif_consumer::send_tcp_data(stream_info *p_info, fabs_id_dir id_di
 
     int idx;
     if (p_info->m_ifrule->m_balance == 1) {
-        idx = p_info->m_hash;
+        idx = 1;
     } else {
         idx = p_info->m_hash & (p_info->m_ifrule->m_balance - 1);
     }
@@ -1789,7 +1789,12 @@ brk:
     header.len      = bytes->get_len();
     header.match    = match;
 
-    int idx2 = id_dir.m_id.get_hash() % ifrule->m_balance;
+    int idx2;
+    if (ifrule->m_balance == 1) {
+        idx2 = 1;
+    } else {
+        idx2 = id_dir.m_id.get_hash() & (ifrule->m_balance - 1);
+    }
     std::string &name = ifrule->m_balance_name[idx2];
 
     fabs_spin_rwlock_read lock(m_appif.m_rw_mutex);
