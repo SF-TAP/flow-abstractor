@@ -900,6 +900,10 @@ fabs_appif::read_conf(fabs_conf &conf)
                     if (rule->m_balance < 1) {
                         rule->m_balance = 1;
                     }
+
+                    if (rule->m_balance > 1) {
+                        rule->m_balance = rule->m_balance - (rule->m_balance % 2);
+                    }
                 } catch (boost::bad_lexical_cast e) {
                     std::cerr << "cannot convert \"" << it3->second
                               << "\" to int" << std::endl;
@@ -1085,7 +1089,12 @@ fabs_appif::appif_consumer::in_stream_event(fabs_stream_event st_event,
 
         if (it->second->m_ifrule) {
             // invoke DESTROYED event
-            int idx = it->second->m_hash % it->second->m_ifrule->m_balance;
+            int idx;
+            if (it->second->m_ifrule->m_balance == 1) {
+                idx = it->second->m_hash;
+            } else {
+                idx = it->second->m_hash & (it->second->m_ifrule->m_balance - 1);
+            }
             std::string &name = it->second->m_ifrule->m_balance_name[idx];
 
             fabs_spin_rwlock_read lock(m_appif.m_rw_mutex);
@@ -1329,7 +1338,12 @@ fabs_appif::appif_consumer::send_tcp_data(stream_info *p_info, fabs_id_dir id_di
         return false;
     }
 
-    int idx = p_info->m_hash % p_info->m_ifrule->m_balance;
+    int idx;
+    if (p_info->m_ifrule->m_balance == 1) {
+        idx = p_info->m_hash;
+    } else {
+        idx = p_info->m_hash & (p_info->m_ifrule->m_balance - 1);
+    }
     std::string &name = p_info->m_ifrule->m_balance_name[idx];
 
     std::vector<int> fdvec;
