@@ -328,7 +328,7 @@ fabs_ether::ether_input(const uint8_t *bytes, int len, const timeval &tm, bool i
         return;
     }
 
-    produce(hash % m_appif->get_num_tcp_threads(), (char*)bytes, len, tm);
+    produce(hash & (m_appif->get_num_tcp_threads() - 1), (char*)bytes, len, tm);
 }
 
 inline const uint8_t *

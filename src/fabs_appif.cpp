@@ -789,8 +789,10 @@ fabs_appif::read_conf(fabs_conf &conf)
                 }
             }
 
-            if (m_num_consumer < 1) {
-                m_num_consumer = 1;
+            m_num_consumer = m_num_consumer - (m_num_consumer % 2);
+
+            if (m_num_consumer <= 1) {
+                m_num_consumer = 2;
             } else if (m_num_consumer > 1024) {
                 m_num_consumer = 1024;
             }
@@ -806,8 +808,10 @@ fabs_appif::read_conf(fabs_conf &conf)
                 }
             }
 
-            if (m_num_tcp_threads < 1) {
-                m_num_tcp_threads = 1;
+            m_num_tcp_threads = m_num_tcp_threads - (m_num_tcp_threads % 2);
+
+            if (m_num_tcp_threads <= 1) {
+                m_num_tcp_threads = 2;
             } else if (m_num_tcp_threads > 1024) {
                 m_num_tcp_threads = 1024;
             }
@@ -997,7 +1001,7 @@ fabs_appif::in_event(fabs_stream_event st_event,
     ev->id_dir   = id_dir;
     ev->bytes    = std::move(bytes);
 
-    int id = id_dir.m_id.get_hash() % m_num_consumer;
+    int id = id_dir.m_id.get_hash() & (m_num_consumer - 1);
 
     m_consumer[id]->produce(ev);
 }
