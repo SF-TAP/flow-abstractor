@@ -1091,7 +1091,7 @@ fabs_appif::appif_consumer::in_stream_event(fabs_stream_event st_event,
             // invoke DESTROYED event
             int idx;
             if (it->second->m_ifrule->m_balance == 1) {
-                idx = 1;
+                idx = 0;
             } else {
                 idx = it->second->m_hash & (it->second->m_ifrule->m_balance - 1);
             }
@@ -1340,7 +1340,7 @@ fabs_appif::appif_consumer::send_tcp_data(stream_info *p_info, fabs_id_dir id_di
 
     int idx;
     if (p_info->m_ifrule->m_balance == 1) {
-        idx = 1;
+        idx = 0;
     } else {
         idx = p_info->m_hash & (p_info->m_ifrule->m_balance - 1);
     }
