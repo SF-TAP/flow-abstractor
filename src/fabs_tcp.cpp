@@ -451,7 +451,7 @@ fabs_tcp::input_tcp(fabs_id &id, fabs_direction dir, ptr_fabs_bytes buf)
     cout << endl;
 #endif
 
-    int idx = id.get_hash() % NUM_TCPTREE;
+    int idx = id.get_hash() & (NUM_TCPTREE - 1);
 
     // TODO: checksum
     {
