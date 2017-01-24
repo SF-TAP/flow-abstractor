@@ -76,7 +76,7 @@ You can specify a network interface by -i option, and a config file by -c option
 
 Example:
 
-    $ ./src/sftap_fabs -i eth0 -c ./examples/fabs.conf
+    $ ./src/sftap_fabs -i eth0 -c ./examples/fabs.yaml
 
 If you encounter an error as follows,
 
@@ -91,7 +91,7 @@ please install the suitable language package like as follows.
 
 If you want to use netmap, pass -n option as follows.
 
-    $ ./src/sftap_fabs -i eth0 -c ./examples/fabs.conf -n
+    $ ./src/sftap_fabs -i eth0 -c ./examples/fabs.yaml -n
 
 ### Documents
 
