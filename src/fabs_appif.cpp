@@ -1791,7 +1791,7 @@ brk:
 
     int idx2;
     if (ifrule->m_balance == 1) {
-        idx2 = 1;
+        idx2 = 0;
     } else {
         idx2 = id_dir.m_id.get_hash() & (ifrule->m_balance - 1);
     }

@@ -1,7 +1,7 @@
 # global configuration
 global:
   home:    /tmp/sf-tap
-  timeout: 30  # close long-lived (over 30[s]) but do-nothing connections 
+  timeout: 30  # close long-lived (over 30[s]) but do-nothing connections
   lru:     yes # bring the least recently used pattern to front of list
   cache:   yes # use cache for regex
   tcp_threads:   2
@@ -15,7 +15,7 @@ pcap:
   if: pcap
 
 tcp_default:
-  if:     default # for every flow that wasn't matched by any rules 
+  if:     default # for every flow that wasn't matched by any rules
   proto:  TCP
   format: text
   body:   yes
@@ -35,7 +35,7 @@ http:
   body:   yes  # if specified 'no', only header is output
   nice:   100  # the smaller a value is, the higher a priority is
   utf8:   no   # treat data as UTF8 or latin1 (binary). used for regex
-#  balance: 4   # flows are balanced by 4 interfaces
+#  balance: 4   # flows are balanced by 4 interfaces, must be power of 2
 
 http_client:
   up:     '^[-a-zA-Z]+ .+ HTTP/1\.(0\r?\n|1\r?\n([-a-zA-Z]+: .+\r?\n)+)'
