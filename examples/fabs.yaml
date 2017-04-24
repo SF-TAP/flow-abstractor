@@ -170,7 +170,7 @@ dns_tcp:
   proto:  TCP
   if:     dns
   port:   53
-  format: text
+  format: binary
   nice:   200
   utf8:   no
 
