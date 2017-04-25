@@ -4,6 +4,7 @@
 #include "fabs_common.hpp"
 #include "fabs_tcp.hpp"
 #include "fabs_udp.hpp"
+#include "fabs_icmp.hpp"
 
 #include <iostream>
 
@@ -28,6 +29,7 @@ public:
     void set_appif(ptr_fabs_appif appif) {
         m_appif = appif;
         m_udp.set_appif(appif);
+        m_icmp.set_appif(appif);
 
         m_tcp = new fabs_tcp*[m_appif->get_num_tcp_threads()];
 
@@ -50,6 +52,7 @@ private:
     ptr_fabs_appif m_appif;
     fabs_tcp **m_tcp;
     fabs_udp m_udp;
+    fabs_icmp m_icmp;
 
 };
 

@@ -621,6 +621,8 @@ fabs_appif::ux_listen_ifrule(ptr_ifrule ifrule)
             path = *m_home / fs::path("udp") / *ifrule->m_ux;
         } else if (ifrule->m_proto == IF_TCP) {
             path = *m_home / fs::path("tcp") / *ifrule->m_ux;
+        } else if (ifrule->m_proto == IF_ICMP || ifrule->m_proto == IF_ICMPV6) {
+            path = *m_home / fs::path("icmp") / *ifrule->m_ux;
         } else {
             path = *m_home / *ifrule->m_ux;
         }
@@ -687,6 +689,7 @@ fabs_appif::ux_listen()
         makedir(*m_home);
         makedir(*m_home / fs::path("tcp"));
         makedir(*m_home / fs::path("udp"));
+        makedir(*m_home / fs::path("icmp"));
 
         for (auto it_tcp = m_ifrule_tcp.begin(); it_tcp != m_ifrule_tcp.end();
              ++it_tcp) {
@@ -714,14 +717,20 @@ fabs_appif::ux_listen()
             }
         }
 
-        if (m_ifrule7)
-            ux_listen_ifrule(m_ifrule7);
-
         if (m_tcp_default)
             ux_listen_ifrule(m_tcp_default);
 
         if (m_udp_default)
             ux_listen_ifrule(m_udp_default);
+
+        if (m_ificmp)
+            ux_listen_ifrule(m_ificmp);
+
+        if (m_ificmpv6)
+            ux_listen_ifrule(m_ificmpv6);
+
+        if (m_ifrule7)
+            ux_listen_ifrule(m_ifrule7);
 
         if (m_ifpcap)
             ux_listen_ifrule(m_ifpcap);
@@ -864,6 +873,10 @@ fabs_appif::read_conf(fabs_conf &conf)
                     rule->m_proto = IF_TCP;
                 } else if (it3->second == "UDP") {
                     rule->m_proto = IF_UDP;
+                } else if (it3->second == "ICMP") {
+                    rule->m_proto = IF_ICMP;
+                } else if (it3->second == "ICMPV6") {
+                    rule->m_proto = IF_ICMPV6;
                 } else {
                     // error
                 }
@@ -967,6 +980,10 @@ fabs_appif::read_conf(fabs_conf &conf)
                 m_udp_default = rule;
             } else if (rule->m_name == "pcap") {
                 m_ifpcap = rule;
+            } else if (rule->m_name == "icmp") {
+                m_ificmp = rule;
+            } else if (rule->m_name == "icmpv6") {
+                m_ificmpv6 = rule;
             } else if (rule->m_proto == IF_UDP) {
                 auto it_udp = m_ifrule_udp.find(rule->m_nice);
                 if (it_udp == m_ifrule_udp.end()) {
@@ -1493,11 +1510,14 @@ fabs_appif::write_event(int fd, const fabs_id_dir &id_dir, ptr_ifrule ifrule,
         id_dir.get_addr2(buf, sizeof(buf));
         s += buf;
 
-        s += ",port1=";
-        s += boost::lexical_cast<std::string>(htons(id_dir.get_port1()));
+        if (id_dir.m_id.get_l4_proto() == IPPROTO_TCP ||
+            id_dir.m_id.get_l4_proto() == IPPROTO_UDP) {
+            s += ",port1=";
+            s += boost::lexical_cast<std::string>(htons(id_dir.get_port1()));
 
-        s += ",port2=";
-        s += boost::lexical_cast<std::string>(htons(id_dir.get_port2()));
+            s += ",port2=";
+            s += boost::lexical_cast<std::string>(htons(id_dir.get_port2()));
+        }
 
         s += ",hop=";
         s += boost::lexical_cast<std::string>((int)id_dir.m_id.m_hop);
@@ -1512,6 +1532,10 @@ fabs_appif::write_event(int fd, const fabs_id_dir &id_dir, ptr_ifrule ifrule,
             s += ",l4=tcp";
         } else if (id_dir.m_id.get_l4_proto() == IPPROTO_UDP) {
             s += ",l4=udp";
+        } else if (id_dir.m_id.get_l4_proto() == IPPROTO_ICMP) {
+            s += ",l4=icmp";
+        } else if (id_dir.m_id.get_l4_proto() == IPPROTO_ICMPV6) {
+            s += ",l4=icmpv6";
         }
 
         switch (event) {
@@ -1686,7 +1710,6 @@ fabs_appif::is_in_port(const std::list<std::pair<uint16_t, uint16_t>> &range,
     return false;
 }
 
-
 void
 fabs_appif::appif_consumer::in_datagram(const fabs_id_dir &id_dir,
                                         ptr_fabs_bytes bytes)
@@ -1695,8 +1718,7 @@ fabs_appif::appif_consumer::in_datagram(const fabs_id_dir &id_dir,
     ptr_ifrule ifrule;
     match_dir  match = MATCH_NONE;
 
-    for (auto it_udp = m_ifrule_udp.begin(); it_udp != m_ifrule_udp.end();
-         ++it_udp) {
+    for (auto it_udp = m_ifrule_udp.begin(); it_udp != m_ifrule_udp.end(); ++it_udp) {
         // check cache
         auto cache_udp = it_udp->second->cache_up;
         if (m_appif.m_is_cache && cache_udp[idx] &&
@@ -1707,8 +1729,7 @@ fabs_appif::appif_consumer::in_datagram(const fabs_id_dir &id_dir,
 
             assert(ifrule && ifrule->m_up);
 
-            if (RE2::PartialMatch(std::string(bytes->get_head(),
-                                              bytes->get_len()),
+            if (RE2::PartialMatch(std::string(bytes->get_head(), bytes->get_len()),
                                   *ifrule->m_up)) {
                 // hit cache
                 match = MATCH_UP;
@@ -1723,8 +1744,7 @@ fabs_appif::appif_consumer::in_datagram(const fabs_id_dir &id_dir,
                  it1 != it_udp->second->ifrule.end(); ++it1) {
                 if (m_appif.is_in_port(*(*it1)->m_port, id_dir.get_port_src(),
                                        id_dir.get_port_dst()) &&
-                    RE2::PartialMatch(std::string(bytes->get_head(),
-                                                  bytes->get_len()),
+                    RE2::PartialMatch(std::string(bytes->get_head(), bytes->get_len()),
                                       *(*it1)->m_up)) {
                     // found in list
                     ifrule = *it1;
@@ -1814,6 +1834,61 @@ brk:
 }
 
 void
+fabs_appif::appif_consumer::in_icmp(const fabs_id_dir &id_dir, ptr_fabs_bytes bytes)
+{
+    ptr_ifrule ifrule;
+    match_dir  match = MATCH_NONE;
+    fabs_appif_header header;
+
+    if (id_dir.m_id.get_l4_proto() == IPPROTO_ICMP)
+        ifrule = m_appif.m_ificmp;
+    else
+        ifrule = m_appif.m_ificmpv6;
+
+    if (! ifrule)
+        return;
+
+    memset(&header, 0, sizeof(header));
+
+    memcpy(&header.l3_addr1, &id_dir.m_id.m_addr1->l3_addr,
+           sizeof(header.l3_addr1));
+    memcpy(&header.l3_addr2, &id_dir.m_id.m_addr2->l3_addr,
+           sizeof(header.l3_addr2));
+
+    header.l4_port1 = id_dir.m_id.m_addr1->l4_port;
+    header.l4_port2 = id_dir.m_id.m_addr2->l4_port;
+    header.event    = DATAGRAM_DATA;
+    header.from     = id_dir.m_dir;
+    header.hop      = id_dir.m_id.m_hop;
+    header.l3_proto = id_dir.m_id.get_l3_proto();
+    header.len      = bytes->get_len();
+    header.match    = match;
+
+    int idx2;
+    if (ifrule->m_balance == 1) {
+        idx2 = 0;
+    } else {
+        idx2 = id_dir.m_id.get_hash() & (ifrule->m_balance - 1);
+    }
+    std::string &name = ifrule->m_balance_name[idx2];
+
+    fabs_spin_rwlock_read lock(m_appif.m_rw_mutex);
+
+    auto it3 = m_appif.m_name2uxpeer.find(name);
+
+    if (it3 != m_appif.m_name2uxpeer.end()) {
+        for (auto it4 = it3->second.begin();
+             it4 != it3->second.end(); ++it4) {
+            if (! m_appif.write_event(*it4, id_dir, ifrule, STREAM_DATA,
+                                      match, CLOSED_NORMAL, &header, bytes->get_head(),
+                                      bytes->get_len(), &bytes->m_tm)) {
+                continue;
+            }
+        }
+    }
+}
+
+void
 fabs_appif::appif_consumer::consume(int id)
 {
     std::ostringstream os;
@@ -1844,6 +1919,9 @@ fabs_appif::appif_consumer::consume(int id)
                 in_stream_event(ev->st_event, ev->id_dir, std::move(ev->bytes));
             } else if (ev->id_dir.m_id.get_l4_proto() == IPPROTO_UDP) {
                 in_datagram(ev->id_dir, std::move(ev->bytes));
+            } else if (ev->id_dir.m_id.get_l4_proto() == IPPROTO_ICMP ||
+                       ev->id_dir.m_id.get_l4_proto() == IPPROTO_ICMPV6) {
+                in_icmp(ev->id_dir, std::move(ev->bytes));
             }
             delete ev;
 

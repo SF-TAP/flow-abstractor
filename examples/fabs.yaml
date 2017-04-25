@@ -14,6 +14,18 @@ loopback7:
 pcap:
   if: pcap
 
+icmp:
+  proto:  ICMP
+  if:     icmp
+  format: binary
+  body:   yes
+
+icmpv6:
+  proto:  ICMPV6
+  if:     icmpv6
+  format: binary
+  body:   yes
+
 tcp_default:
   if:     default # for every flow that wasn't matched by any rules
   proto:  TCP

@@ -92,6 +92,8 @@ private:
     enum ifproto {
         IF_UDP,
         IF_TCP,
+        IF_ICMP,
+        IF_ICMPV6,
         IF_OTHER
     };
 
@@ -255,7 +257,7 @@ public:
                              const fabs_id_dir &id_dir, ptr_fabs_bytes bytes);
         bool send_tcp_data(stream_info *p_info, fabs_id_dir id_dir);
         void in_datagram(const fabs_id_dir &id_dir, ptr_fabs_bytes bytes);
-
+        void in_icmp(const fabs_id_dir &id_dir, ptr_fabs_bytes bytes);
         friend class fabs_appif;
     };
 private:
@@ -279,6 +281,8 @@ private:
     ptr_ifrule m_tcp_default;
     ptr_ifrule m_udp_default;
     ptr_ifrule m_ifpcap;
+    ptr_ifrule m_ificmp;
+    ptr_ifrule m_ificmpv6;
     std::map<int, ptr_ifrule> m_fd2ifrule; // listen socket
     std::map<int, ptr_uxpeer> m_fd2uxpeer; // accepted socket
     std::map<std::string, std::set<int> > m_name2uxpeer;

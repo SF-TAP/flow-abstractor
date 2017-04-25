@@ -53,6 +53,8 @@ fabs_id::set_iph(char *iph, char **l4hdr, int *len)
             addr2->l4_port = udph->uh_dport;
 
             *l4hdr = (char*)udph;
+        } else if (iph4->ip_p == IPPROTO_ICMP) {
+            *l4hdr = iph + iph4->ip_hl * 4;
         }
 
         m_l3_proto = IPPROTO_IP;
@@ -113,6 +115,8 @@ fabs_id::set_iph(char *iph, char **l4hdr, int *len)
             case IPPROTO_NONE:
             case IPPROTO_FRAGMENT:
             case IPPROTO_ICMPV6:
+                m_l4_proto = nxt;
+                *l4hdr = (char*)p;
                 goto end_loop;
             case IPPROTO_TCP:
             {

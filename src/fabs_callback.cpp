@@ -40,6 +40,10 @@ fabs_callback::operator() (int idx, ptr_fabs_bytes buf) {
     case IPPROTO_UDP:
         m_udp.input_udp(id, dir, std::move(buf));
         break;
+    case IPPROTO_ICMP:
+    case IPPROTO_ICMPV6:
+        m_icmp.input_icmp(id, dir, std::move(buf));
+        break;
     default:
         ;
     }
