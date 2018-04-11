@@ -13,6 +13,9 @@
 #include <string.h>
 
 #include <memory>
+#include <sstream>
+
+#include <boost/lexical_cast.hpp>
 
 enum fabs_direction {
     FROM_ADDR1 = 0,
@@ -42,10 +45,11 @@ struct fabs_appif_header {
     uint8_t  hop;
     uint8_t  l3_proto; // IPPROTO_IP or IPPROTO_IPV6
     uint8_t  l4_proto; // IPPROTO_TCP or IPPROTO_UDP
-    uint8_t  match; // 0: matched up's regex, 1: matched down's regex, 2: none
+    uint8_t  match;    // 0: matched up's regex, 1: matched down's regex, 2: none
 
     uint8_t  reason; // 0: normal, 1: reset, 2: timeout, 3: compromised
-    uint8_t  unused[3]; // safety packing for 32 bytes boundary
+    uint16_t vlanid; // vlan ID, big endian
+    uint8_t  unused; // safety packing for 32 bytes boundary
 } __attribute__((packed, aligned(32)));
 
 typedef std::shared_ptr<fabs_appif_header> ptr_appif_header;
@@ -85,27 +89,31 @@ public:
     fabs_id() : m_hop(0) { }
     virtual ~fabs_id(){ };
 
-    fabs_direction set_iph(char *iph, char **l4hdr, int *len);
+    fabs_direction set_iph(char *iph, uint16_t vlanid, char **l4hdr, int *len);
     void set_appif_header(fabs_appif_header &header);
     void print_id() const;
 
     bool operator< (const fabs_id &rhs) const {
         if (m_hop == rhs.m_hop) {
-            if (m_l3_proto == rhs.m_l3_proto) {
-                if (m_l4_proto == rhs.m_l4_proto) {
-                    int n = memcmp(m_addr1.get(), rhs.m_addr1.get(),
-                                   sizeof(fabs_peer));
+            if (m_vlanid == rhs.m_vlanid) {
+                if (m_l3_proto == rhs.m_l3_proto) {
+                    if (m_l4_proto == rhs.m_l4_proto) {
+                        int n = memcmp(m_addr1.get(), rhs.m_addr1.get(),
+                                    sizeof(fabs_peer));
 
-                    if (n == 0)
-                        return *m_addr2 < *rhs.m_addr2;
+                        if (n == 0)
+                            return *m_addr2 < *rhs.m_addr2;
 
-                    return n < 0 ? true : false;
+                        return n < 0 ? true : false;
+                    }
+
+                    return m_l4_proto < rhs.m_l4_proto;
                 }
 
-                return m_l4_proto < rhs.m_l4_proto;
+                return m_l3_proto < rhs.m_l3_proto;
             }
 
-            return m_l3_proto < rhs.m_l3_proto;
+            return m_vlanid < rhs.m_vlanid;
         }
 
         return m_hop < rhs.m_hop;
@@ -117,6 +125,7 @@ public:
 
     bool operator== (const fabs_id &rhs) const {
         return (m_hop      == rhs.m_hop &&
+                m_vlanid   == rhs.m_vlanid &&
                 m_l3_proto == rhs.m_l3_proto &&
                 m_l4_proto == rhs.m_l4_proto &&
                 *m_addr1   == *rhs.m_addr1 &&
@@ -129,6 +138,11 @@ public:
         addr1 = bin2str((char*)m_addr1.get(), sizeof(fabs_peer));
         addr2 = bin2str((char*)m_addr2.get(), sizeof(fabs_peer));
 
+        if (m_vlanid != 0xffff) {
+            auto s = boost::lexical_cast<std::string>(ntohs(m_vlanid));
+            return s + ":" + addr1 + ":" + addr2;
+        }
+
         return addr1 + ":" + addr2;
     }
 
@@ -136,7 +150,8 @@ public:
     uint8_t get_l4_proto() const { return m_l4_proto; }
 
     std::shared_ptr<fabs_peer> m_addr1, m_addr2;
-    uint8_t m_hop;
+    uint8_t  m_hop;
+    uint16_t m_vlanid;
 
     uint32_t get_hash() const;
 

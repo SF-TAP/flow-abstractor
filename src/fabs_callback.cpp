@@ -12,13 +12,13 @@ fabs_callback::fabs_callback()
 }
 
 void
-fabs_callback::operator() (int idx, ptr_fabs_bytes buf) {
+fabs_callback::operator() (int idx, ptr_fabs_bytes buf, uint16_t vlanid) {
     fabs_direction dir;
     fabs_id        id;
     char          *l4hdr;
     int            len; // payload length
 
-    dir = id.set_iph(buf->get_head(), &l4hdr, &len);
+    dir = id.set_iph(buf->get_head(), vlanid, &l4hdr, &len);
 
     if (l4hdr == NULL || dir == FROM_NONE) {
         return;

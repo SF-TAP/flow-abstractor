@@ -1,3 +1,5 @@
+#include <math.h>
+
 #include "fabs_appif.hpp"
 #include "fabs_conf.hpp"
 #include "fabs_callback.hpp"
@@ -435,10 +437,13 @@ read_loopback7(int fd, fabs_appif *appif)
             header->l3_proto = l3_proto;
             header->l4_proto = l4_proto;
 
+            int vlanid;
+
             try {
                 header->l4_port1 = boost::lexical_cast<int>(h["port1"]);
                 header->l4_port2 = boost::lexical_cast<int>(h["port2"]);
                 header->hop      = boost::lexical_cast<int>(h["hop"]);
+                vlanid = boost::lexical_cast<int>(h["vlan"]);
 
                 auto it_len = h.find("len");
                 if (it_len != h.end()) {
@@ -453,6 +458,11 @@ read_loopback7(int fd, fabs_appif *appif)
             header->hop++;
             header->l4_port1 = htons(header->l4_port1);
             header->l4_port2 = htons(header->l4_port2);
+
+            if (vlanid == -1)
+                header->vlanid = 0xffff;
+            else
+                header->vlanid = htons((uint16_t)vlanid);
 
             if (h["event"] == "CREATED") {
                 header->event = STREAM_CREATED;
@@ -1022,7 +1032,7 @@ fabs_appif::in_event(fabs_stream_event st_event,
     ev->id_dir   = id_dir;
     ev->bytes    = std::move(bytes);
 
-    int id = id_dir.m_id.get_hash() & (m_num_consumer - 1);
+    int id = ev->id_dir.m_id.get_hash() & (m_num_consumer - 1);
 
     m_consumer[id]->produce(ev);
 }
@@ -1513,10 +1523,17 @@ fabs_appif::write_event(int fd, const fabs_id_dir &id_dir, ptr_ifrule ifrule,
         if (id_dir.m_id.get_l4_proto() == IPPROTO_TCP ||
             id_dir.m_id.get_l4_proto() == IPPROTO_UDP) {
             s += ",port1=";
-            s += boost::lexical_cast<std::string>(htons(id_dir.get_port1()));
+            s += boost::lexical_cast<std::string>(ntohs(id_dir.get_port1()));
 
             s += ",port2=";
-            s += boost::lexical_cast<std::string>(htons(id_dir.get_port2()));
+            s += boost::lexical_cast<std::string>(ntohs(id_dir.get_port2()));
+        }
+
+        s += ",vlan=";
+        if (id_dir.m_id.m_vlanid == 0xffff) {
+            s += "-1";
+        } else {
+            s += boost::lexical_cast<std::string>(ntohs(id_dir.m_id.m_vlanid));
         }
 
         s += ",hop=";
@@ -1624,6 +1641,7 @@ fabs_appif::write_event(int fd, const fabs_id_dir &id_dir, ptr_ifrule ifrule,
         header->len      = bodylen;
         header->match    = match;
         header->reason   = reason;
+        header->vlanid   = id_dir.m_id.m_vlanid;
 
         memcpy(&header->tm, tm, sizeof(*tm));
 
@@ -1802,12 +1820,6 @@ brk:
 
     header.l4_port1 = id_dir.m_id.m_addr1->l4_port;
     header.l4_port2 = id_dir.m_id.m_addr2->l4_port;
-    header.event    = DATAGRAM_DATA;
-    header.from     = id_dir.m_dir;
-    header.hop      = id_dir.m_id.m_hop;
-    header.l3_proto = id_dir.m_id.get_l3_proto();
-    header.len      = bytes->get_len();
-    header.match    = match;
 
     int idx2;
     if (ifrule->m_balance == 1) {
@@ -1857,12 +1869,6 @@ fabs_appif::appif_consumer::in_icmp(const fabs_id_dir &id_dir, ptr_fabs_bytes by
 
     header.l4_port1 = id_dir.m_id.m_addr1->l4_port;
     header.l4_port2 = id_dir.m_id.m_addr2->l4_port;
-    header.event    = DATAGRAM_DATA;
-    header.from     = id_dir.m_dir;
-    header.hop      = id_dir.m_id.m_hop;
-    header.l3_proto = id_dir.m_id.get_l3_proto();
-    header.len      = bytes->get_len();
-    header.match    = match;
 
     int idx2;
     if (ifrule->m_balance == 1) {

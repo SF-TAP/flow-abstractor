@@ -46,7 +46,7 @@ private:
     volatile uint64_t m_num_dropped;
 
     inline const uint8_t *get_ip_hdr(const uint8_t *bytes, uint32_t len,
-                                     uint8_t &proto);
+                                     uint8_t &proto, uint16_t &vlanid);
 
     const fabs_dlcap *m_dlcap;
     ptr_fabs_appif m_appif;

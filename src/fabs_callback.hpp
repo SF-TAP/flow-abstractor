@@ -13,7 +13,7 @@ public:
     fabs_callback();
     virtual ~fabs_callback() { }
 
-    void operator() (int idx, ptr_fabs_bytes buf);
+    void operator() (int idx, ptr_fabs_bytes buf, uint16_t vlanid);
     void print_stat() {
         uint64_t n = 0;
         uint64_t t = 0;
