@@ -245,6 +245,7 @@ fabs_fragment::defragment(const fragments &frg, ptr_fabs_bytes &buf)
 
     iph->ip_id  = 0;
     iph->ip_off = 0;
+    iph->ip_len = htons(frg.m_size);
 
     return true;
 }
