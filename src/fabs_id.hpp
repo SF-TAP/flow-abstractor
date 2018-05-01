@@ -37,11 +37,11 @@ struct fabs_appif_header {
     uint16_t l4_port2; // big endian
 
     uint8_t  event; // 0: created, 1: destroyed, 2: data
-    uint8_t  from;  // FROM_ADDR1: from addr1, FROM_ADDR2: from addr2
-    uint16_t len;   // machine-dependent endian
+    uint8_t  from;  // FROM_ADDR1 (== 0): from addr1, FROM_ADDR2 (== 1): from addr2
+    uint16_t len;   // length of message (machine-dependent endian)
     uint8_t  hop;
     uint8_t  l3_proto; // IPPROTO_IP or IPPROTO_IPV6
-    uint8_t  l4_proto; // IPPROTO_TCP or IPPROTO_UDP
+    uint8_t  l4_proto; // IPPROTO_TCP, IPPROTO_UDP, IPPROTO_ICMP, or IPPROTO_ICMPV6
     uint8_t  match; // 0: matched up's regex, 1: matched down's regex, 2: none
 
     uint8_t  reason; // 0: normal, 1: reset, 2: timeout, 3: compromised
