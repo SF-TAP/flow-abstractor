@@ -180,8 +180,9 @@ fabs_ether::consume(int idx)
                     return;
 
                 uint8_t proto;
+                uint16_t vlanid = 0xffff;
                 const uint8_t *ip_hdr = get_ip_hdr((uint8_t*)buf->get_head(),
-                                                   buf->get_len(), proto);
+                                                   buf->get_len(), proto, vlanid);
 
                 buf->skip((char*)ip_hdr - buf->get_head());
 
@@ -213,7 +214,7 @@ fabs_ether::consume(int idx)
                             m_condition_frag.notify_one();
                         }
                     } else {
-                        m_callback(idx, std::move(buf));
+                        m_callback(idx, std::move(buf), vlanid);
                     }
 
                     break;
@@ -253,7 +254,7 @@ fabs_ether::consume(int idx)
                         goto err;
                     }
 
-                    m_callback(idx, std::move(buf));
+                    m_callback(idx, std::move(buf), vlanid);
 
                     break;
                 }
@@ -306,7 +307,8 @@ fabs_ether::ether_input(const uint8_t *bytes, int len, const timeval &tm, bool i
     if (is_pcap) m_num_pcap++;
 
     uint8_t proto;
-    const uint8_t *ip_hdr = get_ip_hdr(bytes, len, proto);
+    uint16_t vlanid = 0xffff;
+    const uint8_t *ip_hdr = get_ip_hdr(bytes, len, proto, vlanid);
     uint32_t hash;
 
     if (ip_hdr == NULL)
@@ -332,7 +334,7 @@ fabs_ether::ether_input(const uint8_t *bytes, int len, const timeval &tm, bool i
 }
 
 inline const uint8_t *
-fabs_ether::get_ip_hdr(const uint8_t *bytes, uint32_t len, uint8_t &proto)
+fabs_ether::get_ip_hdr(const uint8_t *bytes, uint32_t len, uint8_t &proto, uint16_t &vlanid)
 {
     const uint8_t *ip_hdr = NULL;
 
@@ -350,6 +352,9 @@ retry:
     {
         const vlanhdr *vhdr = (const vlanhdr*)(bytes + skip);
         ether_type = ntohs(vhdr->m_type);
+
+        vlanid = ntohs(vhdr->m_tci) & 0x0fff;
+        vlanid = htons(vlanid);
 
         skip += sizeof(vlanhdr);
 

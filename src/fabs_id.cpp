@@ -20,11 +20,12 @@ using namespace boost;
 using namespace std;
 
 fabs_direction
-fabs_id::set_iph(char *iph, char **l4hdr, int *len)
+fabs_id::set_iph(char *iph, uint16_t vlanid, char **l4hdr, int *len)
 {
     char protocol = iph[0] & 0xf0;
 
     *l4hdr = NULL;
+    m_vlanid = vlanid;
 
     switch (protocol) {
     case 0x40:
@@ -192,6 +193,8 @@ fabs_id::set_appif_header(fabs_appif_header &header)
 
     m_addr1 = addr1;
     m_addr2 = addr2;
+
+    m_vlanid = header.vlanid;
 }
 
 void
@@ -224,6 +227,7 @@ fabs_id::get_hash() const
     } hash;
 
     hash.h32 = ntohs(m_addr1->l4_port ^ m_addr2->l4_port);
+    hash.h32 ^= ntohs(m_vlanid);
 
     if (m_l3_proto == IPPROTO_IP) {
         hash.h32 ^= ntohl(m_addr1->l3_addr.b32 ^ m_addr2->l3_addr.b32);
