@@ -23,10 +23,24 @@ class fabs_ether;
 
 class fabs_fragment {
 public:
+    struct qtype {
+        ptr_fabs_bytes m_buf;
+        uint16_t       m_vlanid;
+
+        qtype() { }
+        qtype(ptr_fabs_bytes buf, uint16_t vlanid) : m_buf(std::move(buf)), m_vlanid(vlanid) { }
+
+        fabs_fragment::qtype& operator=(fabs_fragment::qtype &rhs) {
+            m_buf    = std::move(rhs.m_buf);
+            m_vlanid = rhs.m_vlanid;
+            return *this;
+        }
+    };
+
     fabs_fragment(fabs_ether &fether, ptr_fabs_appif appif);
     virtual ~fabs_fragment();
 
-    bool input_ip(ptr_fabs_bytes buf);
+    bool input_ip(qtype &buf);
     void gc_timer();
 
 private:
@@ -39,9 +53,10 @@ private:
         uint32_t m_ip_src;
         uint32_t m_ip_dst;
         uint16_t m_id;
+        uint16_t m_vlanid;
 
         fragments ();
-        fragments(const ip *iph4, ptr_fabs_bytes bytes);
+        fragments(const ip *iph4, ptr_fabs_bytes bytes, uint16_t vlanid);
         virtual ~fragments();
 
         bool operator< (const fragments &rhs) const;

@@ -23,6 +23,11 @@
 
 class fabs_fragment;
 
+struct vlanhdr {
+    uint16_t m_tci;
+    uint16_t m_type;
+};
+
 class fabs_ether {
 public:
     fabs_ether(fabs_conf &conf, const fabs_dlcap *dlcap);
@@ -55,7 +60,7 @@ private:
     fabs_fragment m_fragment;
 
     fabs_cb<ptr_fabs_bytes> *m_queue;
-    fabs_cb<ptr_fabs_bytes>  m_queue_frag;
+    fabs_cb<fabs_fragment::qtype> m_queue_frag;
 
     bool *m_is_consuming;
     bool  m_is_consuming_frag;

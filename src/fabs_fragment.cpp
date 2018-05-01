@@ -1,6 +1,8 @@
 #include "fabs_fragment.hpp"
 #include "fabs_ether.hpp"
 
+#include <net/ethernet.h>
+
 #include <functional>
 
 #define FRAGMENT_GC_TIMER 30
@@ -12,7 +14,7 @@ fabs_fragment::fragments::fragments ()
 
 }
 
-fabs_fragment::fragments::fragments(const ip *iph4, ptr_fabs_bytes bytes)
+fabs_fragment::fragments::fragments(const ip *iph4, ptr_fabs_bytes bytes, uint16_t vlanid)
     : m_bytes(new std::map<int, ptr_fabs_bytes>),
       m_is_last(false)
 {
@@ -31,6 +33,7 @@ fabs_fragment::fragments::fragments(const ip *iph4, ptr_fabs_bytes bytes)
     m_ip_src = ntohl(iph4->ip_src.s_addr);
     m_ip_dst = ntohl(iph4->ip_dst.s_addr);
     m_id     = ntohs(iph4->ip_id);
+    m_vlanid = ntohs(vlanid);
 }
 
 fabs_fragment::fragments::~fragments ()
@@ -42,7 +45,11 @@ bool
 fabs_fragment::fragments::operator< (const fragments &rhs) const {
     if (m_ip_src == rhs.m_ip_src) {
         if (m_ip_dst == rhs.m_ip_dst) {
-            return m_id < rhs.m_id;
+            if (m_vlanid == rhs.m_vlanid) {
+                return m_id < rhs.m_id;
+            } else {
+                return m_vlanid < rhs.m_vlanid;
+            }
         } else {
             return m_ip_dst < rhs.m_ip_dst;
         }
@@ -55,7 +62,8 @@ bool
 fabs_fragment::fragments::operator== (const fragments &rhs) const {
     return (m_ip_src == rhs.m_ip_src &&
             m_ip_dst == rhs.m_ip_dst &&
-            m_id == rhs.m_id);
+            m_id     == rhs.m_id     &&
+            m_vlanid == rhs.m_vlanid);
 }
 
 fabs_fragment::fabs_fragment(fabs_ether &fether, ptr_fabs_appif appif) :
@@ -109,15 +117,15 @@ fabs_fragment::gc_timer()
 // true:  fragmented
 // false: not fragmented
 bool
-fabs_fragment::input_ip(ptr_fabs_bytes buf)
+fabs_fragment::input_ip(qtype &buf)
 {
-    ip *iph4 = (ip*)buf->get_head();
+    ip *iph4 = (ip*)buf.m_buf->get_head();
 
     if (iph4->ip_v != 4) {
         return false;
     }
 
-    if (ntohs(iph4->ip_len) > buf->get_len()) {
+    if (ntohs(iph4->ip_len) > buf.m_buf->get_len()) {
         return false;
     }
 
@@ -130,15 +138,16 @@ fabs_fragment::input_ip(ptr_fabs_bytes buf)
         frag.m_ip_src = ntohl(iph4->ip_src.s_addr);
         frag.m_ip_dst = ntohl(iph4->ip_dst.s_addr);
         frag.m_id     = ntohs(iph4->ip_id);
+        frag.m_vlanid = ntohs(buf.m_vlanid);
 
         std::unique_lock<std::mutex> lock(m_mutex);
         auto it = m_fragments.find(frag);
         if (it == m_fragments.end()) {
-            m_fragments.insert(fragments(iph4, std::move(buf)));
+            m_fragments.insert(fragments(iph4, std::move(buf.m_buf), buf.m_vlanid));
         } else {
             auto it2 = it->m_bytes->find(offset);
             if (it2 == it->m_bytes->end()) {
-                (*it->m_bytes)[offset] = std::move(buf);
+                (*it->m_bytes)[offset] = std::move(buf.m_buf);
 
                 if (! mflag) {
                     it->m_is_last = true;
@@ -183,12 +192,32 @@ fabs_fragment::defragment(const fragments &frg, ptr_fabs_bytes &buf)
     iph = (ip*)frg.m_bytes->begin()->second->get_head();
     hlen = iph->ip_hl * 4;
 
-    buf->alloc(frg.m_size + hlen);
+    int ehdrlen;
+    if (frg.m_vlanid == 0xffff) {
+        ehdrlen = sizeof(ether_header);
+        buf->alloc(frg.m_size + hlen + ehdrlen);
+        if (buf->get_len() == 0)
+            return false;
 
-    if (buf->get_len() == 0)
-        return false;
+        ether_header *ehdr = (ether_header*)buf->get_head();
+        memset(ehdr, 0, sizeof(ether_header));
+        ehdr->ether_type = htons(ETHERTYPE_IP);
+    } else {
+        ehdrlen = sizeof(ether_header) + sizeof(vlanhdr);
+        buf->alloc(frg.m_size + hlen + ehdrlen);
+        if (buf->get_len() == 0)
+            return false;
 
-    memcpy(buf->get_head(), iph, hlen);
+        ether_header *ehdr = (ether_header*)buf->get_head();
+        memset(ehdr, 0, sizeof(ether_header));
+        ehdr->ether_type = htons(ETHERTYPE_VLAN);
+
+        vlanhdr *vhdr = (vlanhdr*)(buf->get_head() + sizeof(ether_header));
+        vhdr->m_type = htons(ETHERTYPE_IP);
+        vhdr->m_tci  = htons(frg.m_vlanid);
+    }
+
+    memcpy(buf->get_head() + ehdrlen, iph, hlen);
 
     for (auto it = frg.m_bytes->begin(); it != frg.m_bytes->end(); ++it) {
         int offset = it->first;
@@ -206,13 +235,13 @@ fabs_fragment::defragment(const fragments &frg, ptr_fabs_bytes &buf)
             return false;
         }
 
-        memcpy(buf->get_head() + pos + hlen,
+        memcpy(buf->get_head() + pos + hlen + ehdrlen,
                it->second->get_head() + iph4->ip_hl * 4, len);
 
         next += len;
     }
 
-    iph = (ip*)buf->get_head();
+    iph = (ip*)(buf->get_head() + ehdrlen);
 
     iph->ip_id  = 0;
     iph->ip_off = 0;

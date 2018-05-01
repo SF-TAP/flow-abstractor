@@ -22,11 +22,6 @@
 
 time_t t0 = time(NULL);
 
-struct vlanhdr {
-    uint16_t m_tci;
-    uint16_t m_type;
-};
-
 fabs_ether::fabs_ether(fabs_conf &conf, const fabs_dlcap *dlcap)
     : m_is_break(false),
       m_num_dropped(0),
@@ -206,7 +201,8 @@ fabs_ether::consume(int idx)
 
                     if (off & IP_MF || (off & 0x1fff) > 0) {
                         // produce fragment packet
-                        m_queue_frag.push(buf);
+                        fabs_fragment::qtype q(std::move(buf), vlanid);
+                        m_queue_frag.push(q);
 
                         if (! m_is_consuming_frag &&
                             m_queue_frag.get_len() > NOTIFY_NUM) {
@@ -290,12 +286,12 @@ fabs_ether::consume_fragment()
             }
         }
 
-        ptr_fabs_bytes buf;
+        fabs_fragment::qtype q;
         for (int i = 0; i < NOTIFY_NUM; i++) {
-            while (m_queue_frag.pop(&buf)) {
+            while (m_queue_frag.pop(&q)) {
                 if (m_is_break)
                     return;
-                m_fragment.input_ip(std::move(buf));
+                m_fragment.input_ip(q);
             }
         }
     }
